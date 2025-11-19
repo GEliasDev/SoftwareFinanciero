@@ -1,0 +1,25 @@
+### Crear un nuevo crédito
+POST http://localhost:3000/credits
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTIsImVtYWlsIjoiZ3ZhbGRlbGFtYXIxQGdtYWlsLmNvbSIsImlhdCI6MTc2MTU5MzIyMSwiZXhwIjoxNzYxNjAwNDIxfQ.DosHwDBh-oEYLdQk5Go5vqlUe7imX1t5Ry7BpIIO6b0
+
+
+{
+  "typeOfCredit": "Tarjeta de Crédito",
+  "entityName": "Banco X",
+  "requestedAmount": 1000000,
+  "term": 6,
+  "annualInterestRate": 24.26,
+  "paymentPeriod": "Mensual",
+  "startDate": "2025-01-01",
+  "endDate": "2025-12-31"
+}
+
+### Obtener todos los créditos
+GET http://localhost:3000/credits
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTIsImVtYWlsIjoiZ3ZhbGRlbGFtYXIxQGdtYWlsLmNvbSIsImlhdCI6MTc2MTE0NDkxNCwiZXhwIjoxNzYxMTUyMTE0fQ.Jr_ia-RpGB1xQMOTfJl1R0FJiUV8H7kph5DOtpXWcUE
+
+### Eliminar créditos
+DELETE http://localhost:3000/credits/4
+Content-Type: application/json
