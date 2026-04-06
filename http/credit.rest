@@ -1,25 +1,101 @@
-### Crear un nuevo crédito
-POST http://localhost:3000/credits
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTIsImVtYWlsIjoiZ3ZhbGRlbGFtYXIxQGdtYWlsLmNvbSIsImlhdCI6MTc2MTU5MzIyMSwiZXhwIjoxNzYxNjAwNDIxfQ.DosHwDBh-oEYLdQk5Go5vqlUe7imX1t5Ry7BpIIO6b0
+@baseUrl = http://localhost:3000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJndmFsZGVsYW1hcjFAZ21haWwuY29tIiwiaWF0IjoxNzc1NTA4Nzg0LCJleHAiOjE3NzU1MTU5ODR9.uZlLYBAORH1YHBntRu1H-BHU3DhDDV5jQLdF2RGMlV0
 
+### ═══════════════════════════════════════
+### 1. CREAR TARJETA DE CRÉDITO
+### ═══════════════════════════════════════
+POST {{baseUrl}}/credit-cards
+Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
-  "typeOfCredit": "Tarjeta de Crédito",
-  "entityName": "Banco X",
-  "requestedAmount": 1000000,
-  "term": 6,
-  "annualInterestRate": 24.26,
-  "paymentPeriod": "Mensual",
-  "startDate": "2025-01-01",
-  "endDate": "2025-12-31"
+  "nombre": "Visa Bancolombia",
+  "entidad": "Bancolombia",
+  "cupoTotal": 10000000,
+  "tasaInteresMensual": 2.5,
+  "fechaCorte": 25,
+  "fechaPago": 10
 }
 
-### Obtener todos los créditos
-GET http://localhost:3000/credits
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTIsImVtYWlsIjoiZ3ZhbGRlbGFtYXIxQGdtYWlsLmNvbSIsImlhdCI6MTc2MTE0NDkxNCwiZXhwIjoxNzYxMTUyMTE0fQ.Jr_ia-RpGB1xQMOTfJl1R0FJiUV8H7kph5DOtpXWcUE
+### ═══════════════════════════════════════
+### 2. OBTENER TODAS LAS TARJETAS
+### ═══════════════════════════════════════
+GET {{baseUrl}}/credit-cards
+Authorization: Bearer {{token}}
 
-### Eliminar créditos
-DELETE http://localhost:3000/credits/4
+### ═══════════════════════════════════════
+### 3. OBTENER TARJETA POR ID
+### ═══════════════════════════════════════
+GET {{baseUrl}}/credit-cards/1
+Authorization: Bearer {{token}}
+
+### ═══════════════════════════════════════
+### 4. RESUMEN MENSUAL DE LA TARJETA
+### ═══════════════════════════════════════
+GET {{baseUrl}}/credit-cards/1/summary
+Authorization: Bearer {{token}}
+
+### ═══════════════════════════════════════
+### 5. ACTUALIZAR TARJETA
+### ═══════════════════════════════════════
+PATCH {{baseUrl}}/credit-cards/1
 Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nombre": "Visa Bancolombia Gold",
+  "fechaCorte": 28,
+  "fechaPago": 12
+}
+
+### ═══════════════════════════════════════
+### 6. REGISTRAR COMPRA EN LA TARJETA
+### ═══════════════════════════════════════
+POST {{baseUrl}}/credit-cards/1/purchases
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "descripcion": "iPhone 16",
+  "montoTotal": 4000000,
+  "numeroCuotas": 12,
+  "fechaCompra": "2026-04-06"
+}
+
+### ═══════════════════════════════════════
+### 7. REGISTRAR OTRA COMPRA (1 cuota, sin interés)
+### ═══════════════════════════════════════
+POST {{baseUrl}}/credit-cards/1/purchases
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "descripcion": "Netflix mensual",
+  "montoTotal": 49900,
+  "numeroCuotas": 1,
+  "fechaCompra": "2026-04-06"
+}
+
+### ═══════════════════════════════════════
+### 8. OBTENER COMPRAS DE LA TARJETA
+### ═══════════════════════════════════════
+GET {{baseUrl}}/credit-cards/1/purchases
+Authorization: Bearer {{token}}
+
+### ═══════════════════════════════════════
+### 9. REGISTRAR CUOTA PAGADA DE UNA COMPRA
+### ═══════════════════════════════════════
+PATCH {{baseUrl}}/credit-cards/1/purchases/1/pay
+Authorization: Bearer {{token}}
+
+### ═══════════════════════════════════════
+### 10. ELIMINAR COMPRA
+### ═══════════════════════════════════════
+DELETE {{baseUrl}}/credit-cards/1/purchases/1
+Authorization: Bearer {{token}}
+
+### ═══════════════════════════════════════
+### 11. ELIMINAR TARJETA
+### ═══════════════════════════════════════
+DELETE {{baseUrl}}/credit-cards/1
+Authorization: Bearer {{token}}
