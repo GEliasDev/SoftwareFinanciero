@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
+import cors from 'cors';
 import sequelize from './db/client.js';
 import userRoutes from './modules/user/user.routes.js';
 import bankCreditRoutes from './modules/bankCredit/bankCredit.routes.js';
@@ -13,13 +14,14 @@ import { startReminderJob } from './jobs/reminderJob.js';
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
-app.use('/users', userRoutes);
-app.use('/bank-credits', bankCreditRoutes);
-app.use('/credit-cards', creditCardRoutes);
-app.use('/subscriptions', subscriptionRoutes);
-app.use('/reminders', reminderRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/bank-credits', bankCreditRoutes);
+app.use('/api/credit-cards', creditCardRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/reminders', reminderRoutes);
 
 app.use(errorHandler);
 

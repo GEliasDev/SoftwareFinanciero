@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../services/authService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -72,6 +72,10 @@ export const Login = () => {
           <Button type="submit" className="w-full mt-4" disabled={loading}>
             {loading ? 'Iniciando...' : 'Ingresar'}
           </Button>
+
+          <p className="text-center text-muted mt-4 text-sm">
+            ¿No tienes cuenta? <Link to="/register" className="text-primary font-semibold">Regístrate</Link>
+          </p>
         </form>
       </div>
     </div>
