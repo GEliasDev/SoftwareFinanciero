@@ -1,49 +1,89 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import './styles/components.css';
 @import './styles/layout.css';
 
+/* ════════════════════════════════════════════════════════════════
+   SOLVENTA — Design tokens
+   Fintech limpio · Índigo + Esmeralda
+   Los --color-* son alias de compatibilidad: re-apuntan a la paleta
+   nueva para que toda la app se actualice sin editar cada archivo.
+════════════════════════════════════════════════════════════════ */
 :root {
-  /* Backgrounds */
-  --color-bg:            #F8FAFC;
-  --color-surface:       #FFFFFF;
+  /* ── Marca — Índigo ── */
+  --brand-50:  #EEF2FF;
+  --brand-100: #E0E7FF;
+  --brand-200: #C7D2FE;
+  --brand-500: #6366F1;
+  --brand-600: #4F46E5;
+  --brand-700: #4338CA;
+  --brand-800: #3730A3;
 
-  /* Borders */
-  --color-border:        #E2E8F0;
-  --color-border-strong: #CBD5E1;
+  /* ── Positivo — Esmeralda ── */
+  --pos-50:  #ECFDF5;
+  --pos-600: #059669;
+  --pos-700: #047857;
 
-  /* Primary */
-  --color-primary:       #2563EB;
-  --color-primary-hover: #1D4ED8;
-  --color-primary-light: #EFF6FF;
+  /* ── Alerta — Ámbar ── */
+  --warn-50:  #FFFBEB;
+  --warn-600: #D97706;
+  --warn-700: #B45309;
 
-  /* Text */
-  --color-text-primary:  #0F172A;
-  --color-text-secondary:#475569;
-  --color-text-muted:    #94A3B8;
+  /* ── Peligro — Rojo ── */
+  --neg-50:  #FEF2F2;
+  --neg-600: #DC2626;
+  --neg-700: #B91C1C;
 
-  /* Semantic */
-  --color-success:       #16A34A;
-  --color-success-bg:    #F0FDF4;
-  --color-danger:        #DC2626;
-  --color-danger-bg:     #FEF2F2;
-  --color-warning:       #D97706;
-  --color-warning-bg:    #FFFBEB;
+  /* ── Neutros — Slate ── */
+  --bg:            #F8FAFC;
+  --surface:       #FFFFFF;
+  --surface-2:     #F1F5F9;
+  --border:        #E2E8F0;
+  --border-strong: #CBD5E1;
+  --text:          #0F172A;
+  --text-2:        #475569;
+  --text-3:        #94A3B8;
 
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  /* ── Alias de compatibilidad (NO eliminar: en uso por toda la app) ── */
+  --color-bg:             var(--bg);
+  --color-surface:        var(--surface);
+  --color-border:         var(--border);
+  --color-border-strong:  var(--border-strong);
+  --color-primary:        var(--brand-600);
+  --color-primary-hover:  var(--brand-700);
+  --color-primary-light:  var(--brand-50);
+  --color-text-primary:   var(--text);
+  --color-text-secondary: var(--text-2);
+  --color-text-muted:     var(--text-3);
+  --color-success:        var(--pos-600);
+  --color-success-bg:     var(--pos-50);
+  --color-danger:         var(--neg-600);
+  --color-danger-bg:      var(--neg-50);
+  --color-warning:        var(--warn-600);
+  --color-warning-bg:     var(--warn-50);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08);
+  /* ── Espaciado ── */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 48px;
 
-  /* Transitions */
+  /* ── Radius ── */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  /* ── Shadows (sutiles, por capas) ── */
+  --shadow-xs: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 4px 12px -2px rgba(15,23,42,0.08);
+  --shadow-lg: 0 12px 28px -6px rgba(15,23,42,0.12);
+
+  /* ── Transitions ── */
   --transition-fast: all 0.12s ease;
   --transition:      all 0.18s ease;
 }
+
+/* Cifras monetarias / numéricas alineadas en columnas (look financiero) */
+.tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 *, *::before, *::after {
   margin: 0;

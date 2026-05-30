@@ -144,7 +144,7 @@ export const Reports = () => {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(trendSheet), 'Tendencia');
       }
 
-      XLSX.writeFile(wb, `Debti_Reporte_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, `Solventa_Reporte_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (err) {
       console.error('Error al exportar Excel:', err);
     } finally {

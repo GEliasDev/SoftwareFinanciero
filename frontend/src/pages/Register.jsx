@@ -69,7 +69,8 @@ export const Register = () => {
 
             <div className="auth-form-header">
               <div className="auth-logo">
-                <span className="auth-logo-text">Debti</span>
+                <span className="sidebar-logo-mark">S</span>
+                <span className="auth-logo-text">Solventa</span>
               </div>
               <h2>Crear cuenta</h2>
               <p>Completa el formulario para comenzar</p>

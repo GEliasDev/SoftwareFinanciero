@@ -32,7 +32,7 @@ export const Login = () => {
         <div className="auth-image-section">
           <div className="auth-image-content">
             <div style={{ marginBottom: '1.5rem' }}>
-              <span style={{ fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Debti</span>
+              <span style={{ fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Solventa</span>
             </div>
             <h2>Toma el control de tus finanzas personales</h2>
             <p>Un panel unificado para gestionar suscripciones, tarjetas de crédito y créditos bancarios con claridad y precisión.</p>
@@ -58,7 +58,8 @@ export const Login = () => {
 
             <div className="auth-form-header">
               <div className="auth-logo">
-                <span className="auth-logo-text">Debti</span>
+                <span className="sidebar-logo-mark">S</span>
+                <span className="auth-logo-text">Solventa</span>
               </div>
               <h2>Iniciar sesión</h2>
               <p>Bienvenido de vuelta a tu panel financiero</p>
