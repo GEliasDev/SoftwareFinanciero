@@ -12,7 +12,11 @@ import { SubscriptionDetail } from './pages/SubscriptionDetail';
 // Tarjetas de crédito
 import { CreditCards } from './pages/CreditCards';
 import { CreditCardNew } from './pages/CreditCardNew';
-import { CreditCardDetail } from './pages/CreditCardDetail';
+import { CreditCardLayout } from './pages/credit-card/CreditCardLayout';
+import { CardOverview } from './pages/credit-card/CardOverview';
+import { CardStatementPage } from './pages/credit-card/CardStatementPage';
+import { CardPurchases } from './pages/credit-card/CardPurchases';
+import { CardAnalysis } from './pages/credit-card/CardAnalysis';
 import { CreditCardEdit } from './pages/CreditCardEdit';
 import { CreditCardPurchaseDetail } from './pages/CreditCardPurchaseDetail';
 import { CreditCardPurchaseNew } from './pages/CreditCardPurchaseNew';
@@ -59,7 +63,12 @@ function App() {
           {/* Tarjetas de crédito */}
           <Route path="credit-cards" element={<CreditCards />} />
           <Route path="credit-cards/new" element={<CreditCardNew />} />
-          <Route path="credit-cards/:id" element={<CreditCardDetail />} />
+          <Route path="credit-cards/:id" element={<CreditCardLayout />}>
+            <Route index element={<CardOverview />} />
+            <Route path="statement" element={<CardStatementPage />} />
+            <Route path="purchases" element={<CardPurchases />} />
+            <Route path="analysis" element={<CardAnalysis />} />
+          </Route>
           <Route path="credit-cards/:id/edit" element={<CreditCardEdit />} />
           <Route path="credit-cards/:id/purchases/new" element={<CreditCardPurchaseNew />} />
           <Route path="credit-cards/:id/purchases/:purchaseId" element={<CreditCardPurchaseDetail />} />
