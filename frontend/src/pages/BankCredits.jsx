@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BankCreditService } from '../services/bankCreditService';
-import { Plus, Landmark, ChevronRight } from 'lucide-react';
-
-const fmt = (n) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
+import { Plus, Landmark, ChevronRight, CalendarClock, Wallet, TrendingDown } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { StatCard } from '../components/ui/StatCard';
+import { fmt, nextOccurrence, daysUntil, urgencyStyle } from '../utils/format';
 
 const STATUS = {
   activo:   { label: 'Activo',   cls: 'badge badge-success' },
@@ -24,42 +24,42 @@ export const BankCredits = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const activos       = credits.filter(c => c.status === 'activo');
   const totalDebt     = credits.reduce((a, c) => a + (c.saldoPendiente ?? 0), 0);
-  const monthlyCuotas = credits.filter(c => c.status === 'activo').reduce((a, c) => a + (c.valorCuota ?? 0), 0);
+  const monthlyCuotas = activos.reduce((a, c) => a + (c.valorCuota ?? 0) + (c.cuotaAdministracion ?? 0), 0);
+
+  // Orden: activos primero, por proximidad de pago.
+  const ordered = useMemo(() => [...credits].sort((a, b) => {
+    const oa = a.status === 'activo' ? 1 : 0;
+    const ob = b.status === 'activo' ? 1 : 0;
+    if (oa !== ob) return ob - oa;
+    if (oa === 1) return daysUntil(nextOccurrence(a.diaPago)) - daysUntil(nextOccurrence(b.diaPago));
+    return 0;
+  }), [credits]);
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
-      <div className="page-header">
-        <h1 className="page-title">Créditos Bancarios</h1>
-        <button className="btn btn-primary" onClick={() => navigate('/bank-credits/new')}>
-          <Plus size={15} /> Nuevo Crédito
-        </button>
-      </div>
+      <PageHeader
+        title="Créditos Bancarios"
+        subtitle="Seguimiento de cuotas, saldos y amortización"
+        actions={
+          <button className="btn btn-primary" onClick={() => navigate('/bank-credits/new')}>
+            <Plus size={15} /> Nuevo Crédito
+          </button>
+        }
+      />
 
-      {/* Resumen */}
       {!loading && credits.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          {[
-            { label: 'Créditos activos',   value: credits.filter(c => c.status === 'activo').length + ' créditos', sub: 'en seguimiento' },
-            { label: 'Deuda total',          value: fmt(totalDebt),     sub: 'saldo pendiente' },
-            { label: 'Cuota mensual total',  value: fmt(monthlyCuotas), sub: 'comprometido/mes' },
-          ].map(({ label, value, sub }) => (
-            <div key={label} style={{
-              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-              padding: '0.875rem 1rem', boxShadow: 'var(--shadow-sm)',
-            }}>
-              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 0.25rem' }}>{label}</p>
-              <p style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>{value}</p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{sub}</p>
-            </div>
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
+          <StatCard label="Deuda total" value={fmt(totalDebt)} delta="Saldo pendiente" icon={TrendingDown} tone="neg" />
+          <StatCard label="Cuota mensual total" value={fmt(monthlyCuotas)} delta="Comprometido por mes" icon={Wallet} tone="warn" />
+          <StatCard label="Créditos activos" value={`${activos.length}`} delta={`de ${credits.length} registrado${credits.length !== 1 ? 's' : ''}`} icon={Landmark} tone="brand" />
         </div>
       )}
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 110, borderRadius: 'var(--radius-md)' }} />)}
+          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 116, borderRadius: 'var(--radius-md)' }} />)}
         </div>
       ) : credits.length === 0 ? (
         <div className="card">
@@ -74,44 +74,42 @@ export const BankCredits = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {credits.map(credit => {
+          {ordered.map(credit => {
             const pct = credit.numeroCuotas ? (credit.cuotasPagadas / credit.numeroCuotas) * 100 : 0;
             const statusInfo = STATUS[credit.status] || STATUS.activo;
+            const isActive = credit.status === 'activo';
+            const days = isActive ? daysUntil(nextOccurrence(credit.diaPago)) : null;
+            const u = isActive ? urgencyStyle(days) : null;
+
             return (
-              <div
-                key={credit.id}
-                className="card"
-                style={{ cursor: 'pointer', padding: '1.125rem 1.25rem' }}
-                onClick={() => navigate(`/bank-credits/${credit.id}`)}
-              >
+              <div key={credit.id} className="card clickable" style={{ padding: '1.125rem 1.25rem' }} onClick={() => navigate(`/bank-credits/${credit.id}`)}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  {/* Icono + nombre */}
-                  <div style={{
-                    width: 42, height: 42, borderRadius: 'var(--radius-md)',
-                    background: 'var(--color-danger-bg)', color: 'var(--color-danger)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 'var(--radius-md)', background: 'var(--brand-50)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Landmark size={18} />
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
-                      <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0, color: 'var(--color-text-primary)' }}>{credit.nombre}</h3>
+                      <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0, color: 'var(--text)' }}>{credit.nombre}</h3>
                       <span className={statusInfo.cls}>{statusInfo.label}</span>
+                      {isActive && (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700,
+                          padding: '1px 8px', borderRadius: 99, background: u.bg, color: u.color, border: `1px solid ${u.border}`,
+                        }}>
+                          <CalendarClock size={10} />
+                          {days === 0 ? 'Paga hoy' : days === 1 ? 'Paga mañana' : `Paga en ${days}d`}
+                        </span>
+                      )}
                     </div>
-                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 0.875rem' }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 0.875rem' }}>
                       {credit.entidad} · {credit.tasaInteres}% {credit.tipoTasa === 'mensual' ? 'M.V.' : 'E.A.'} · Día {credit.diaPago}
                     </p>
 
-                    {/* Barra de progreso */}
-                    <div style={{ marginBottom: '0.5rem' }}>
+                    <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                          {credit.cuotasPagadas} de {credit.numeroCuotas} cuotas
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-success)' }}>
-                          {pct.toFixed(0)}%
-                        </span>
+                        <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)' }}>{credit.cuotasPagadas} de {credit.numeroCuotas} cuotas</span>
+                        <span className="tabular" style={{ fontSize: 12, fontWeight: 700, color: 'var(--pos-600)' }}>{pct.toFixed(0)}%</span>
                       </div>
                       <div className="progress-track">
                         <div className="progress-fill" style={{ width: `${pct}%` }} />
@@ -119,14 +117,13 @@ export const BankCredits = () => {
                     </div>
                   </div>
 
-                  {/* Montos */}
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 0.15rem' }}>Cuota mensual</p>
-                    <p style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-danger)', margin: '0 0 0.4rem', letterSpacing: '-0.02em' }}>{fmt(credit.valorCuota)}</p>
-                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Saldo: {fmt(credit.saldoPendiente)}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 0.15rem' }}>Cuota mensual</p>
+                    <p className="tabular" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text)', margin: '0 0 0.4rem', letterSpacing: '-0.02em' }}>{fmt(credit.valorCuota)}</p>
+                    <p className="tabular" style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Saldo: {fmt(credit.saldoPendiente)}</p>
                   </div>
 
-                  <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', alignSelf: 'center', flexShrink: 0 }} />
+                  <ChevronRight size={16} style={{ color: 'var(--text-3)', alignSelf: 'center', flexShrink: 0 }} />
                 </div>
               </div>
             );

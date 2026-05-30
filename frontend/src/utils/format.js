@@ -27,3 +27,29 @@ export const monthLabel = (m) => {
   return new Date(Number(y), Number(mo) - 1, 1)
     .toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
 };
+
+// Fecha desde un Date o string ISO ("2026-05-30T…") -> "30 may 2026"
+export const fmtDateLong = (x) => {
+  if (!x) return '—';
+  return new Date(x).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+/* ── Fechas de corte / pago y urgencia (genérico, usado por varios módulos) ── */
+export const nextOccurrence = (dayOfMonth) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(today.getFullYear(), today.getMonth(), Number(dayOfMonth));
+  if (d <= today) d.setMonth(d.getMonth() + 1);
+  return d;
+};
+
+export const daysUntil = (date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((date - today) / 86400000);
+};
+
+export const urgencyStyle = (days) =>
+  days <= 3 ? { bg: '#fef2f2', color: '#991b1b', border: 'rgba(220,38,38,0.2)', badge: 'var(--color-danger)', level: 'danger' }
+  : days <= 7 ? { bg: '#fffbeb', color: '#92400e', border: 'rgba(217,119,6,0.2)', badge: 'var(--color-warning)', level: 'warning' }
+  : { bg: 'var(--color-primary-light)', color: 'var(--brand-700)', border: 'rgba(91,77,241,0.15)', badge: 'var(--color-primary)', level: 'normal' };

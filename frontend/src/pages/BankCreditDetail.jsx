@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import { BankCreditService } from '../services/bankCreditService';
-import { ArrowLeft, Landmark, Edit2, Trash2, Check, X, DollarSign } from 'lucide-react';
-
-const fmt = (n) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
-
-const fmtDate = (str) => {
-  if (!str) return '—';
-  return new Date(str).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-};
+import {
+  ArrowLeft, Edit2, Trash2, Check, X, TrendingDown, Wallet, Percent, Receipt, Info,
+} from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { StatCard } from '../components/ui/StatCard';
+import { SectionCard } from '../components/ui/SectionCard';
+import { AmortizationSchedule } from '../components/bank-credits/AmortizationSchedule';
+import { fmt, fmtDateLong } from '../utils/format';
 
 const STATUS_BADGE = {
-  activo: { label: 'Activo', cls: 'badge badge-success' },
-  pagado: { label: 'Pagado', cls: 'badge badge-primary' },
-  atrasado: { label: 'Atrasado', cls: 'badge badge-danger' },
+  activo:   { label: 'Activo',   bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
+  pagado:   { label: 'Pagado',   bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
+  atrasado: { label: 'Atrasado', bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' },
 };
 
 export const BankCreditDetail = () => {
@@ -49,13 +49,21 @@ export const BankCreditDetail = () => {
   useEffect(() => { load(); }, [id]);
 
   const handlePay = async () => {
-    if (!window.confirm('¿Registrar el pago de la siguiente cuota?')) return;
+    const result = await Swal.fire({
+      title: 'Registrar pago de cuota',
+      html: `Se registrará la siguiente cuota de <b>${credit?.nombre}</b>.<br/><span style="color:#64748b;font-size:0.85rem">Cuota: <b>${fmt(credit?.valorCuota)}</b></span>`,
+      icon: 'question', showCancelButton: true,
+      confirmButtonColor: '#5B4DF1', cancelButtonColor: '#64748B',
+      confirmButtonText: 'Registrar pago', cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
     setPaying(true);
     try {
       await BankCreditService.registerPayment(id);
       await load();
+      Swal.fire({ icon: 'success', title: '¡Cuota registrada!', timer: 1800, showConfirmButton: false });
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al registrar el pago.');
+      Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'Error al registrar el pago.' });
     } finally {
       setPaying(false);
     }
@@ -86,94 +94,89 @@ export const BankCreditDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('¿Eliminar este crédito bancario? Esta acción no se puede deshacer.')) return;
+    const result = await Swal.fire({
+      title: '¿Eliminar este crédito?',
+      text: 'Esta acción no se puede deshacer.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#DC2626', cancelButtonColor: '#64748B',
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
     try {
       await BankCreditService.delete(id);
       navigate('/bank-credits');
     } catch {
-      setError('No se pudo eliminar el crédito.');
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar el crédito.' });
     }
   };
 
-  if (loading) return <div className="animate-fade-in" style={{ maxWidth: 680, margin: '0 auto' }}><p>Cargando...</p></div>;
+  if (loading) return (
+    <div className="animate-fade-in" style={{ maxWidth: 760, margin: '0 auto' }}>
+      <div className="skeleton" style={{ height: 40, marginBottom: 16, borderRadius: 'var(--radius-md)' }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
+        {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 92 }} />)}
+      </div>
+      <div className="skeleton" style={{ height: 260, borderRadius: 'var(--radius-md)' }} />
+    </div>
+  );
 
-  const progress = credit ? (credit.cuotasPagadas / credit.numeroCuotas) * 100 : 0;
-  const statusInfo = STATUS_BADGE[credit?.status] || STATUS_BADGE.activo;
+  const pct = credit ? (credit.cuotasPagadas / credit.numeroCuotas) * 100 : 0;
+  const st = STATUS_BADGE[credit?.status] || STATUS_BADGE.activo;
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 680, margin: '0 auto' }}>
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <button onClick={() => navigate('/bank-credits')} className="btn btn-secondary" style={{ padding: '0.3rem 0.5rem' }}>
-          <ArrowLeft size={16} />
-        </button>
-        <div className="flex items-center gap-2" style={{ flex: 1 }}>
-          <Landmark size={20} style={{ color: 'var(--color-primary)' }} />
-          <h1 className="text-2xl m-0" style={{ flex: 1 }}>{credit?.nombre}</h1>
-          <span className={statusInfo.cls}>{statusInfo.label}</span>
-        </div>
-        {!editing && (
-          <div className="flex gap-2">
+    <div className="animate-fade-in" style={{ maxWidth: 760, margin: '0 auto' }}>
+      <PageHeader
+        title={credit?.nombre}
+        subtitle={credit?.entidad}
+        back={
+          <button onClick={() => navigate('/bank-credits')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
+            <ArrowLeft size={16} />
+          </button>
+        }
+        actions={!editing && (
+          <>
+            <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99, alignSelf: 'center', textTransform: 'uppercase' }}>{st.label}</span>
             <button className="btn btn-secondary" onClick={() => setEditing(true)}><Edit2 size={14} /> Editar</button>
             <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={14} /> Eliminar</button>
-          </div>
+          </>
         )}
-      </div>
+      />
 
       {error && <div className="auth-message error" style={{ marginBottom: '1rem' }}>{error}</div>}
 
-      {/* Progress card */}
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Cuotas pagadas</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-              {credit?.cuotasPagadas} <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>/ {credit?.numeroCuotas}</span>
-            </p>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Saldo pendiente</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(credit?.saldoPendiente)}</p>
-          </div>
-        </div>
-        <div className="progress-track">
-          <div className="progress-fill" style={{ width: `${progress}%` }} />
-        </div>
-        <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '0.4rem', textAlign: 'right' }}>
-          {progress.toFixed(1)}% completado
-        </p>
-        {credit?.status === 'activo' && (
-          <div style={{ marginTop: '1rem' }}>
-            <button className="btn btn-primary" onClick={handlePay} disabled={paying} style={{ width: '100%' }}>
-              <DollarSign size={14} /> {paying ? 'Registrando...' : `Pagar cuota — ${fmt(credit?.valorCuota)}`}
-            </button>
-          </div>
-        )}
+      {/* KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <StatCard label="Saldo pendiente" value={fmt(credit?.saldoPendiente)} delta={`${credit?.numeroCuotas - credit?.cuotasPagadas} cuotas restantes`} icon={TrendingDown} tone="neg" />
+        <StatCard label="Cuota mensual" value={fmt(credit?.valorCuota)} delta={credit?.cuotaAdministracion > 0 ? `+ ${fmt(credit?.cuotaAdministracion)} admin` : 'sin administración'} icon={Wallet} tone="warn" />
+        <StatCard label="Progreso" value={`${pct.toFixed(0)}%`} delta={`${credit?.cuotasPagadas}/${credit?.numeroCuotas} cuotas`} icon={Percent} tone="pos" />
+        <StatCard label="Intereses totales" value={fmt(credit?.totalIntereses)} delta={`${credit?.tasaInteres}% ${credit?.tipoTasa === 'mensual' ? 'M.V.' : 'E.A.'}`} icon={Receipt} tone="brand" />
       </div>
 
-      {/* Details */}
+      {/* Plan de pagos / amortización */}
+      {!editing && <AmortizationSchedule credit={credit} onPay={handlePay} paying={paying} />}
+
+      {/* Detalles / edición */}
       {!editing ? (
-        <div className="card">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <SectionCard title="Detalles del crédito" icon={Info}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
             <InfoRow label="Entidad" value={credit?.entidad} />
-            <InfoRow label="Tipo de tasa" value={credit?.tipoTasa === 'mensual' ? 'Mensual' : 'Anual E.A.'} />
+            <InfoRow label="Tipo de tasa" value={credit?.tipoTasa === 'mensual' ? 'Mensual (M.V.)' : 'Anual (E.A.)'} />
             <InfoRow label="Tasa de interés" value={`${credit?.tasaInteres}%`} />
             <InfoRow label="Tasa mensual" value={`${credit?.tasaMensual?.toFixed(4)}%`} />
-            <InfoRow label="Monto original" value={fmt(credit?.montoTotal)} />
-            <InfoRow label="Valor cuota" value={fmt(credit?.valorCuota)} />
-            <InfoRow label="Cuota administración" value={fmt(credit?.cuotaAdministracion)} />
-            <InfoRow label="Total intereses" value={fmt(credit?.totalIntereses)} />
-            <InfoRow label="Total a pagar" value={fmt(credit?.totalAPagar)} />
+            <InfoRow label="Monto original" value={fmt(credit?.montoTotal)} money />
+            <InfoRow label="Total a pagar" value={fmt(credit?.totalAPagar)} money />
+            <InfoRow label="Cuota administración" value={fmt(credit?.cuotaAdministracion)} money />
             <InfoRow label="Día de pago" value={`Día ${credit?.diaPago}`} />
-            <InfoRow label="Fecha inicio" value={fmtDate(credit?.fechaInicio)} />
-            <InfoRow label="Fecha fin est." value={fmtDate(credit?.fechaFin)} />
+            <InfoRow label="Fecha inicio" value={fmtDateLong(credit?.fechaInicio)} />
+            <InfoRow label="Fecha fin est." value={fmtDateLong(credit?.fechaFin)} />
           </div>
-        </div>
+        </SectionCard>
       ) : (
-        <div className="card">
-          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-            Solo puedes editar nombre, entidad, cuota de administración y día de pago. Los campos financieros no son modificables.
-          </p>
+        <SectionCard title="Editar crédito" icon={Edit2}>
+          <div className="info-box primary" style={{ marginBottom: '1rem', fontSize: 12 }}>
+            <Info size={14} />
+            <span>Solo puedes editar nombre, entidad, cuota de administración y día de pago. Los campos financieros no son modificables.</span>
+          </div>
           <form onSubmit={handleSave}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
@@ -198,15 +201,15 @@ export const BankCreditDetail = () => {
               <button type="submit" className="btn btn-primary" disabled={saving}><Check size={14} /> {saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </form>
-        </div>
+        </SectionCard>
       )}
     </div>
   );
 };
 
-const InfoRow = ({ label, value }) => (
+const InfoRow = ({ label, value, money }) => (
   <div>
-    <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
-    <p style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{value}</p>
+    <p style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{label}</p>
+    <p className={money ? 'tabular' : ''} style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13.5 }}>{value}</p>
   </div>
 );
