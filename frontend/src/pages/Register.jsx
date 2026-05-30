@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserService } from '../services/userService';
 import { ShieldCheck, LineChart, Bell } from 'lucide-react';
+import { BrandMark } from '../components/ui/BrandMark';
 
 export const Register = () => {
   const [formData, setFormData] = useState({
@@ -69,7 +70,7 @@ export const Register = () => {
 
             <div className="auth-form-header">
               <div className="auth-logo">
-                <span className="sidebar-logo-mark">S</span>
+                <BrandMark size={30} />
                 <span className="auth-logo-text">Solventa</span>
               </div>
               <h2>Crear cuenta</h2>

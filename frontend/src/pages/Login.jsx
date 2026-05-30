@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../services/authService';
 import { TrendingUp, CreditCard, Bell, Landmark } from 'lucide-react';
+import { BrandMark } from '../components/ui/BrandMark';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -58,7 +59,7 @@ export const Login = () => {
 
             <div className="auth-form-header">
               <div className="auth-logo">
-                <span className="sidebar-logo-mark">S</span>
+                <BrandMark size={30} />
                 <span className="auth-logo-text">Solventa</span>
               </div>
               <h2>Iniciar sesión</h2>

@@ -7,6 +7,7 @@ import {
 import { AuthService } from '../../services/authService';
 import { CreditCardService } from '../../services/creditCardService';
 import { fmt, fmtK } from '../../utils/format';
+import { BrandMark } from '../ui/BrandMark';
 
 const NavItem = ({ to, icon: Icon, label, end, onClick }) => (
   <NavLink
@@ -59,7 +60,7 @@ export const Sidebar = () => {
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <NavLink to="/" className="sidebar-logo" onClick={close}>
-            <span className="sidebar-logo-mark">S</span>
+            <BrandMark size={28} />
             <span className="sidebar-logo-name">Solventa</span>
           </NavLink>
         </div>
