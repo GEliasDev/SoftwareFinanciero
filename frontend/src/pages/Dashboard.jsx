@@ -13,7 +13,7 @@ import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
 import { fmt } from '../utils/format';
 
-const DIST_COLORS = { tarjetas: '#4F46E5', creditos: '#D97706', suscripciones: '#059669' };
+const DIST_COLORS = { tarjetas: '#047857', creditos: '#10B981', suscripciones: '#6EE7B7' };
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -91,7 +91,7 @@ export const Dashboard = () => {
               value={fmt(monthlySubCost)}
               delta={`${activeSubs} activa${activeSubs !== 1 ? 's' : ''}`}
               icon={Repeat}
-              tone="pos"
+              tone="neutral"
               onClick={() => navigate('/subscriptions')}
             />
             <StatCard
@@ -99,7 +99,7 @@ export const Dashboard = () => {
               value={cardObligation > 0 ? fmt(cardObligation) : `${data.cards.length}`}
               delta={cardPagoTexto}
               icon={CreditCard}
-              tone={urgente ? 'neg' : 'warn'}
+              tone={urgente ? 'neg' : 'neutral'}
               onClick={() => navigate('/credit-cards')}
             />
             <StatCard

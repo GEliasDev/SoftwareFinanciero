@@ -9,14 +9,14 @@
    nueva para que toda la app se actualice sin editar cada archivo.
 ════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Marca — Índigo violeta ── */
-  --brand-50:  #EFEDFF;
-  --brand-100: #E1DEFF;
-  --brand-200: #C7C0FE;
-  --brand-500: #7A6CF7;
-  --brand-600: #5B4DF1;
-  --brand-700: #4A39D4;
-  --brand-800: #3A2CA8;
+  /* ── Marca — Verde dinero ── */
+  --brand-50:  #ECFDF5;
+  --brand-100: #D1FAE5;
+  --brand-200: #A7F3D0;
+  --brand-500: #10B981;
+  --brand-600: #047857;
+  --brand-700: #065F46;
+  --brand-800: #064E3B;
 
   /* ── Positivo — Esmeralda ── */
   --pos-50:  #ECFDF5;

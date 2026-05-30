@@ -19,9 +19,9 @@ export const BankCreditOverview = () => {
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 }}>
         <StatCard label="Saldo pendiente" value={fmt(credit?.saldoPendiente)} delta={`${credit?.numeroCuotas - credit?.cuotasPagadas} cuotas restantes`} icon={TrendingDown} tone="neg" />
-        <StatCard label="Cuota mensual" value={fmt(credit?.valorCuota)} delta={credit?.cuotaAdministracion > 0 ? `+ ${fmt(credit?.cuotaAdministracion)} admin` : 'sin administración'} icon={Wallet} tone="warn" />
+        <StatCard label="Cuota mensual" value={fmt(credit?.valorCuota)} delta={credit?.cuotaAdministracion > 0 ? `+ ${fmt(credit?.cuotaAdministracion)} admin` : 'sin administración'} icon={Wallet} tone="neutral" />
         <StatCard label="Progreso" value={`${pct.toFixed(0)}%`} delta={`${credit?.cuotasPagadas}/${credit?.numeroCuotas} cuotas`} icon={Percent} tone="pos" />
-        <StatCard label="Intereses totales" value={fmt(credit?.totalIntereses)} delta={`${credit?.tasaInteres}% ${credit?.tipoTasa === 'mensual' ? 'M.V.' : 'E.A.'}`} icon={Receipt} tone="brand" />
+        <StatCard label="Intereses totales" value={fmt(credit?.totalIntereses)} delta={`${credit?.tasaInteres}% ${credit?.tipoTasa === 'mensual' ? 'M.V.' : 'E.A.'}`} icon={Receipt} tone="neutral" />
       </div>
 
       <SectionCard title="Detalles del crédito" icon={Info}>

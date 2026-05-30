@@ -84,7 +84,7 @@ export const Reminders = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
           <StatCard label="Activos" value={`${activos}`} delta="en seguimiento" icon={CheckCircle2} tone="pos" />
           <StatCard label="Próximos 7 días" value={`${proximos7}`} delta="por vencer" icon={BellRing} tone={proximos7 > 0 ? 'warn' : 'neutral'} />
-          <StatCard label="Total" value={`${reminders.length}`} delta="recordatorios" icon={Bell} tone="brand" />
+          <StatCard label="Total" value={`${reminders.length}`} delta="recordatorios" icon={Bell} tone="neutral" />
         </div>
       )}
 

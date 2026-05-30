@@ -54,8 +54,8 @@ export const Subscriptions = () => {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
             <StatCard label="Costo mensual" value={fmt(totalMensual)} delta="Equivalente por mes" icon={Wallet} tone="brand" />
-            <StatCard label="Costo anual" value={fmt(totalAnual)} delta="Lo que gastas al año" icon={CalendarRange} tone="warn" />
-            <StatCard label="Suscripciones" value={`${subscriptions.length}`} delta="en seguimiento" icon={Repeat} tone="pos" />
+            <StatCard label="Costo anual" value={fmt(totalAnual)} delta="Lo que gastas al año" icon={CalendarRange} tone="neutral" />
+            <StatCard label="Suscripciones" value={`${subscriptions.length}`} delta="en seguimiento" icon={Repeat} tone="neutral" />
             <StatCard
               label="Próximo cobro"
               value={proximo ? (proximo.dias === 0 ? 'Hoy' : proximo.dias === 1 ? 'Mañana' : `En ${proximo.dias} días`) : '—'}
