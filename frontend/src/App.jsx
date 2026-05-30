@@ -24,7 +24,10 @@ import { CreditCardPurchaseNew } from './pages/CreditCardPurchaseNew';
 // Créditos bancarios
 import { BankCredits } from './pages/BankCredits';
 import { BankCreditNew } from './pages/BankCreditNew';
-import { BankCreditDetail } from './pages/BankCreditDetail';
+import { BankCreditLayout } from './pages/bank-credit/BankCreditLayout';
+import { BankCreditOverview } from './pages/bank-credit/BankCreditOverview';
+import { BankCreditSchedule } from './pages/bank-credit/BankCreditSchedule';
+import { BankCreditEdit } from './pages/BankCreditEdit';
 
 // Recordatorios
 import { Reminders } from './pages/Reminders';
@@ -76,7 +79,11 @@ function App() {
           {/* Créditos bancarios */}
           <Route path="bank-credits" element={<BankCredits />} />
           <Route path="bank-credits/new" element={<BankCreditNew />} />
-          <Route path="bank-credits/:id" element={<BankCreditDetail />} />
+          <Route path="bank-credits/:id" element={<BankCreditLayout />}>
+            <Route index element={<BankCreditOverview />} />
+            <Route path="schedule" element={<BankCreditSchedule />} />
+          </Route>
+          <Route path="bank-credits/:id/edit" element={<BankCreditEdit />} />
 
           {/* Recordatorios */}
           <Route path="reminders" element={<Reminders />} />
