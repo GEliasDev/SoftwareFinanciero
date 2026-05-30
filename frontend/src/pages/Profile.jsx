@@ -132,10 +132,10 @@ export const Profile = () => {
       <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
         <div style={{
           width: 72, height: 72, borderRadius: '50%',
-          background: 'var(--color-primary)', display: 'flex',
+          background: 'linear-gradient(135deg, var(--brand-500), var(--brand-700))', display: 'flex',
           alignItems: 'center', justifyContent: 'center',
           fontSize: '1.5rem', fontWeight: 700, color: '#fff',
-          flexShrink: 0,
+          flexShrink: 0, boxShadow: '0 4px 12px rgba(91,77,241,0.3)',
         }}>
           {initials}
         </div>

@@ -7,7 +7,7 @@ import { AnalyticsService } from '../services/analyticsService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
-import { BarChart2, Download, FileText, TrendingUp, Calendar, Shield } from 'lucide-react';
+import { Download, FileText, TrendingUp, Calendar, Shield } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 // ── Helpers ───────────────────────────────
@@ -28,7 +28,7 @@ const HEALTH_COLOR = (score) => {
 };
 
 const TYPE_COLORS = {
-  subscription: '#1565C0',
+  subscription: '#5B4DF1',
   bank_credit:  '#DC2626',
   credit_card:  '#D97706',
 };
@@ -39,7 +39,7 @@ const TYPE_LABEL = {
   credit_card:  'Tarjeta de Crédito',
 };
 
-const PIE_COLORS = ['#1565C0', '#DC2626', '#D97706', '#059669'];
+const PIE_COLORS = ['#5B4DF1', '#DC2626', '#D97706', '#059669'];
 
 // ── Tooltip personalizado ──────────────────
 const CustomTooltip = ({ active, payload, label }) => {
@@ -260,8 +260,8 @@ export const Reports = () => {
             <AreaChart data={trend} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gSub" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#1565C0" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#1565C0" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="#5B4DF1" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#5B4DF1" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gCred" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#DC2626" stopOpacity={0.2} />
@@ -273,7 +273,7 @@ export const Reports = () => {
               <YAxis tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={55} />
               <Tooltip content={<CustomTooltip />} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-              <Area type="monotone" dataKey="subscriptions" name="Suscripciones" stroke="#1565C0" fill="url(#gSub)" strokeWidth={2} />
+              <Area type="monotone" dataKey="subscriptions" name="Suscripciones" stroke="#5B4DF1" fill="url(#gSub)" strokeWidth={2} />
               <Area type="monotone" dataKey="bankCredits"   name="Créditos"      stroke="#DC2626" fill="url(#gCred)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
@@ -296,7 +296,7 @@ export const Reports = () => {
                   innerRadius={55} outerRadius={85}
                   paddingAngle={3}
                   dataKey="value"
-                  label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
                   {distribution.map((entry, i) => (
@@ -369,7 +369,7 @@ export const Reports = () => {
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
               <YAxis tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={55} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="subscriptions" name="Suscripciones" stackId="a" fill="#1565C0" radius={[0,0,0,0]} />
+              <Bar dataKey="subscriptions" name="Suscripciones" stackId="a" fill="#5B4DF1" radius={[0,0,0,0]} />
               <Bar dataKey="bankCredits"   name="Créditos"      stackId="a" fill="#DC2626" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
