@@ -1,18 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import { SubscriptionService } from '../services/subscriptionService';
-import { ArrowLeft, Repeat, Edit2, Trash2, Check, X } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, Check, X, Wallet, CalendarRange, CalendarClock, Info } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { StatCard } from '../components/ui/StatCard';
+import { SectionCard } from '../components/ui/SectionCard';
+import { fmt, fmtDateLong, nextOccurrence, daysUntil } from '../utils/format';
 
 const FRECUENCIA_LABEL = { mensual: 'Mensual', anual: 'Anual' };
-const MONEDA_LABEL = { COP: 'COP', USD: 'USD', EUR: 'EUR' };
-
-const fmt = (amount, currency = 'COP') =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount);
-
-const fmtDate = (str) => {
-  if (!str) return '—';
-  return new Date(str).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 export const SubscriptionDetail = () => {
   const { id } = useParams();
@@ -77,53 +73,84 @@ export const SubscriptionDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('¿Eliminar esta suscripción?')) return;
+    const result = await Swal.fire({
+      title: '¿Eliminar esta suscripción?',
+      text: 'Esta acción no se puede deshacer.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#DC2626', cancelButtonColor: '#64748B',
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
     try {
       await SubscriptionService.delete(id);
       navigate('/subscriptions');
     } catch {
-      setError('No se pudo eliminar la suscripción.');
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar la suscripción.' });
     }
   };
 
-  if (loading) return <div className="animate-fade-in" style={{ maxWidth: 640, margin: '0 auto' }}><p>Cargando...</p></div>;
+  if (loading) return (
+    <div className="animate-fade-in" style={{ maxWidth: 680, margin: '0 auto' }}>
+      <div className="skeleton" style={{ height: 40, marginBottom: 16, borderRadius: 'var(--radius-md)' }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 16 }}>
+        {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 92 }} />)}
+      </div>
+      <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-md)' }} />
+    </div>
+  );
+
+  const anual = sub ? (sub.frecuencia === 'anual' ? sub.monto : sub.monto * 12) : 0;
+  const dias = sub ? daysUntil(nextOccurrence(sub.diaCobro)) : null;
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <button onClick={() => navigate('/subscriptions')} className="btn btn-secondary" style={{ padding: '0.3rem 0.5rem' }}>
-          <ArrowLeft size={16} />
-        </button>
-        <div className="flex items-center gap-2" style={{ flex: 1 }}>
-          <Repeat size={20} style={{ color: 'var(--color-primary)' }} />
-          <h1 className="text-2xl m-0" style={{ flex: 1 }}>{sub?.nombre}</h1>
-        </div>
-        {!editing && (
-          <div className="flex gap-2">
+    <div className="animate-fade-in" style={{ maxWidth: 680, margin: '0 auto' }}>
+      <PageHeader
+        title={sub?.nombre}
+        subtitle={sub?.descripcion || FRECUENCIA_LABEL[sub?.frecuencia]}
+        back={
+          <button onClick={() => navigate('/subscriptions')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
+            <ArrowLeft size={16} />
+          </button>
+        }
+        actions={!editing && (
+          <>
             <button className="btn btn-secondary" onClick={() => setEditing(true)}><Edit2 size={14} /> Editar</button>
             <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={14} /> Eliminar</button>
-          </div>
+          </>
         )}
-      </div>
+      />
 
       {error && <div className="auth-message error" style={{ marginBottom: '1rem' }}>{error}</div>}
 
+      {!editing && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 16 }}>
+          <StatCard label="Monto por cobro" value={fmt(sub?.monto, sub?.moneda)} delta={FRECUENCIA_LABEL[sub?.frecuencia]} icon={Wallet} tone="brand" />
+          <StatCard label="Costo anual" value={fmt(anual, sub?.moneda)} delta="Equivalente al año" icon={CalendarRange} tone="warn" />
+          <StatCard
+            label="Próximo cobro"
+            value={dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : `En ${dias} días`}
+            delta={`Día ${sub?.diaCobro} de cada mes`}
+            icon={CalendarClock}
+            tone={dias <= 3 ? 'neg' : 'neutral'}
+          />
+        </div>
+      )}
+
       {!editing ? (
-        <div className="card">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <SectionCard title="Detalles de la suscripción" icon={Info}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
             <InfoRow label="Nombre" value={sub?.nombre} />
             <InfoRow label="Descripción" value={sub?.descripcion || '—'} />
-            <InfoRow label="Monto" value={fmt(sub?.monto, sub?.moneda)} />
-            <InfoRow label="Moneda" value={MONEDA_LABEL[sub?.moneda]} />
+            <InfoRow label="Monto" value={fmt(sub?.monto, sub?.moneda)} money />
+            <InfoRow label="Moneda" value={sub?.moneda} />
             <InfoRow label="Frecuencia" value={FRECUENCIA_LABEL[sub?.frecuencia]} />
             <InfoRow label="Día de cobro" value={`Día ${sub?.diaCobro}`} />
-            <InfoRow label="Fecha inicio" value={fmtDate(sub?.fechaInicio)} />
-            <InfoRow label="Fecha fin" value={fmtDate(sub?.fechaFin)} />
+            <InfoRow label="Fecha inicio" value={fmtDateLong(sub?.fechaInicio)} />
+            <InfoRow label="Fecha fin" value={fmtDateLong(sub?.fechaFin)} />
           </div>
-        </div>
+        </SectionCard>
       ) : (
-        <div className="card">
+        <SectionCard title="Editar suscripción" icon={Edit2}>
           <form onSubmit={handleSave}>
             <div className="form-group">
               <label className="form-label">Nombre *</label>
@@ -171,15 +198,15 @@ export const SubscriptionDetail = () => {
               <button type="submit" className="btn btn-primary" disabled={saving}><Check size={14} /> {saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </form>
-        </div>
+        </SectionCard>
       )}
     </div>
   );
 };
 
-const InfoRow = ({ label, value }) => (
+const InfoRow = ({ label, value, money }) => (
   <div>
-    <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
-    <p style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{value}</p>
+    <p style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{label}</p>
+    <p className={money ? 'tabular' : ''} style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13.5 }}>{value}</p>
   </div>
 );
