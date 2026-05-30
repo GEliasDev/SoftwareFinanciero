@@ -1,6 +1,6 @@
 import { CreditCard } from './creditCard.model.js';
 import { CreditCardPurchase } from './creditCardPurchase.model.js';
-import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema } from './creditCard.schema.js';
+import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema, purchaseUpdateSchema } from './creditCard.schema.js';
 import { calcularCuotaCompra, calcularPagoMinimo } from './utils/creditCardCalculation.js';
 import { AppError } from '../../middlewares/AppError.js';
 
@@ -35,7 +35,14 @@ export const CreditCardService = {
         const card = await CreditCard.findByPk(id);
         if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
         const parsed = creditCardUpdateSchema.parse(data);
-        return card.update(parsed);
+
+        const updates = { ...parsed };
+        if (parsed.cupoTotal !== undefined) {
+            const usedAmount = parseFloat(card.cupoTotal) - parseFloat(card.cupoDisponible);
+            updates.cupoDisponible = parseFloat(Math.max(0, parsed.cupoTotal - usedAmount).toFixed(2));
+        }
+
+        return card.update(updates);
     },
 
     deleteCreditCard: async (id) => {
@@ -112,7 +119,13 @@ export const CreditCardService = {
     },
 
     getPurchasesByCard: async (creditCardId) => {
-        return CreditCardPurchase.findAll({ where: { creditCardId } });
+        return CreditCardPurchase.findAll({ where: { creditCardId }, order: [['fechaCompra', 'DESC']] });
+    },
+
+    getPurchaseById: async (purchaseId) => {
+        const purchase = await CreditCardPurchase.findByPk(purchaseId);
+        if (!purchase) throw new AppError('Compra no encontrada', 404);
+        return purchase;
     },
 
     // Registrar cuota pagada de una compra
@@ -127,10 +140,11 @@ export const CreditCardService = {
         const cuotasRestantes = purchase.numeroCuotas - nuevasCuotasPagadas;
         const pagada = cuotasRestantes === 0;
 
-        // Restaurar cupo disponible por el valor de la cuota pagada
+        // Restaurar cupo solo por la porción de capital (cuota incluye interés que no ocupa cupo)
         const card = purchase.CreditCard;
+        const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
         const nuevoCupo = parseFloat(
-            (parseFloat(card.cupoDisponible) + parseFloat(purchase.valorCuotaMensual)).toFixed(2)
+            (parseFloat(card.cupoDisponible) + capitalPorCuota).toFixed(2)
         );
 
         await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
@@ -141,17 +155,25 @@ export const CreditCardService = {
         });
     },
 
+    updatePurchase: async (purchaseId, data) => {
+        const purchase = await CreditCardPurchase.findByPk(purchaseId);
+        if (!purchase) throw new AppError('Compra no encontrada', 404);
+        const parsed = purchaseUpdateSchema.parse(data);
+        return purchase.update(parsed);
+    },
+
     deletePurchase: async (purchaseId) => {
         const purchase = await CreditCardPurchase.findByPk(purchaseId, {
             include: [CreditCard],
         });
         if (!purchase) throw new AppError('Compra no encontrada', 404);
 
-        // Restaurar cupo si la compra aún tiene saldo pendiente
+        // Restaurar cupo proporcional al capital no pagado (no intereses)
         const cuotasRestantes = purchase.numeroCuotas - purchase.cuotasPagadas;
         if (cuotasRestantes > 0) {
             const card = purchase.CreditCard;
-            const montoRestante = cuotasRestantes * parseFloat(purchase.valorCuotaMensual);
+            const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
+            const montoRestante = cuotasRestantes * capitalPorCuota;
             const nuevoCupo = parseFloat(
                 (parseFloat(card.cupoDisponible) + montoRestante).toFixed(2)
             );
@@ -159,5 +181,218 @@ export const CreditCardService = {
         }
 
         return purchase.destroy();
+    },
+
+    // ── Overview global del usuario ───────────────────────────
+
+    getOverview: async (userId) => {
+        const cards = await CreditCard.findAll({
+            where: { userId },
+            include: [{ model: CreditCardPurchase, where: { status: 'activa' }, required: false }],
+        });
+
+        let totalObligacionMensual = 0;
+        let totalCupoDisponible = 0;
+        let totalCupoTotal = 0;
+        let totalComprasActivas = 0;
+        let nextPaymentDays = null;
+        const today = new Date();
+
+        for (const card of cards) {
+            totalCupoDisponible += parseFloat(card.cupoDisponible);
+            totalCupoTotal += parseFloat(card.cupoTotal);
+
+            const purchases = card.CreditCardPurchases || [];
+            totalComprasActivas += purchases.length;
+
+            for (const p of purchases) {
+                totalObligacionMensual += parseFloat(p.valorCuotaMensual);
+            }
+
+            // Calcular días hasta próximo pago
+            if (card.fechaPago) {
+                const diaP = parseInt(card.fechaPago);
+                const next = new Date(today.getFullYear(), today.getMonth(), diaP);
+                if (next <= today) next.setMonth(next.getMonth() + 1);
+                const diff = Math.ceil((next - today) / (1000 * 60 * 60 * 24));
+                if (nextPaymentDays === null || diff < nextPaymentDays) nextPaymentDays = diff;
+            }
+        }
+
+        return {
+            totalObligacionMensual: parseFloat(totalObligacionMensual.toFixed(2)),
+            totalCupoDisponible: parseFloat(totalCupoDisponible.toFixed(2)),
+            totalCupoTotal: parseFloat(totalCupoTotal.toFixed(2)),
+            totalCupoUsado: parseFloat((totalCupoTotal - totalCupoDisponible).toFixed(2)),
+            totalComprasActivas,
+            totalTarjetas: cards.length,
+            nextPaymentDays,
+        };
+    },
+
+    // ── Deshacer último pago ──────────────────────────────────
+
+    undoPurchasePayment: async (purchaseId) => {
+        const purchase = await CreditCardPurchase.findByPk(purchaseId, {
+            include: [CreditCard],
+        });
+        if (!purchase) throw new AppError('Compra no encontrada', 404);
+        if (purchase.cuotasPagadas === 0) throw new AppError('No hay pagos que deshacer', 400);
+
+        const nuevasCuotasPagadas = purchase.cuotasPagadas - 1;
+        const card = purchase.CreditCard;
+        const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
+
+        // Revertir cupo: descontar capital que fue restaurado al pagar
+        const nuevoCupo = parseFloat(
+            (parseFloat(card.cupoDisponible) - capitalPorCuota).toFixed(2)
+        );
+        await card.update({ cupoDisponible: Math.max(0, nuevoCupo) });
+
+        return purchase.update({
+            cuotasPagadas: nuevasCuotasPagadas,
+            status: 'activa',
+        });
+    },
+
+    // ── Abono extraordinario ──────────────────────────────────
+
+    registerAbono: async (purchaseId, montoAbono) => {
+        const purchase = await CreditCardPurchase.findByPk(purchaseId, {
+            include: [CreditCard],
+        });
+        if (!purchase) throw new AppError('Compra no encontrada', 404);
+        if (purchase.status === 'pagada') throw new AppError('Esta compra ya está pagada', 400);
+
+        const monto = parseFloat(montoAbono);
+        if (!monto || monto <= 0) throw new AppError('Monto de abono inválido', 400);
+
+        const cuotasPagadas = purchase.cuotasPagadas;
+        const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
+        const capitalPagado = cuotasPagadas * capitalPorCuota;
+        const capitalPendiente = parseFloat(purchase.montoTotal) - capitalPagado;
+
+        if (monto >= capitalPendiente) {
+            // El abono cancela la deuda completa
+            const card = purchase.CreditCard;
+            const nuevoCupo = parseFloat(
+                (parseFloat(card.cupoDisponible) + capitalPendiente).toFixed(2)
+            );
+            await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
+            return purchase.update({ cuotasPagadas: purchase.numeroCuotas, status: 'pagada' });
+        }
+
+        // Recalcular cuotas restantes con capital reducido
+        const nuevoCapitalPendiente = capitalPendiente - monto;
+        const tasaMensual = parseFloat(purchase.CreditCard.tasaInteresMensual) / 100;
+        let nuevasCuotasRestantes;
+
+        if (tasaMensual === 0) {
+            nuevasCuotasRestantes = Math.ceil(nuevoCapitalPendiente / capitalPorCuota);
+        } else {
+            // n = -ln(1 - i*P/C) / ln(1+i)  con C = cuota original
+            const cuotaOriginal = parseFloat(purchase.valorCuotaMensual);
+            const arg = 1 - (tasaMensual * nuevoCapitalPendiente) / cuotaOriginal;
+            if (arg <= 0) {
+                nuevasCuotasRestantes = 1;
+            } else {
+                nuevasCuotasRestantes = Math.ceil(-Math.log(arg) / Math.log(1 + tasaMensual));
+            }
+        }
+
+        const nuevoNumeroCuotas = cuotasPagadas + nuevasCuotasRestantes;
+
+        // Restaurar cupo por el abono
+        const card = purchase.CreditCard;
+        const nuevoCupo = parseFloat(
+            (parseFloat(card.cupoDisponible) + monto).toFixed(2)
+        );
+        await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
+
+        return purchase.update({ numeroCuotas: nuevoNumeroCuotas });
+    },
+
+    // ── Próximos pagos ────────────────────────────────────────
+
+    getUpcomingPayments: async (creditCardId) => {
+        const card = await CreditCard.findByPk(creditCardId, {
+            include: [{ model: CreditCardPurchase, where: { status: 'activa' }, required: false }],
+        });
+        if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
+
+        const today = new Date();
+        const diaPago = parseInt(card.fechaPago) || 1;
+        const upcoming = [];
+
+        // Generar los próximos 3 meses de pagos
+        for (let m = 0; m < 3; m++) {
+            const date = new Date(today.getFullYear(), today.getMonth() + m, diaPago);
+            if (date <= today && m === 0) continue;
+
+            const purchasesThisMonth = (card.CreditCardPurchases || [])
+                .filter(p => {
+                    const cuotasRestantes = p.numeroCuotas - p.cuotasPagadas;
+                    return cuotasRestantes > m;
+                })
+                .map(p => ({
+                    id: p.id,
+                    descripcion: p.descripcion,
+                    cuota: parseFloat(p.valorCuotaMensual),
+                    cuotaNum: p.cuotasPagadas + m + 1,
+                    totalCuotas: p.numeroCuotas,
+                }));
+
+            const total = purchasesThisMonth.reduce((s, p) => s + p.cuota, 0);
+
+            upcoming.push({
+                fecha: date.toISOString().split('T')[0],
+                total: parseFloat(total.toFixed(2)),
+                compras: purchasesThisMonth,
+            });
+        }
+
+        return upcoming;
+    },
+
+    // ── Estadísticas de compras ───────────────────────────────
+
+    getPurchaseStats: async (creditCardId) => {
+        const card = await CreditCard.findByPk(creditCardId);
+        if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
+
+        const purchases = await CreditCardPurchase.findAll({ where: { creditCardId } });
+
+        const byCategory = {};
+        let totalIntereses = 0;
+        let totalCapital = 0;
+
+        for (const p of purchases) {
+            const cat = p.categoria || 'Sin categoría';
+            if (!byCategory[cat]) byCategory[cat] = { monto: 0, count: 0 };
+            byCategory[cat].monto += parseFloat(p.montoTotal);
+            byCategory[cat].count += 1;
+
+            const intereses = parseFloat(p.valorCuotaMensual) * p.numeroCuotas - parseFloat(p.montoTotal);
+            totalIntereses += Math.max(0, intereses);
+            totalCapital += parseFloat(p.montoTotal);
+        }
+
+        const categorias = Object.entries(byCategory).map(([name, v]) => ({
+            categoria: name,
+            monto: parseFloat(v.monto.toFixed(2)),
+            count: v.count,
+        }));
+
+        const avgCuotas = purchases.length
+            ? purchases.reduce((s, p) => s + p.numeroCuotas, 0) / purchases.length
+            : 0;
+
+        return {
+            totalCompras: purchases.length,
+            totalCapital: parseFloat(totalCapital.toFixed(2)),
+            totalIntereses: parseFloat(totalIntereses.toFixed(2)),
+            avgCuotas: parseFloat(avgCuotas.toFixed(1)),
+            categorias,
+        };
     },
 };

@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserService } from '../services/userService';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Wallet } from 'lucide-react';
+import { ShieldCheck, LineChart, Bell } from 'lucide-react';
 
 export const Register = () => {
   const [formData, setFormData] = useState({
@@ -25,10 +23,8 @@ export const Register = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
     try {
       await UserService.create(formData);
-      // Tras registro exitoso, redirigir al login
       navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'Error al registrar la cuenta. Verifica los datos.');
@@ -42,55 +38,110 @@ export const Register = () => {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh', 
-      width: '100vw',
-      background: 'radial-gradient(circle at center, rgba(30,41,59,1) 0%, rgba(15,23,42,1) 100%)',
-      padding: '2rem'
-    }}>
-      <div className="glass-panel" style={{ padding: '3rem', width: '100%', maxWidth: '600px' }}>
-        <div className="text-center mb-6">
-          <div className="text-primary flex justify-center mb-2">
-            <Wallet size={48} />
+    <div className="auth-container" style={{ overflow: 'auto', height: '100vh' }}>
+      <div className="auth-wrapper">
+
+        {/* Panel izquierdo decorativo */}
+        <div className="auth-image-section">
+          <div className="auth-image-content">
+            <h2>Crea tu cuenta y toma el control de tus finanzas</h2>
+            <p>Regístrate gratis y accede a todas las herramientas financieras que necesitas.</p>
+            <div className="auth-image-features">
+              <div className="auth-image-feature">
+                <div className="auth-feature-icon"><ShieldCheck size={14} color="white" /></div>
+                <span>Datos seguros y cifrados</span>
+              </div>
+              <div className="auth-image-feature">
+                <div className="auth-feature-icon"><LineChart size={14} color="white" /></div>
+                <span>Análisis de gastos mensuales</span>
+              </div>
+              <div className="auth-image-feature">
+                <div className="auth-feature-icon"><Bell size={14} color="white" /></div>
+                <span>Alertas de vencimientos automáticas</span>
+              </div>
+            </div>
           </div>
-          <h2 className="text-2xl font-bold">Registro FinSoft</h2>
-          <p className="text-muted">Crea tu cuenta para comenzar</p>
         </div>
-        
-        {error && (
-          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
-            {error}
-          </div>
-        )}
 
-        <form onSubmit={handleRegister}>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Primer Nombre" name="primerNombre" value={formData.primerNombre} onChange={handleChange} required />
-            <Input label="Segundo Nombre" name="segundoNombre" value={formData.segundoNombre} onChange={handleChange} required />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Primer Apellido" name="primerApellido" value={formData.primerApellido} onChange={handleChange} required />
-            <Input label="Segundo Apellido" name="segundoApellido" value={formData.segundoApellido} onChange={handleChange} required />
-          </div>
-          <Input label="Correo Electrónico" type="email" name="email" value={formData.email} onChange={handleChange} required />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Teléfono" name="telefono" value={formData.telefono} onChange={handleChange} required maxLength="10" />
-            <Input label="País" name="pais" value={formData.pais} onChange={handleChange} required />
-          </div>
-          <Input label="Ciudad" name="ciudad" value={formData.ciudad} onChange={handleChange} required />
-          <Input label="Contraseña" type="password" name="password" value={formData.password} onChange={handleChange} required />
-          
-          <Button type="submit" className="w-full mt-4" disabled={loading}>
-            {loading ? 'Registrando...' : 'Crear Cuenta'}
-          </Button>
+        {/* Panel derecho con formulario */}
+        <div className="auth-form-section">
+          <div className="auth-form-container" style={{ maxWidth: 520 }}>
 
-          <p className="text-center text-muted mt-4 text-sm">
-            ¿Ya tienes una cuenta? <Link to="/login" className="text-primary font-semibold">Inicia Sesión</Link>
-          </p>
-        </form>
+            <div className="auth-form-header">
+              <div className="auth-logo">
+                <span className="auth-logo-text">Debti</span>
+              </div>
+              <h2>Crear cuenta</h2>
+              <p>Completa el formulario para comenzar</p>
+            </div>
+
+            <div className="auth-form-card">
+            {error && (
+              <div className="auth-message error" style={{ marginBottom: '1rem' }}>{error}</div>
+            )}
+
+            <form onSubmit={handleRegister}>
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Primer Nombre</label>
+                  <input className="form-input" name="primerNombre" value={formData.primerNombre} onChange={handleChange} required placeholder="Ej: Juan" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Segundo Nombre</label>
+                  <input className="form-input" name="segundoNombre" value={formData.segundoNombre} onChange={handleChange} placeholder="Opcional" />
+                </div>
+              </div>
+
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Primer Apellido</label>
+                  <input className="form-input" name="primerApellido" value={formData.primerApellido} onChange={handleChange} required placeholder="Ej: Pérez" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Segundo Apellido</label>
+                  <input className="form-input" name="segundoApellido" value={formData.segundoApellido} onChange={handleChange} placeholder="Opcional" />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Correo Electrónico</label>
+                <input className="form-input" type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="ejemplo@correo.com" />
+              </div>
+
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Teléfono</label>
+                  <input className="form-input" name="telefono" value={formData.telefono} onChange={handleChange} required maxLength="10" placeholder="3001234567" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">País</label>
+                  <input className="form-input" name="pais" value={formData.pais} onChange={handleChange} required placeholder="Colombia" />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Ciudad</label>
+                <input className="form-input" name="ciudad" value={formData.ciudad} onChange={handleChange} required placeholder="Bogotá" />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Contraseña</label>
+                <input className="form-input" type="password" name="password" value={formData.password} onChange={handleChange} required placeholder="Mínimo 8 caracteres" />
+              </div>
+
+              <button type="submit" className="auth-submit-btn" disabled={loading}>
+                {loading ? 'Creando cuenta...' : 'Crear mi cuenta'}
+              </button>
+            </form>
+            </div>
+
+            <div className="auth-footer-link">
+              ¿Ya tienes cuenta?{' '}
+              <Link to="/login">Inicia sesión</Link>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

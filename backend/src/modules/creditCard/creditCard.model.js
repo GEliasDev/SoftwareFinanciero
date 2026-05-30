@@ -41,6 +41,15 @@ CreditCard.init(
             type: DataTypes.INTEGER,
             allowNull: false,
         },
+        ultimos4: {
+            type: DataTypes.STRING(4),
+            allowNull: true,
+        },
+        color: {
+            type: DataTypes.STRING(20),
+            allowNull: true,
+            defaultValue: 'blue',
+        },
         status: {
             type: DataTypes.ENUM('activa', 'bloqueada', 'cancelada'),
             allowNull: false,

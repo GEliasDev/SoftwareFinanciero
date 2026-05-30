@@ -43,6 +43,14 @@ CreditCardPurchase.init(
             type: DataTypes.DECIMAL(15, 2),
             allowNull: false,
         },
+        categoria: {
+            type: DataTypes.ENUM(
+                'comida', 'transporte', 'salud', 'entretenimiento',
+                'hogar', 'tecnologia', 'ropa', 'educacion', 'viajes', 'otros'
+            ),
+            allowNull: false,
+            defaultValue: 'otros',
+        },
         fechaCompra: {
             type: DataTypes.DATEONLY,
             allowNull: false,

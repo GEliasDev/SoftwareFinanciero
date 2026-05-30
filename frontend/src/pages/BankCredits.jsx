@@ -1,192 +1,138 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Modal } from '../components/ui/Modal';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BankCreditService } from '../services/bankCreditService';
-import { Plus, Edit, Trash2, CheckCircle } from 'lucide-react';
+import { Plus, Landmark, ChevronRight } from 'lucide-react';
+
+const fmt = (n) =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
+
+const STATUS = {
+  activo:   { label: 'Activo',   cls: 'badge badge-success' },
+  pagado:   { label: 'Pagado',   cls: 'badge badge-primary' },
+  atrasado: { label: 'Atrasado', cls: 'badge badge-danger' },
+};
 
 export const BankCredits = () => {
+  const navigate = useNavigate();
   const [credits, setCredits] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [selectedCredit, setSelectedCredit] = useState(null);
-  
-  const [formData, setFormData] = useState({ 
-    bankName: '', 
-    totalAmount: '', 
-    interestRate: '', 
-    installments: '', 
-    startDate: '',
-    paymentDay: ''
-  });
-
-  const fetchCredits = async () => {
-    try {
-      setLoading(true);
-      const data = await BankCreditService.getAll();
-      setCredits(data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchCredits();
+    BankCreditService.getAll()
+      .then(setCredits)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleOpenModal = (item = null) => {
-    if (item) {
-      setSelectedCredit(item);
-      setFormData({
-        bankName: item.bankName,
-        totalAmount: item.totalAmount,
-        interestRate: item.interestRate,
-        installments: item.installments,
-        startDate: item.startDate.split('T')[0],
-        paymentDay: item.paymentDay
-      });
-    } else {
-      setSelectedCredit(null);
-      setFormData({ bankName: '', totalAmount: '', interestRate: '', installments: '', startDate: '', paymentDay: '' });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSave = async () => {
-    try {
-      if (selectedCredit) {
-        await BankCreditService.update(selectedCredit._id, formData);
-      } else {
-        await BankCreditService.create(formData);
-      }
-      setIsModalOpen(false);
-      fetchCredits();
-    } catch (error) {
-      console.error(error);
-      alert('Error al guardar el crédito');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('¿Eliminar este crédito bancario?')) {
-      try {
-        await BankCreditService.delete(id);
-        fetchCredits();
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  };
-
-  const handlePayInstallment = async () => {
-    try {
-      await BankCreditService.registerPayment(selectedCredit._id, { amount: selectedCredit.monthlyInstallmentAmount });
-      setIsPayModalOpen(false);
-      fetchCredits();
-    } catch (error) {
-      console.error(error);
-      alert('Error al registrar pago');
-    }
-  };
+  const totalDebt     = credits.reduce((a, c) => a + (c.saldoPendiente ?? 0), 0);
+  const monthlyCuotas = credits.filter(c => c.status === 'activo').reduce((a, c) => a + (c.valorCuota ?? 0), 0);
 
   return (
     <div className="animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl m-0">Créditos Bancarios</h1>
-        <Button onClick={() => handleOpenModal()}>
-          <Plus size={18} /> Nuevo Crédito
-        </Button>
+      {/* Header */}
+      <div className="page-header">
+        <h1 className="page-title">Créditos Bancarios</h1>
+        <button className="btn btn-primary" onClick={() => navigate('/bank-credits/new')}>
+          <Plus size={15} /> Nuevo Crédito
+        </button>
       </div>
 
-      <div className="grid gap-6">
-        {loading ? <p className="text-muted">Cargando...</p> : (
-          credits.map(credit => {
-            const progress = (credit.paidInstallments / credit.installments) * 100;
+      {/* Resumen */}
+      {!loading && credits.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+          {[
+            { label: 'Créditos activos',   value: credits.filter(c => c.status === 'activo').length + ' créditos', sub: 'en seguimiento' },
+            { label: 'Deuda total',          value: fmt(totalDebt),     sub: 'saldo pendiente' },
+            { label: 'Cuota mensual total',  value: fmt(monthlyCuotas), sub: 'comprometido/mes' },
+          ].map(({ label, value, sub }) => (
+            <div key={label} style={{
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+              padding: '0.875rem 1rem', boxShadow: 'var(--shadow-sm)',
+            }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 0.25rem' }}>{label}</p>
+              <p style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>{value}</p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{sub}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 110, borderRadius: 'var(--radius-md)' }} />)}
+        </div>
+      ) : credits.length === 0 ? (
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon"><Landmark size={24} /></div>
+            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin créditos</p>
+            <p>Registra tus créditos bancarios para hacer seguimiento de cuotas y saldos.</p>
+            <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/bank-credits/new')}>
+              <Plus size={14} /> Agregar crédito
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          {credits.map(credit => {
+            const pct = credit.numeroCuotas ? (credit.cuotasPagadas / credit.numeroCuotas) * 100 : 0;
+            const statusInfo = STATUS[credit.status] || STATUS.activo;
             return (
-              <Card key={credit._id} className="w-full">
-                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold mb-2">{credit.bankName}</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted text-xs uppercase">Monto Total</p>
-                        <p className="font-semibold">${credit.totalAmount?.toLocaleString('es-CO')}</p>
+              <div
+                key={credit.id}
+                className="card"
+                style={{ cursor: 'pointer', padding: '1.125rem 1.25rem' }}
+                onClick={() => navigate(`/bank-credits/${credit.id}`)}
+              >
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  {/* Icono + nombre */}
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 'var(--radius-md)',
+                    background: 'var(--color-danger-bg)', color: 'var(--color-danger)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Landmark size={18} />
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                      <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0, color: 'var(--color-text-primary)' }}>{credit.nombre}</h3>
+                      <span className={statusInfo.cls}>{statusInfo.label}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 0.875rem' }}>
+                      {credit.entidad} · {credit.tasaInteres}% {credit.tipoTasa === 'mensual' ? 'M.V.' : 'E.A.'} · Día {credit.diaPago}
+                    </p>
+
+                    {/* Barra de progreso */}
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                          {credit.cuotasPagadas} de {credit.numeroCuotas} cuotas
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-success)' }}>
+                          {pct.toFixed(0)}%
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-muted text-xs uppercase">Cuota Mensual</p>
-                        <p className="font-semibold text-danger">${credit.monthlyInstallmentAmount?.toLocaleString('es-CO')}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted text-xs uppercase">Tasa de Interés</p>
-                        <p className="font-semibold">{credit.interestRate}%</p>
-                      </div>
-                      <div>
-                        <p className="text-muted text-xs uppercase">Día de Pago</p>
-                        <p className="font-semibold">{credit.paymentDay}</p>
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col items-end min-w-[200px]">
-                    <div className="w-full mb-2">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted">Progreso ({credit.paidInstallments}/{credit.installments})</span>
-                        <span className="text-success">{progress.toFixed(0)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
-                        <div className="bg-success h-full transition-all" style={{ width: `${progress}%` }}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-2">
-                      <Button variant="success" className="bg-success text-white border-none text-xs px-2 py-1" onClick={() => { setSelectedCredit(credit); setIsPayModalOpen(true); }}>
-                        <CheckCircle size={14} className="mr-1" /> Pagar Cuota
-                      </Button>
-                      <Button variant="secondary" onClick={() => handleOpenModal(credit)} style={{ padding: '0.25rem 0.5rem' }}><Edit size={14}/></Button>
-                      <Button variant="danger" onClick={() => handleDelete(credit._id)} style={{ padding: '0.25rem 0.5rem' }}><Trash2 size={14}/></Button>
-                    </div>
+
+                  {/* Montos */}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 0.15rem' }}>Cuota mensual</p>
+                    <p style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-danger)', margin: '0 0 0.4rem', letterSpacing: '-0.02em' }}>{fmt(credit.valorCuota)}</p>
+                    <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Saldo: {fmt(credit.saldoPendiente)}</p>
                   </div>
+
+                  <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', alignSelf: 'center', flexShrink: 0 }} />
                 </div>
-              </Card>
+              </div>
             );
-          })
-        )}
-      </div>
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={selectedCredit ? 'Editar Crédito' : 'Nuevo Crédito'} footer={
-        <>
-          <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSave}>Guardar</Button>
-        </>
-      }>
-        <Input label="Banco / Entidad" value={formData.bankName} onChange={e => setFormData({...formData, bankName: e.target.value})} />
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Monto Total" type="number" value={formData.totalAmount} onChange={e => setFormData({...formData, totalAmount: Number(e.target.value)})} />
-          <Input label="Tasa Interés (%)" type="number" step="0.01" value={formData.interestRate} onChange={e => setFormData({...formData, interestRate: Number(e.target.value)})} />
+          })}
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Plazo (Meses)" type="number" value={formData.installments} onChange={e => setFormData({...formData, installments: Number(e.target.value)})} />
-          <Input label="Día de Pago" type="number" min="1" max="31" value={formData.paymentDay} onChange={e => setFormData({...formData, paymentDay: Number(e.target.value)})} />
-        </div>
-        <Input label="Fecha de Desembolso" type="date" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} />
-      </Modal>
-
-      <Modal isOpen={isPayModalOpen} onClose={() => setIsPayModalOpen(false)} title="Registrar Pago de Cuota" footer={
-        <>
-          <Button variant="secondary" onClick={() => setIsPayModalOpen(false)}>Cancelar</Button>
-          <Button variant="primary" onClick={handlePayInstallment}>Confirmar Pago</Button>
-        </>
-      }>
-        <div className="text-center">
-          <p className="mb-4">¿Deseas registrar el pago de la cuota actual?</p>
-          <h2 className="text-3xl font-bold text-success mb-2">${selectedCredit?.monthlyInstallmentAmount?.toLocaleString('es-CO')}</h2>
-          <p className="text-muted text-sm">{selectedCredit?.bankName}</p>
-        </div>
-      </Modal>
+      )}
     </div>
   );
 };

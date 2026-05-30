@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../services/authService';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Wallet } from 'lucide-react';
+import { TrendingUp, CreditCard, Bell, Landmark } from 'lucide-react';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -16,67 +14,86 @@ export const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
     try {
       await AuthService.login(email, password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.');
+      setError(err.response?.data?.message || 'Correo o contraseña incorrectos.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      height: '100vh', 
-      width: '100vw',
-      background: 'radial-gradient(circle at center, rgba(30,41,59,1) 0%, rgba(15,23,42,1) 100%)'
-    }}>
-      <div className="glass-panel" style={{ padding: '3rem', width: '100%', maxWidth: '400px' }}>
-        <div className="text-center mb-4">
-          <div className="text-primary flex justify-center mb-2">
-            <Wallet size={48} />
+    <div className="auth-container">
+      <div className="auth-wrapper">
+
+        {/* Panel izquierdo */}
+        <div className="auth-image-section">
+          <div className="auth-image-content">
+            <div style={{ marginBottom: '1.5rem' }}>
+              <span style={{ fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Debti</span>
+            </div>
+            <h2>Toma el control de tus finanzas personales</h2>
+            <p>Un panel unificado para gestionar suscripciones, tarjetas de crédito y créditos bancarios con claridad y precisión.</p>
+            <div className="auth-image-features">
+              {[
+                { icon: TrendingUp, label: 'Seguimiento de gastos y deudas en tiempo real' },
+                { icon: CreditCard, label: 'Gestión completa de tarjetas y compras a cuotas' },
+                { icon: Landmark,   label: 'Control de créditos bancarios con calculadora' },
+                { icon: Bell,       label: 'Recordatorios automáticos de vencimientos' },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className="auth-image-feature">
+                  <div className="auth-feature-icon"><Icon size={14} color="white" /></div>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <h2 className="text-2xl font-bold">FinSoft</h2>
-          <p className="text-muted">Inicia sesión en tu cuenta</p>
         </div>
-        
-        {error && (
-          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
-            {error}
+
+        {/* Panel derecho — formulario */}
+        <div className="auth-form-section">
+          <div className="auth-form-container">
+
+            <div className="auth-form-header">
+              <div className="auth-logo">
+                <span className="auth-logo-text">Debti</span>
+              </div>
+              <h2>Iniciar sesión</h2>
+              <p>Bienvenido de vuelta a tu panel financiero</p>
+            </div>
+
+            <div className="auth-form-card">
+              {error && <div className="auth-message error" style={{ marginBottom: '1rem' }}>{error}</div>}
+
+              <form onSubmit={handleLogin}>
+                <div className="form-group">
+                  <label className="form-label">Correo Electrónico</label>
+                  <input className="form-input" type="email" value={email}
+                    onChange={(e) => setEmail(e.target.value)} required
+                    placeholder="ejemplo@correo.com" autoComplete="email" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Contraseña</label>
+                  <input className="form-input" type="password" value={password}
+                    onChange={(e) => setPassword(e.target.value)} required
+                    placeholder="••••••••" autoComplete="current-password" />
+                </div>
+
+                <button type="submit" className="auth-submit-btn" disabled={loading}>
+                  {loading ? 'Iniciando sesión...' : 'Ingresar a mi cuenta'}
+                </button>
+              </form>
+            </div>
+
+            <div className="auth-footer-link">
+              ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
+            </div>
           </div>
-        )}
+        </div>
 
-        <form onSubmit={handleLogin}>
-          <Input 
-            label="Correo Electrónico" 
-            type="email" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required 
-            placeholder="ejemplo@correo.com"
-          />
-          <Input 
-            label="Contraseña" 
-            type="password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required 
-            placeholder="••••••••"
-          />
-          
-          <Button type="submit" className="w-full mt-4" disabled={loading}>
-            {loading ? 'Iniciando...' : 'Ingresar'}
-          </Button>
-
-          <p className="text-center text-muted mt-4 text-sm">
-            ¿No tienes cuenta? <Link to="/register" className="text-primary font-semibold">Regístrate</Link>
-          </p>
-        </form>
       </div>
     </div>
   );

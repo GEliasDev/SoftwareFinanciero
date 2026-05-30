@@ -83,6 +83,15 @@ export const CreditCardController = {
         }
     },
 
+    getPurchaseById: async (req, res, next) => {
+        try {
+            const purchase = await CreditCardService.getPurchaseById(req.params.purchaseId);
+            res.json(purchase);
+        } catch (error) {
+            next(error);
+        }
+    },
+
     registerPurchasePayment: async (req, res, next) => {
         try {
             const purchase = await CreditCardService.registerPurchasePayment(req.params.purchaseId);
@@ -97,10 +106,71 @@ export const CreditCardController = {
         }
     },
 
+    updatePurchase: async (req, res, next) => {
+        try {
+            const purchase = await CreditCardService.updatePurchase(req.params.purchaseId, req.body);
+            res.json(purchase);
+        } catch (error) {
+            next(error);
+        }
+    },
+
     deletePurchase: async (req, res, next) => {
         try {
             await CreditCardService.deletePurchase(req.params.purchaseId);
             res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    getOverview: async (req, res, next) => {
+        try {
+            const overview = await CreditCardService.getOverview(req.user.id);
+            res.json(overview);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    undoPurchasePayment: async (req, res, next) => {
+        try {
+            const purchase = await CreditCardService.undoPurchasePayment(req.params.purchaseId);
+            res.json({
+                message: 'Pago revertido exitosamente',
+                cuotasPagadas: purchase.cuotasPagadas,
+                status: purchase.status,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    registerAbono: async (req, res, next) => {
+        try {
+            const purchase = await CreditCardService.registerAbono(
+                req.params.purchaseId,
+                req.body.montoAbono
+            );
+            res.json({ message: 'Abono registrado exitosamente', purchase });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    getUpcomingPayments: async (req, res, next) => {
+        try {
+            const payments = await CreditCardService.getUpcomingPayments(req.params.id);
+            res.json(payments);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    getPurchaseStats: async (req, res, next) => {
+        try {
+            const stats = await CreditCardService.getPurchaseStats(req.params.id);
+            res.json(stats);
         } catch (error) {
             next(error);
         }
