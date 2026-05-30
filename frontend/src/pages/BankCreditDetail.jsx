@@ -162,7 +162,7 @@ export const BankCreditDetail = () => {
             <InfoRow label="Entidad" value={credit?.entidad} />
             <InfoRow label="Tipo de tasa" value={credit?.tipoTasa === 'mensual' ? 'Mensual (M.V.)' : 'Anual (E.A.)'} />
             <InfoRow label="Tasa de interés" value={`${credit?.tasaInteres}%`} />
-            <InfoRow label="Tasa mensual" value={`${credit?.tasaMensual?.toFixed(4)}%`} />
+            <InfoRow label="Tasa mensual" value={`${parseFloat(credit?.tasaMensual ?? 0).toFixed(4)}%`} />
             <InfoRow label="Monto original" value={fmt(credit?.montoTotal)} money />
             <InfoRow label="Total a pagar" value={fmt(credit?.totalAPagar)} money />
             <InfoRow label="Cuota administración" value={fmt(credit?.cuotaAdministracion)} money />

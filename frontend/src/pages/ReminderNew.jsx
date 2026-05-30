@@ -69,7 +69,7 @@ export const ReminderNew = () => {
     try {
       await ReminderService.create({
         debtType: formData.debtType,
-        debtId: formData.debtId,
+        debtId: Number(formData.debtId),
         nombre: formData.nombre,
         diasAnticipacion: Number(formData.diasAnticipacion),
       });
