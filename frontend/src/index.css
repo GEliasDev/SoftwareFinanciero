@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 @import './styles/components.css';
 @import './styles/layout.css';
 
@@ -9,14 +9,14 @@
    nueva para que toda la app se actualice sin editar cada archivo.
 ════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Marca — Índigo ── */
-  --brand-50:  #EEF2FF;
-  --brand-100: #E0E7FF;
-  --brand-200: #C7D2FE;
-  --brand-500: #6366F1;
-  --brand-600: #4F46E5;
-  --brand-700: #4338CA;
-  --brand-800: #3730A3;
+  /* ── Marca — Índigo violeta ── */
+  --brand-50:  #EFEDFF;
+  --brand-100: #E1DEFF;
+  --brand-200: #C7C0FE;
+  --brand-500: #7A6CF7;
+  --brand-600: #5B4DF1;
+  --brand-700: #4A39D4;
+  --brand-800: #3A2CA8;
 
   /* ── Positivo — Esmeralda ── */
   --pos-50:  #ECFDF5;
@@ -99,7 +99,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;

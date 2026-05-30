@@ -27,10 +27,14 @@ progresiva, sin romper nada.
 ## 1. Tokens (`frontend/src/index.css :root`)
 
 ### Color
+> Refinado con ui-ux-pro-max (2026-05-30): índigo-violeta más decidido (no el
+> azul genérico) y tipografía IBM Plex Sans ("financial, trustworthy, banking").
+> El esmeralda queda validado. Evitar gradientes morado→rosa estilo "AI".
+
 ```css
-/* Marca — Índigo */
---brand-50:#EEF2FF; --brand-100:#E0E7FF; --brand-200:#C7D2FE;
---brand-500:#6366F1; --brand-600:#4F46E5; --brand-700:#4338CA; --brand-800:#3730A3;
+/* Marca — Índigo violeta */
+--brand-50:#EFEDFF; --brand-100:#E1DEFF; --brand-200:#C7C0FE;
+--brand-500:#7A6CF7; --brand-600:#5B4DF1; --brand-700:#4A39D4; --brand-800:#3A2CA8;
 /* Positivo — Esmeralda */
 --pos-50:#ECFDF5; --pos-600:#059669; --pos-700:#047857;
 /* Alerta — Ámbar */
@@ -55,7 +59,8 @@ progresiva, sin romper nada.
 ```
 
 ### Tipografía
-- Fuente: **Inter** (importar pesos 400;500;600;700;800).
+- Fuente: **IBM Plex Sans** (pesos 400;500;600;700). Recomendada por ui-ux-pro-max
+  para fintech/banca. Fallback: system-ui.
 - Números monetarios: `.tabular { font-variant-numeric: tabular-nums; }` —
   aplicar a TODA cifra de dinero (alineación en columnas = look financiero).
 - Títulos: `letter-spacing:-0.02em`.
