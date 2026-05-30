@@ -90,7 +90,7 @@ export const SubscriptionDetail = () => {
   };
 
   if (loading) return (
-    <div className="animate-fade-in" style={{ maxWidth: 680, margin: '0 auto' }}>
+    <div className="animate-fade-in">
       <div className="skeleton" style={{ height: 40, marginBottom: 16, borderRadius: 'var(--radius-md)' }} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 16 }}>
         {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 92 }} />)}
@@ -103,7 +103,7 @@ export const SubscriptionDetail = () => {
   const dias = sub ? daysUntil(nextOccurrence(sub.diaCobro)) : null;
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 680, margin: '0 auto' }}>
+    <div className="animate-fade-in">
       <PageHeader
         title={sub?.nombre}
         subtitle={sub?.descripcion || FRECUENCIA_LABEL[sub?.frecuencia]}

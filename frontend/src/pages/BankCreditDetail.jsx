@@ -111,7 +111,7 @@ export const BankCreditDetail = () => {
   };
 
   if (loading) return (
-    <div className="animate-fade-in" style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div className="animate-fade-in">
       <div className="skeleton" style={{ height: 40, marginBottom: 16, borderRadius: 'var(--radius-md)' }} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
         {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 92 }} />)}
@@ -124,7 +124,7 @@ export const BankCreditDetail = () => {
   const st = STATUS_BADGE[credit?.status] || STATUS_BADGE.activo;
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div className="animate-fade-in">
       <PageHeader
         title={credit?.nombre}
         subtitle={credit?.entidad}

@@ -3,62 +3,22 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { CreditCardService } from '../services/creditCardService';
 import {
-  ArrowLeft, CreditCard, Edit2, Trash2, Check, X, Plus, ShoppingBag,
+  ArrowLeft, CreditCard, Edit2, Trash2, X, Plus, ShoppingBag,
   DollarSign, RotateCcw, AlertTriangle, TrendingDown, Calendar, Percent,
-  Utensils, Car, Heart, Tv2, Home, Laptop, Tag, BookOpen, Plane, Package,
   ChevronDown, ChevronUp, CheckSquare, Search, SlidersHorizontal,
-  TrendingUp, Zap, ChevronRight,
+  Zap, ChevronRight,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { getCardGradient } from '../utils/cardColors';
+import { CardStatement } from '../components/credit-cards/CardStatement';
+import {
+  fmt, fmtDate, fmtShort, monthLabel, CATEGORIES, getCat,
+  nextOccurrence, daysUntil, urgencyStyle,
+} from '../utils/creditCard';
 
 const TASA_USURA_EA = 28.5;
-
-const fmt = (n) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
-
-const fmtDate = (str) => {
-  if (!str) return '—';
-  const [y, m, d] = str.split('-');
-  return new Date(Number(y), Number(m) - 1, Number(d))
-    .toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-};
-
-const fmtShort = (date) =>
-  date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
-
-const CATEGORIES = [
-  { value: 'comida',          label: 'Comida',          Icon: Utensils, color: '#f97316' },
-  { value: 'transporte',      label: 'Transporte',      Icon: Car,      color: '#3b82f6' },
-  { value: 'salud',           label: 'Salud',           Icon: Heart,    color: '#ef4444' },
-  { value: 'entretenimiento', label: 'Entretenimiento', Icon: Tv2,      color: '#8b5cf6' },
-  { value: 'hogar',           label: 'Hogar',           Icon: Home,     color: '#14b8a6' },
-  { value: 'tecnologia',      label: 'Tecnología',      Icon: Laptop,   color: '#06b6d4' },
-  { value: 'ropa',            label: 'Ropa',            Icon: Tag,      color: '#ec4899' },
-  { value: 'educacion',       label: 'Educación',       Icon: BookOpen, color: '#f59e0b' },
-  { value: 'viajes',          label: 'Viajes',          Icon: Plane,    color: '#10b981' },
-  { value: 'otros',           label: 'Otros',           Icon: Package,  color: '#6b7280' },
-];
-const getCat = (v) => CATEGORIES.find(c => c.value === v) ?? CATEGORIES[CATEGORIES.length - 1];
-
-function buildProjection(activePurchases, monthsAhead = 12) {
-  const today = new Date();
-  const points = Array.from({ length: monthsAhead }, (_, m) => {
-    const d = new Date(today.getFullYear(), today.getMonth() + m, 1);
-    const label = d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-    const total = activePurchases.reduce((sum, p) => {
-      const restantes = Number(p.numeroCuotas) - Number(p.cuotasPagadas);
-      return restantes > m ? sum + parseFloat(p.valorCuotaMensual ?? 0) : sum;
-    }, 0);
-    return { label, total };
-  });
-  let last = points.length - 1;
-  while (last > 0 && points[last].total === 0) last--;
-  return points.slice(0, last + 1);
-}
 
 function calcAbonoImpact(activePurchases, abonoAmount, tasaMensual) {
   const extra = parseFloat(abonoAmount) || 0;
@@ -90,33 +50,6 @@ function calcAbonoImpact(activePurchases, abonoAmount, tasaMensual) {
   const mesesAhorrados = Math.max(0, restantes - nuevasCuotas);
   const interesAhorrado = Math.max(0, mesesAhorrados * (parseFloat(target.valorCuotaMensual) - capitalPorCuota));
   return { targetName: target.descripcion, mesesAhorrados, interesAhorrado };
-}
-
-function nextOccurrence(dayOfMonth) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(today.getFullYear(), today.getMonth(), Number(dayOfMonth));
-  if (d <= today) d.setMonth(d.getMonth() + 1);
-  return d;
-}
-
-function daysUntil(date) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((date - today) / 86400000);
-}
-
-const urgencyStyle = (days) =>
-  days <= 3 ? { bg: '#fef2f2', color: '#991b1b', border: 'rgba(220,38,38,0.2)', badge: 'var(--color-danger)' }
-  : days <= 7 ? { bg: '#fffbeb', color: '#92400e', border: 'rgba(217,119,6,0.2)', badge: 'var(--color-warning)' }
-  : { bg: 'var(--color-primary-light)', color: '#1e3a8a', border: 'rgba(21,101,192,0.15)', badge: 'var(--color-primary)' };
-
-function calcCuota(monto, cuotas, tasaPct) {
-  if (!monto || !cuotas || cuotas < 1) return 0;
-  if (cuotas === 1) return monto;
-  const i = tasaPct / 100;
-  const f = Math.pow(1 + i, cuotas);
-  return monto * (i * f) / (f - 1);
 }
 
 export const CreditCardDetail = () => {
@@ -218,19 +151,11 @@ export const CreditCardDetail = () => {
     [activePurchases]
   );
 
-  const projectionData = useMemo(() => buildProjection(activePurchases), [activePurchases]);
-
   const simAmount     = parseFloat(simBudget) || 0;
   const simDiff       = simAmount - monthlyObligation;
   const simSuficiente = simAmount > 0 && simAmount >= monthlyObligation;
   const abonoImpact   = useMemo(() => calcAbonoImpact(activePurchases, abonoExtra, tasaMensual), [abonoExtra, activePurchases, tasaMensual]);
   const hasFilters    = searchText || filterCat !== 'all' || filterStatus !== 'all';
-
-  const monthLabel = (m) => {
-    const [y, mo] = m.split('-');
-    return new Date(Number(y), Number(mo) - 1, 1)
-      .toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-  };
 
   const handleDelete = async () => {
     const result = await Swal.fire({
@@ -306,7 +231,7 @@ export const CreditCardDetail = () => {
   const toggleMonth = (m) => setExpandedMonths(prev => ({ ...prev, [m]: !prev[m] }));
 
   if (loading) return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div>
       <div style={{ display: 'grid', gridTemplateColumns: '5fr 4fr', gap: '1rem', marginBottom: '1rem' }}>
         <div className="skeleton" style={{ height: 210, borderRadius: 'var(--radius-md)' }} />
         <div className="skeleton" style={{ height: 210, borderRadius: 'var(--radius-md)' }} />
@@ -318,7 +243,7 @@ export const CreditCardDetail = () => {
   );
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="animate-fade-in">
 
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div className="page-header" style={{ marginBottom: '1rem' }}>
@@ -560,26 +485,13 @@ export const CreditCardDetail = () => {
         </div>
       )}
 
-      {/* ══ Projection chart ═════════════════════════════════════════ */}
-      {activePurchases.length > 0 && projectionData.length > 1 && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <TrendingUp size={15} style={{ color: 'var(--color-primary)' }} />
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: 0 }}>Proyección de obligaciones</h3>
-            </div>
-            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>próximos {projectionData.length} meses</span>
-          </div>
-          <ResponsiveContainer width="100%" height={190}>
-            <BarChart data={projectionData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} width={44} />
-              <Tooltip formatter={(v) => [fmt(v), 'Obligación mensual']} contentStyle={{ fontSize: 12, borderRadius: 6, border: '1px solid var(--color-border)' }} />
-              <Bar dataKey="total" fill="var(--color-primary)" radius={[5, 5, 0, 0]} maxBarSize={44} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      {/* ══ Extracto mensual: corte vigente + calendario ════════════ */}
+      {activePurchases.length > 0 && (
+        <CardStatement
+          card={card}
+          activePurchases={activePurchases}
+          onPayMonth={handlePayAll}
+        />
       )}
 
       {/* ══ Payment simulator ════════════════════════════════════════ */}
