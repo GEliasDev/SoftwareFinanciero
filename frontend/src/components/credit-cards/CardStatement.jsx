@@ -65,17 +65,22 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
     const barWidth     = (slot.total / maxTotal) * 100;
     const monthName    = slot.date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
     const pendingLines = slot.lines.filter(l => !l.wasPaid);
+    const pendingTotal = pendingLines.reduce((s, l) => s + l.valorCuota, 0);
 
-    // isPaymentDue: corte ya cortado cuyo pago vence pronto → usa colores de urgencia
+    // "Pago pendiente" solo si el corte ya cortó (ventana de pago) Y aún quedan
+    // cuotas sin pagar. Si ya se pagó todo, se trata como un corte normal del historial.
+    const showPaymentDue = slot.isPaymentDue && pendingLines.length > 0;
+
+    // showPaymentDue: corte vencido con saldo → colores de urgencia
     // isCurrent: próximo corte (aún no ha cortado) → índigo neutro
-    const accentColor  = slot.isPaymentDue ? u.color
-                       : isCurrent         ? 'var(--brand-600)'
-                       :                     'var(--color-primary)';
-    const accentBg     = slot.isPaymentDue ? u.bg
-                       : isCurrent         ? 'var(--color-primary-light)'
-                       :                     'transparent';
-    const accentBorder = (slot.isPaymentDue || isCurrent) && isOpen
-                       ? (slot.isPaymentDue ? u.border : 'rgba(91,77,241,0.2)')
+    const accentColor  = showPaymentDue ? u.color
+                       : isCurrent       ? 'var(--brand-600)'
+                       :                   'var(--color-primary)';
+    const accentBg     = showPaymentDue ? u.bg
+                       : isCurrent       ? 'var(--color-primary-light)'
+                       :                   'transparent';
+    const accentBorder = (showPaymentDue || isCurrent) && isOpen
+                       ? (showPaymentDue ? u.border : 'rgba(91,77,241,0.2)')
                        : 'var(--color-border)';
 
     return (
@@ -100,9 +105,9 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
               {isOpen
                 ? <ChevronDown  size={14} style={{ color: accentColor, flexShrink: 0 }} />
-                : <ChevronRight size={14} style={{ color: (slot.isPaymentDue || isCurrent) ? accentColor : 'var(--color-text-muted)', flexShrink: 0 }} />
+                : <ChevronRight size={14} style={{ color: (showPaymentDue || isCurrent) ? accentColor : 'var(--color-text-muted)', flexShrink: 0 }} />
               }
-              <span style={{ fontSize: 13, fontWeight: 700, color: (slot.isPaymentDue || isCurrent) ? accentColor : 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: (showPaymentDue || isCurrent) ? accentColor : 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
                 {monthName}
               </span>
               {isCurrent && (
@@ -111,7 +116,7 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
                   background: 'var(--brand-600)', color: 'white', padding: '1px 6px', borderRadius: 99, flexShrink: 0,
                 }}>Próximo</span>
               )}
-              {slot.isPaymentDue && (
+              {showPaymentDue && (
                 <span style={{
                   fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
                   background: u.color, color: 'white', padding: '1px 6px', borderRadius: 99, flexShrink: 0,
@@ -129,11 +134,11 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                 {slot.lines.length} compra{slot.lines.length !== 1 ? 's' : ''}
               </span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: (slot.isPaymentDue || isCurrent) ? accentColor : 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: (showPaymentDue || isCurrent) ? accentColor : 'var(--color-text-primary)' }}>
                 {fmt(slot.total)}
               </span>
               {/* Chip de urgencia visible al colapsar el corte con pago pendiente */}
-              {slot.isPaymentDue && !isOpen && daysPago !== null && (
+              {showPaymentDue && !isOpen && daysPago !== null && (
                 <span style={{
                   fontSize: 10, fontWeight: 700, color: u.color,
                   background: u.bg, border: `1px solid ${u.border}`,
@@ -150,7 +155,7 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
             <div style={{
               height: 3, width: `${barWidth}%`,
               background: accentColor,
-              opacity: (slot.isPaymentDue || isCurrent) ? 0.65 : 0.45,
+              opacity: (showPaymentDue || isCurrent) ? 0.65 : 0.45,
               borderRadius: 99, transition: 'width 0.4s ease',
             }} />
           </div>
@@ -158,13 +163,13 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
 
         {/* Contenido expandido */}
         {isOpen && (
-          <div style={{ padding: '0.25rem 0.875rem 0.75rem', borderTop: `1px solid ${slot.isPaymentDue ? u.border : 'var(--color-border)'}` }}>
+          <div style={{ padding: '0.25rem 0.875rem 0.75rem', borderTop: `1px solid ${showPaymentDue ? u.border : 'var(--color-border)'}` }}>
             {slot.lines.map(line => (
               <LineRow key={`${line.id}-${line.cuotaActual}`} line={line} />
             ))}
 
             {/* Urgencia + botón pagar — corte anterior con pago venciendo */}
-            {slot.isPaymentDue && pendingLines.length > 0 && (
+            {showPaymentDue && (
               <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 5,
@@ -188,7 +193,7 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
                     disabled={paying}
                   >
                     <CheckSquare size={14} />
-                    {paying ? 'Registrando…' : `Pagar este corte · ${fmt(slot.total)}`}
+                    {paying ? 'Registrando…' : `Pagar este corte · ${fmt(pendingTotal)}`}
                   </button>
                 )}
               </div>

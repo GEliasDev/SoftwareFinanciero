@@ -7,7 +7,7 @@ import { fmt, fmtDate, monthLabel } from '../../utils/format';
 import { getMovimientoVisual, CATEGORIES } from '../../utils/creditCard';
 
 export const CardPurchases = () => {
-  const { purchases, activePurchases, id, handlePayAll } = useOutletContext();
+  const { purchases, activePurchases, id, handlePayAll, payableCount } = useOutletContext();
   const navigate = useNavigate();
 
   const [searchText, setSearchText]     = useState('');
@@ -50,7 +50,7 @@ export const CardPurchases = () => {
           {purchases.length > activePurchases.length && <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 99 }}>{purchases.length - activePurchases.length} pagada{purchases.length - activePurchases.length !== 1 ? 's' : ''}</span>}
         </h2>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {activePurchases.length > 1 && <button className="btn btn-success" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={handlePayAll}><CheckSquare size={13} /> Pagar mes</button>}
+          {payableCount > 0 && <button className="btn btn-success" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={handlePayAll}><CheckSquare size={13} /> Pagar corte</button>}
           <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/advances/new`)}><Banknote size={13} /> Avance</button>
           <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/purchases/new`)}><Plus size={13} /> Nueva compra</button>
         </div>
