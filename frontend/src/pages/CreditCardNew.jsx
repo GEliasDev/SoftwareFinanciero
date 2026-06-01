@@ -5,7 +5,7 @@ import {
   ArrowLeft, CreditCard, Info, AlertTriangle, Calendar,
   DollarSign, Check, Percent, ChevronRight, ChevronLeft, AlertCircle,
 } from 'lucide-react';
-import { CARD_COLORS, getCardGradient } from '../utils/cardColors';
+import { CARD_COLORS, getCardGradient, darkenHex } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
 import { fmt } from '../utils/format';
 
@@ -36,7 +36,8 @@ export const CreditCardNew = () => {
   const [touched, setTouched] = useState({});
   const [formData, setFormData] = useState({
     nombre: '', entidad: '', cupoTotal: '',
-    tasaInteresMensual: '', fechaCorte: '', fechaPago: '', ultimos4: '', color: 'blue',
+    tasaInteresMensual: '', fechaCorte: '', fechaPago: '', ultimos4: '',
+    comisionAvance: '', cuotaManejo: '', color: 'blue',
   });
   const [simCuotas, setSimCuotas] = useState(12);
 
@@ -83,6 +84,8 @@ export const CreditCardNew = () => {
         fechaCorte: Number(formData.fechaCorte),
         fechaPago: Number(formData.fechaPago),
         ...(formData.ultimos4 ? { ultimos4: formData.ultimos4 } : {}),
+        comisionAvance: Number(formData.comisionAvance) || 0,
+        cuotaManejo: Number(formData.cuotaManejo) || 0,
         color: formData.color,
       });
       navigate('/credit-cards');
@@ -160,12 +163,41 @@ export const CreditCardNew = () => {
 
           <div className="card" style={{ padding: '1rem' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Color de la tarjeta</p>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {CARD_COLORS.map(c => (
                 <button key={c.key} type="button" title={c.label} onClick={() => setFormData(prev => ({ ...prev, color: c.key }))}
                   style={{ width: 30, height: 30, borderRadius: '50%', background: c.gradient, border: formData.color === c.key ? '2px solid var(--text)' : '2px solid transparent', boxShadow: formData.color === c.key ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer', padding: 0, outline: 'none', transform: formData.color === c.key ? 'scale(1.18)' : 'scale(1)', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }} />
               ))}
+              <div style={{ width: 1, height: 22, background: 'var(--color-border)', margin: '0 2px' }} />
+              {/* Picker de color libre */}
+              <div title="Color personalizado" style={{ position: 'relative', width: 30, height: 30, flexShrink: 0 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: formData.color.startsWith('#')
+                    ? `linear-gradient(135deg, ${formData.color} 0%, ${darkenHex(formData.color, 0.25)} 100%)`
+                    : 'conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)',
+                  border: formData.color.startsWith('#') ? '2px solid var(--text)' : '2px solid var(--color-border)',
+                  boxShadow: formData.color.startsWith('#') ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.15)',
+                  transform: formData.color.startsWith('#') ? 'scale(1.18)' : 'scale(1)',
+                  transition: 'transform 0.15s ease',
+                }} />
+                <input type="color"
+                  style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none' }}
+                  value={formData.color.startsWith('#') ? formData.color : '#5B4DF1'}
+                  onChange={e => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                />
+              </div>
             </div>
+            {formData.color.startsWith('#') && (
+              <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: formData.color, border: '1px solid var(--color-border)' }} />
+                {formData.color}
+                <button type="button" onClick={() => setFormData(prev => ({ ...prev, color: 'blue' }))}
+                  style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                  usar preset
+                </button>
+              </p>
+            )}
           </div>
 
           {tasaEA && (
@@ -254,6 +286,10 @@ export const CreditCardNew = () => {
                       : tasaEA ? <p className="form-hint" style={{ color: isHighRate ? 'var(--color-warning)' : 'var(--color-success)' }}>≈ {tasaEA}% E.A. {isHighRate ? '⚠ Alta' : '✓ Normal'}</p>
                       : <p className="form-hint">Tasa de interés mensual (M.V.)</p>}
                   </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  {field('comisionAvance', 'Comisión por avance (COP)', 'Déjalo en 0 si la tarjeta no cobra avances', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 9900' })}
+                  {field('cuotaManejo', 'Cuota de manejo (COP)', 'Cargo fijo que se agrega en cada corte. 0 si no aplica', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 30000' })}
                 </div>
               </div>
             )}
