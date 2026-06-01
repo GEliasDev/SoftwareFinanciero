@@ -17,6 +17,7 @@ router.delete('/:id', authenticateToken, CreditCardController.deleteCreditCard);
 
 // ── Compras ───────────────────────────────────────────────
 router.post('/:creditCardId/purchases', authenticateToken, CreditCardController.createPurchase);
+router.post('/:creditCardId/advances', authenticateToken, CreditCardController.createAdvance);
 router.get('/:creditCardId/purchases', authenticateToken, CreditCardController.getPurchasesByCard);
 router.get('/:creditCardId/purchases/:purchaseId', authenticateToken, CreditCardController.getPurchaseById);
 router.patch('/:creditCardId/purchases/:purchaseId/pay', authenticateToken, CreditCardController.registerPurchasePayment);
