@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  ShoppingBag, CheckSquare, Plus, Search, X, SlidersHorizontal, ChevronUp, ChevronDown, ChevronRight,
+  ShoppingBag, CheckSquare, Plus, Search, X, SlidersHorizontal, ChevronUp, ChevronDown, ChevronRight, Banknote,
 } from 'lucide-react';
 import { fmt, fmtDate, monthLabel } from '../../utils/format';
 import { getMovimientoVisual, CATEGORIES } from '../../utils/creditCard';
@@ -51,6 +51,7 @@ export const CardPurchases = () => {
         </h2>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {activePurchases.length > 1 && <button className="btn btn-success" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={handlePayAll}><CheckSquare size={13} /> Pagar mes</button>}
+          <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/advances/new`)}><Banknote size={13} /> Avance</button>
           <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/purchases/new`)}><Plus size={13} /> Nueva compra</button>
         </div>
       </div>

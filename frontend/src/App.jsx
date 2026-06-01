@@ -20,6 +20,7 @@ import { CardAnalysis } from './pages/credit-card/CardAnalysis';
 import { CreditCardEdit } from './pages/CreditCardEdit';
 import { CreditCardPurchaseDetail } from './pages/CreditCardPurchaseDetail';
 import { CreditCardPurchaseNew } from './pages/CreditCardPurchaseNew';
+import { CreditCardAdvanceNew } from './pages/CreditCardAdvanceNew';
 
 // Créditos bancarios
 import { BankCredits } from './pages/BankCredits';
@@ -74,6 +75,7 @@ function App() {
           </Route>
           <Route path="credit-cards/:id/edit" element={<CreditCardEdit />} />
           <Route path="credit-cards/:id/purchases/new" element={<CreditCardPurchaseNew />} />
+          <Route path="credit-cards/:id/advances/new" element={<CreditCardAdvanceNew />} />
           <Route path="credit-cards/:id/purchases/:purchaseId" element={<CreditCardPurchaseDetail />} />
 
           {/* Créditos bancarios */}
