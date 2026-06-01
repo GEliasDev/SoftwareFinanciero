@@ -32,6 +32,10 @@ export const CreditCardService = {
     const response = await api.post(`/credit-cards/${creditCardId}/purchases`, data);
     return response.data;
   },
+  createAdvance: async (creditCardId, data) => {
+    const response = await api.post(`/credit-cards/${creditCardId}/advances`, data);
+    return response.data;
+  },
   getPurchases: async (creditCardId) => {
     const response = await api.get(`/credit-cards/${creditCardId}/purchases`);
     return response.data;
