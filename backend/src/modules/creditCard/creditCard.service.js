@@ -127,6 +127,8 @@ export const CreditCardService = {
 
         const parsed = advanceCreateSchema.parse(data);
         const comision = parseFloat(card.comisionAvance ?? 0);
+        const hoy = new Date();
+        const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
         if (parsed.montoTotal + comision > parseFloat(card.cupoDisponible)) {
             throw new AppError(
@@ -163,7 +165,7 @@ export const CreditCardService = {
                 totalIntereses: 0,
                 categoria: 'otros',
                 tipo: 'comision',
-                fechaCompra: new Date().toISOString().split('T')[0],
+                fechaCompra: fechaHoy,
                 creditCardId,
             });
         }
