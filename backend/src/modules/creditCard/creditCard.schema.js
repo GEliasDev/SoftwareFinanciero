@@ -8,7 +8,12 @@ export const creditCardCreateSchema = z.object({
     fechaCorte: z.number().int().min(1).max(31, { message: 'El día de corte debe estar entre 1 y 31' }),
     fechaPago: z.number().int().min(1).max(31, { message: 'El día de pago debe estar entre 1 y 31' }),
     ultimos4: z.string().length(4).regex(/^\d{4}$/).optional(),
-    color: z.enum(['blue', 'purple', 'green', 'red', 'slate', 'gold', 'rose', 'teal']).optional().default('blue'),
+    color: z.union([
+        z.enum(['blue', 'purple', 'green', 'red', 'slate', 'gold', 'rose', 'teal']),
+        z.string().regex(/^#[0-9a-fA-F]{6}$/, { message: 'Color inválido' }),
+    ]).optional().default('blue'),
+    comisionAvance: z.number().nonnegative({ message: 'La comisión no puede ser negativa' }).optional().default(0),
+    cuotaManejo: z.number().nonnegative({ message: 'La cuota de manejo no puede ser negativa' }).optional().default(0),
 });
 
 export const creditCardUpdateSchema = z.object({
@@ -19,8 +24,13 @@ export const creditCardUpdateSchema = z.object({
     fechaPago: z.number().int().min(1).max(31).optional(),
     status: z.enum(['activa', 'bloqueada', 'cancelada']).optional(),
     ultimos4: z.string().length(4).regex(/^\d{4}$/).optional().nullable(),
-    color: z.enum(['blue', 'purple', 'green', 'red', 'slate', 'gold', 'rose', 'teal']).optional(),
+    color: z.union([
+        z.enum(['blue', 'purple', 'green', 'red', 'slate', 'gold', 'rose', 'teal']),
+        z.string().regex(/^#[0-9a-fA-F]{6}$/, { message: 'Color inválido' }),
+    ]).optional(),
     cupoTotal: z.number().positive({ message: 'El cupo total debe ser mayor a 0' }).optional(),
+    comisionAvance: z.number().nonnegative().optional(),
+    cuotaManejo: z.number().nonnegative().optional(),
 });
 
 const CATEGORIAS = ['comida', 'transporte', 'salud', 'entretenimiento', 'hogar', 'tecnologia', 'ropa', 'educacion', 'viajes', 'otros'];
@@ -36,4 +46,11 @@ export const purchaseCreateSchema = z.object({
 export const purchaseUpdateSchema = z.object({
     descripcion: z.string().min(1).optional(),
     categoria: z.enum(CATEGORIAS).optional(),
+});
+
+export const advanceCreateSchema = z.object({
+    descripcion: z.string().min(1, { message: 'La descripción es requerida' }),
+    montoTotal: z.number().positive({ message: 'El monto debe ser mayor a 0' }),
+    numeroCuotas: z.number().int().min(1, { message: 'Debe ser mínimo 1 cuota' }),
+    fechaCompra: z.string().date({ message: 'Formato de fecha inválido, use YYYY-MM-DD' }),
 });
