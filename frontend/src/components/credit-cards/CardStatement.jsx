@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { getCardGradient } from '../../utils/cardColors';
 import {
-  fmt, fmtShort, getCat, nextOccurrence, daysUntil, urgencyStyle, buildSchedule,
+  fmt, fmtShort, getCat, nextOccurrence, daysUntil, urgencyStyle, buildSchedule, weekendToFriday,
 } from '../../utils/creditCard';
 
 /**
@@ -15,15 +15,16 @@ import {
 export const CardStatement = ({ card, activePurchases, onPayMonth, paying = false }) => {
   const [expanded, setExpanded] = useState({});
 
-  const schedule = useMemo(() => buildSchedule(activePurchases), [activePurchases]);
+  const schedule = useMemo(() => buildSchedule(activePurchases, card), [activePurchases, card]);
   const current  = schedule[0];
   const future   = schedule.slice(1);
   const maxTotal = useMemo(() => Math.max(...schedule.map(s => s.total), 1), [schedule]);
 
   if (!current || current.total === 0) return null;
 
-  const cutDate = card ? nextOccurrence(card.fechaCorte) : null;
-  const payDate = card ? nextOccurrence(card.fechaPago)  : null;
+  // El día de corte/pago se ajusta al viernes anterior si cae en fin de semana.
+  const cutDate = card ? weekendToFriday(nextOccurrence(card.fechaCorte)) : null;
+  const payDate = card ? weekendToFriday(nextOccurrence(card.fechaPago))  : null;
   const daysPago = payDate ? daysUntil(payDate) : null;
   const u = urgencyStyle(daysPago ?? 99);
 

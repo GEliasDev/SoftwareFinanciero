@@ -1,6 +1,7 @@
 import {
   Utensils, Car, Heart, Tv2, Home, Laptop, Tag, BookOpen, Plane, Package,
 } from 'lucide-react';
+import { nextOccurrence as _nextOccurrence } from './format';
 
 /* ── Formato ──────────────────────────────────────────────────────────── */
 export const fmt = (n) =>
@@ -41,33 +42,46 @@ export const getCat = (v) => CATEGORIES.find(c => c.value === v) ?? CATEGORIES[C
 /* ── Fechas de corte / pago y urgencia ────────────────────────────────── */
 // Helpers genéricos centralizados en format.js; se re-exportan aquí por
 // compatibilidad con los consumidores existentes del módulo de tarjetas.
-export { nextOccurrence, daysUntil, urgencyStyle } from './format';
+export { nextOccurrence, daysUntil, urgencyStyle, weekendToFriday } from './format';
+
+// Índice absoluto de mes (año*12 + mes, 0-based) del PRIMER corte en que una
+// compra empieza a facturar. Regla: si la compra se hizo el día de corte o
+// después, ya pasó el corte de ese mes → factura en el siguiente ciclo.
+const firstCutMonthIndex = (fechaCompra, cutDay) => {
+  const [y, m, d] = String(fechaCompra).split('-').map(Number);
+  const pIdx = y * 12 + (m - 1);
+  return d >= cutDay ? pIdx + 1 : pIdx;
+};
 
 /* ── Extracto / calendario de pagos ───────────────────────────────────── */
 /**
- * Construye el calendario de obligaciones mes a mes a partir de las compras activas.
- * El índice 0 corresponde al corte/ciclo vigente.
+ * Construye el extracto ciclo a ciclo a partir de las compras activas y el día
+ * de corte de la tarjeta. El índice 0 es el corte vigente (próxima fecha de corte).
  *
- * Cada compra a `m` meses contribuye su cuota mensual mientras le queden cuotas
- * (restantes = numeroCuotas - cuotasPagadas > m). El número de cuota proyectado
- * para ese mes es `cuotasPagadas + m + 1`.
+ * Cada compra factura su cuota 1 en el primer corte POSTERIOR a su fecha de
+ * compra (comprar el día de corte → siguiente ciclo); la cuota k, k-1 ciclos
+ * después. Solo se proyectan cuotas pendientes (> cuotasPagadas).
  *
  * @returns Array<{ key, date, label, total, lines, endingCount }>
  *   lines: [{ id, descripcion, categoria, valorCuota, cuotaActual, numeroCuotas, isLast }]
  */
-export const buildSchedule = (activePurchases, monthsAhead = 12) => {
-  const today = new Date();
-  const points = Array.from({ length: monthsAhead }, (_, m) => {
-    const date  = new Date(today.getFullYear(), today.getMonth() + m, 1);
-    const label = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-    const key   = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+export const buildSchedule = (activePurchases, card, monthsAhead = 12) => {
+  if (!card) return [];
+  const cutDay = Number(card.fechaCorte);
+  const anchor = _nextOccurrence(cutDay);                 // próxima fecha de corte
+  const anchorIdx = anchor.getFullYear() * 12 + anchor.getMonth();
+
+  const points = Array.from({ length: monthsAhead }, (_, mOff) => {
+    const cutIdx = anchorIdx + mOff;
+    const date   = new Date(Math.floor(cutIdx / 12), cutIdx % 12, 1);
+    const label  = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+    const key    = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
     const lines = activePurchases.reduce((acc, p) => {
-      const pagadas   = Number(p.cuotasPagadas);
-      const total     = Number(p.numeroCuotas);
-      const restantes = total - pagadas;
-      if (restantes > m) {
-        const cuotaActual = pagadas + m + 1;
+      const pagadas = Number(p.cuotasPagadas);
+      const total   = Number(p.numeroCuotas);
+      const cuotaActual = (cutIdx - firstCutMonthIndex(p.fechaCompra, cutDay)) + 1;
+      if (cuotaActual >= 1 && cuotaActual <= total && cuotaActual > pagadas) {
         acc.push({
           id: p.id,
           descripcion: p.descripcion,
