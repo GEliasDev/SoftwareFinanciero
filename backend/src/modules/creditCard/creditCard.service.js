@@ -1,6 +1,6 @@
 import { CreditCard } from './creditCard.model.js';
 import { CreditCardPurchase } from './creditCardPurchase.model.js';
-import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema, purchaseUpdateSchema } from './creditCard.schema.js';
+import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema, purchaseUpdateSchema, advanceCreateSchema } from './creditCard.schema.js';
 import { calcularCuotaCompra, calcularPagoMinimo } from './utils/creditCardCalculation.js';
 import { AppError } from '../../middlewares/AppError.js';
 
@@ -118,6 +118,64 @@ export const CreditCardService = {
         });
     },
 
+    // ── Avances ───────────────────────────────────────────────
+
+    createAdvance: async (creditCardId, data) => {
+        const card = await CreditCard.findByPk(creditCardId);
+        if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
+        if (card.status !== 'activa') throw new AppError('La tarjeta no está activa', 400);
+
+        const parsed = advanceCreateSchema.parse(data);
+        const comision = parseFloat(card.comisionAvance ?? 0);
+
+        if (parsed.montoTotal + comision > parseFloat(card.cupoDisponible)) {
+            throw new AppError(
+                `Cupo insuficiente. Disponible: $${card.cupoDisponible} (avance + comisión: $${(parsed.montoTotal + comision).toFixed(2)})`,
+                400
+            );
+        }
+
+        const calculos = calcularCuotaCompra({
+            montoTotal: parsed.montoTotal,
+            numeroCuotas: parsed.numeroCuotas,
+            tasaInteresMensual: parseFloat(card.tasaInteresMensual),
+        });
+
+        const avance = await CreditCardPurchase.create({
+            descripcion: parsed.descripcion,
+            montoTotal: parsed.montoTotal,
+            numeroCuotas: parsed.numeroCuotas,
+            fechaCompra: parsed.fechaCompra,
+            categoria: 'otros',
+            tipo: 'avance',
+            ...calculos,
+            creditCardId,
+        });
+
+        let comisionRecord = null;
+        if (comision > 0) {
+            comisionRecord = await CreditCardPurchase.create({
+                descripcion: 'Comisión por avance',
+                montoTotal: comision,
+                numeroCuotas: 1,
+                valorCuotaMensual: comision,
+                totalAPagar: comision,
+                totalIntereses: 0,
+                categoria: 'otros',
+                tipo: 'comision',
+                fechaCompra: new Date().toISOString().split('T')[0],
+                creditCardId,
+            });
+        }
+
+        // El avance y la comisión ocupan cupo (su principal).
+        await card.update({
+            cupoDisponible: parseFloat((parseFloat(card.cupoDisponible) - parsed.montoTotal - comision).toFixed(2)),
+        });
+
+        return { avance, comision: comisionRecord };
+    },
+
     getPurchasesByCard: async (creditCardId) => {
         return CreditCardPurchase.findAll({ where: { creditCardId }, order: [['fechaCompra', 'DESC']] });
     },
@@ -142,12 +200,14 @@ export const CreditCardService = {
 
         // Restaurar cupo solo por la porción de capital (cuota incluye interés que no ocupa cupo)
         const card = purchase.CreditCard;
-        const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
-        const nuevoCupo = parseFloat(
-            (parseFloat(card.cupoDisponible) + capitalPorCuota).toFixed(2)
-        );
-
-        await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
+        // La cuota de manejo es cupo-neutral: no restaura cupo al pagarse.
+        if (purchase.tipo !== 'cuota_manejo') {
+            const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
+            const nuevoCupo = parseFloat(
+                (parseFloat(card.cupoDisponible) + capitalPorCuota).toFixed(2)
+            );
+            await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
+        }
 
         return purchase.update({
             cuotasPagadas: nuevasCuotasPagadas,
@@ -168,9 +228,10 @@ export const CreditCardService = {
         });
         if (!purchase) throw new AppError('Compra no encontrada', 404);
 
-        // Restaurar cupo proporcional al capital no pagado (no intereses)
+        // Restaurar cupo proporcional al capital no pagado (no intereses).
+        // La cuota de manejo es cupo-neutral: no restaura cupo.
         const cuotasRestantes = purchase.numeroCuotas - purchase.cuotasPagadas;
-        if (cuotasRestantes > 0) {
+        if (cuotasRestantes > 0 && purchase.tipo !== 'cuota_manejo') {
             const card = purchase.CreditCard;
             const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
             const montoRestante = cuotasRestantes * capitalPorCuota;
@@ -241,13 +302,15 @@ export const CreditCardService = {
 
         const nuevasCuotasPagadas = purchase.cuotasPagadas - 1;
         const card = purchase.CreditCard;
-        const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
 
-        // Revertir cupo: descontar capital que fue restaurado al pagar
-        const nuevoCupo = parseFloat(
-            (parseFloat(card.cupoDisponible) - capitalPorCuota).toFixed(2)
-        );
-        await card.update({ cupoDisponible: Math.max(0, nuevoCupo) });
+        // La cuota de manejo es cupo-neutral: no revierte cupo.
+        if (purchase.tipo !== 'cuota_manejo') {
+            const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
+            const nuevoCupo = parseFloat(
+                (parseFloat(card.cupoDisponible) - capitalPorCuota).toFixed(2)
+            );
+            await card.update({ cupoDisponible: Math.max(0, nuevoCupo) });
+        }
 
         return purchase.update({
             cuotasPagadas: nuevasCuotasPagadas,
