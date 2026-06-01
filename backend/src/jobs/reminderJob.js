@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { ReminderService } from '../modules/reminder/reminder.service.js';
+import { generateCuotaManejoCharges } from './cuotaManejoJob.js';
 
 /**
  * Cron job que se ejecuta todos los días a las 8:00 AM
@@ -31,6 +32,12 @@ export const startReminderJob = () => {
             }
         } catch (err) {
             console.error('[ReminderJob] Error general:', err.message);
+        }
+
+        try {
+            await generateCuotaManejoCharges();
+        } catch (err) {
+            console.error('[CuotaManejoJob] Error:', err.message);
         }
     });
 
