@@ -4,7 +4,7 @@ import {
   ShoppingBag, CheckSquare, Plus, Search, X, SlidersHorizontal, ChevronUp, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { fmt, fmtDate, monthLabel } from '../../utils/format';
-import { getCat, CATEGORIES } from '../../utils/creditCard';
+import { getMovimientoVisual, CATEGORIES } from '../../utils/creditCard';
 
 export const CardPurchases = () => {
   const { purchases, activePurchases, id, handlePayAll } = useOutletContext();
@@ -118,7 +118,7 @@ export const CardPurchases = () => {
                       if (sortBy === 'categoria') return (a.categoria || '').localeCompare(b.categoria || '');
                       return 0;
                     }).map(p => {
-                      const cat = getCat(p.categoria || 'otros');
+                      const cat = getMovimientoVisual(p.tipo, p.categoria || 'otros');
                       const isPaid = p.status === 'pagada';
                       const cuotasPagadas = Number(p.cuotasPagadas);
                       const numeroCuotas = Number(p.numeroCuotas);
@@ -134,7 +134,12 @@ export const CardPurchases = () => {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                              <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.descripcion}</span>
+                              <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {p.tipo && p.tipo !== 'compra' && (
+                                  <span style={{ background: `${cat.color}1a`, color: cat.color, fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 99, textTransform: 'uppercase', flexShrink: 0 }}>{cat.label}</span>
+                                )}
+                                {p.descripcion}
+                              </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                 <span className="tabular" style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-primary)' }}>{fmt(p.montoTotal)}</span>
                                 {isPaid ? <span style={{ background: '#dcfce7', color: '#15803d', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>PAGADA</span> : <span style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>ACTIVA</span>}
