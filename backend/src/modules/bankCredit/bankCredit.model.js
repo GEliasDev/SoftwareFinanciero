@@ -93,6 +93,23 @@ BankCredit.init(
             type: DataTypes.DATEONLY,
             allowNull: false,
         },
+        // Tipo de crédito (especialmente útil para Fintechs colombianas)
+        tipoCredito: {
+            type: DataTypes.ENUM('libre_inversion', 'consumo', 'libranza', 'vehiculo', 'hipotecario', 'fintech', 'otro'),
+            allowNull: false,
+            defaultValue: 'otro',
+        },
+        // Número de referencia / obligación de la entidad
+        numeroReferencia: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        // Seguro de vida o aval mensual (cobrado por algunas fintechs)
+        seguro: {
+            type: DataTypes.DECIMAL(15, 2),
+            allowNull: false,
+            defaultValue: 0,
+        },
         status: {
             type: DataTypes.ENUM('activo', 'pagado', 'en_mora', 'cancelado'),
             allowNull: false,

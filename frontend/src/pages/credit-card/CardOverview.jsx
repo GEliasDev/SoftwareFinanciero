@@ -12,6 +12,7 @@ export const CardOverview = () => {
     card, activePurchases, monthlyObligation, cupoUsado, usagePct, barColor, tasaEA, isHighRate,
     nextCorte, nextPago, daysCorte, daysPago,
     totalCapital, totalConIntereses, totalYaPagado, totalRestante, maxMesesRestantes,
+    payableTotal, payableLines,
   } = useOutletContext();
   const [flipped, setFlipped] = useState(false);
 
@@ -88,7 +89,7 @@ export const CardOverview = () => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.6)', position: 'relative', zIndex: 1 }}>
                 <span>{activePurchases.length} compras activas</span>
-                <span>Oblig. mensual: {fmt(monthlyObligation)}</span>
+                <span>Pago este ciclo: {payableTotal > 0 ? fmt(payableTotal) : (monthlyObligation > 0 ? 'Al día ✓' : '—')}</span>
               </div>
             </div>
           </div>
@@ -118,7 +119,16 @@ export const CardOverview = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', flex: 1 }}>
             {[
-              { label: 'Obligación mensual', value: activePurchases.length > 0 ? fmt(monthlyObligation) : '—', sub: activePurchases.length > 0 ? `${activePurchases.length} compra${activePurchases.length !== 1 ? 's' : ''}` : 'sin cuotas activas', bg: 'var(--brand-50)', color: 'var(--brand-600)', border: 'rgba(91,77,241,0.15)' },
+              {
+                label: 'Pago este ciclo',
+                value: payableTotal > 0 ? fmt(payableTotal) : (monthlyObligation > 0 && payableTotal === 0 ? 'Pagado (Al día)' : '—'),
+                sub: payableTotal > 0
+                  ? `${payableLines.length} por pagar`
+                  : (monthlyObligation > 0 ? 'Todo pagado ✓' : 'sin cuotas activas'),
+                bg: payableTotal === 0 && monthlyObligation > 0 ? 'var(--color-success-bg)' : 'var(--brand-50)',
+                color: payableTotal === 0 && monthlyObligation > 0 ? 'var(--color-success)' : 'var(--brand-600)',
+                border: payableTotal === 0 && monthlyObligation > 0 ? 'rgba(5,150,105,0.15)' : 'rgba(91,77,241,0.15)'
+              },
               { label: 'Cupo disponible', value: fmt(card?.cupoDisponible ?? 0), sub: `${(100 - usagePct).toFixed(0)}% disponible`, bg: usagePct >= 80 ? '#fef2f2' : 'var(--color-success-bg)', color: usagePct >= 80 ? '#dc2626' : 'var(--color-success)', border: usagePct >= 80 ? 'rgba(220,38,38,0.15)' : 'rgba(5,150,105,0.15)' },
               { label: 'Saldo pendiente', value: activePurchases.length > 0 ? fmt(totalRestante) : '—', sub: activePurchases.length > 0 ? `${maxMesesRestantes} mes${maxMesesRestantes !== 1 ? 'es' : ''} restante${maxMesesRestantes !== 1 ? 's' : ''}` : '0 deuda activa', bg: '#fffbeb', color: 'var(--color-warning)', border: 'rgba(217,119,6,0.15)' },
               { label: 'Tasa efectiva anual', value: `${tasaEA}%`, sub: isHighRate ? '⚠ Por encima de usura' : '✓ Dentro del límite', bg: isHighRate ? 'var(--color-warning-bg)' : 'var(--color-bg)', color: isHighRate ? 'var(--color-warning)' : 'var(--color-text-secondary)', border: isHighRate ? 'rgba(217,119,6,0.15)' : 'var(--color-border)' },

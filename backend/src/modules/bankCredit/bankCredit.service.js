@@ -20,23 +20,26 @@ export const BankCreditService = {
         return BankCredit.findAll({ where: { userId } });
     },
 
-    getBankCreditById: async (id) => {
+    getBankCreditById: async (id, userId) => {
         const credit = await BankCredit.findByPk(id);
         if (!credit) throw new AppError('Crédito bancario no encontrado', 404);
+        if (credit.userId !== userId) throw new AppError('No autorizado', 403);
         return credit;
     },
 
-    updateBankCredit: async (id, data) => {
+    updateBankCredit: async (id, data, userId) => {
         const credit = await BankCredit.findByPk(id);
         if (!credit) throw new AppError('Crédito bancario no encontrado', 404);
+        if (credit.userId !== userId) throw new AppError('No autorizado', 403);
         const parsed = bankCreditUpdateSchema.parse(data);
         return credit.update(parsed);
     },
 
     // Registrar una cuota pagada y recalcular saldo pendiente
-    registerPayment: async (id) => {
+    registerPayment: async (id, userId) => {
         const credit = await BankCredit.findByPk(id);
         if (!credit) throw new AppError('Crédito bancario no encontrado', 404);
+        if (credit.userId !== userId) throw new AppError('No autorizado', 403);
 
         if (credit.status === 'pagado') {
             throw new AppError('Este crédito ya está completamente pagado', 400);
@@ -44,8 +47,25 @@ export const BankCreditService = {
 
         const nuevasCuotasPagadas = credit.cuotasPagadas + 1;
         const cuotasRestantes = credit.numeroCuotas - nuevasCuotasPagadas;
-        const nuevoSaldo = parseFloat((credit.valorCuota * cuotasRestantes).toFixed(2));
-        const nuevoStatus = cuotasRestantes === 0 ? 'pagado' : credit.status;
+
+        // Recalcular saldo de capital real por amortización francesa
+        const i = parseFloat(credit.tasaMensual) / 100;
+        const cuota = parseFloat(credit.valorCuota);
+        let saldo = parseFloat(credit.montoTotal);
+        for (let k = 0; k < nuevasCuotasPagadas; k++) {
+            const interes = saldo * i;
+            saldo = Math.max(0, saldo - (cuota - interes));
+        }
+        const nuevoSaldo = parseFloat(saldo.toFixed(2));
+
+        let nuevoStatus;
+        if (cuotasRestantes === 0) {
+            nuevoStatus = 'pagado';
+        } else if (credit.status === 'en_mora') {
+            nuevoStatus = 'activo'; // pago registrado, sale de mora
+        } else {
+            nuevoStatus = credit.status;
+        }
 
         return credit.update({
             cuotasPagadas: nuevasCuotasPagadas,
@@ -54,9 +74,10 @@ export const BankCreditService = {
         });
     },
 
-    deleteBankCredit: async (id) => {
+    deleteBankCredit: async (id, userId) => {
         const credit = await BankCredit.findByPk(id);
         if (!credit) throw new AppError('Crédito bancario no encontrado', 404);
+        if (credit.userId !== userId) throw new AppError('No autorizado', 403);
         return credit.destroy();
     },
 };

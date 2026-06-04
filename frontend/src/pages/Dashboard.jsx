@@ -11,16 +11,18 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
-import { fmt } from '../utils/format';
+import { fmt, nextOccurrence, daysUntil } from '../utils/format';
+import { buildSchedule } from '../utils/creditCard';
 
 const DIST_COLORS = { tarjetas: '#047857', creditos: '#10B981', suscripciones: '#6EE7B7' };
+const DIST_ROUTES = { Tarjetas: '/credit-cards', Créditos: '/bank-credits', Suscripciones: '/subscriptions' };
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const user = AuthService.getCurrentUser();
   const firstName = user?.primerNombre || user?.name?.split(' ')[0] || 'Usuario';
 
-  const [data, setData] = useState({ subs: [], cards: [], credits: [], subSummary: null, overview: null });
+  const [data, setData] = useState({ subs: [], cards: [], credits: [], subSummary: null });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,27 +31,39 @@ export const Dashboard = () => {
       CreditCardService.getAll(),
       BankCreditService.getAll(),
       SubscriptionService.getSummary(),
-      CreditCardService.getOverview(),
-    ]).then(([subsRes, cardsRes, creditsRes, summaryRes, overviewRes]) => {
+    ]).then(([subsRes, cardsRes, creditsRes, summaryRes]) => {
       setData({
         subs:       subsRes.status === 'fulfilled'    ? subsRes.value    : [],
         cards:      cardsRes.status === 'fulfilled'   ? cardsRes.value   : [],
         credits:    creditsRes.status === 'fulfilled' ? creditsRes.value : [],
         subSummary: summaryRes.status === 'fulfilled' ? summaryRes.value : null,
-        overview:   overviewRes.status === 'fulfilled' ? overviewRes.value : null,
       });
     }).finally(() => setLoading(false));
   }, []);
 
-  const activeSubs      = data.subs.length;
+  const activeSubs       = data.subs.length;
   const activeCreditsArr = data.credits.filter(c => c.status === 'activo');
-  const monthlySubCost  = data.subSummary?.totalMonthlyExpense ?? 0;
-  const cardObligation  = data.overview?.totalObligacionMensual ?? 0;
-  const monthlyCredit   = activeCreditsArr.reduce((s, c) => s + parseFloat(c.valorCuota ?? 0), 0);
-  const totalDebt       = data.credits.reduce((acc, c) => acc + (c.saldoPendiente ?? 0), 0);
-  const compromisoMensual = monthlySubCost + cardObligation + monthlyCredit;
+  const monthlySubCost   = data.subSummary?.totalMonthlyExpense ?? 0;
+  const monthlyCredit    = activeCreditsArr.reduce((s, c) => s + parseFloat(c.valorCuota ?? 0), 0);
+  const totalDebt        = data.credits.reduce((acc, c) => acc + (c.saldoPendiente ?? 0), 0);
   const upcomingRenewals = data.subSummary?.upcomingRenewals ?? [];
-  const nextPaymentDays  = data.overview?.nextPaymentDays;
+
+  // Obligación de tarjetas: mismo cálculo que el extracto (ciclo activo, no suma bruta)
+  const cardObligation = data.cards.reduce((s, c) => {
+    const schedule = buildSchedule(c.CreditCardPurchases || [], c);
+    const slot = schedule.find(sl => sl.isPaymentDue) ?? schedule.find(sl => sl.isCurrent);
+    return s + (slot?.total ?? 0);
+  }, 0);
+
+  // Próximo pago: menor cantidad de días entre tarjetas con deuda activa
+  const nextPaymentDays = (() => {
+    const dias = data.cards
+      .filter(c => (c.CreditCardPurchases || []).some(p => p.status === 'activa'))
+      .map(c => daysUntil(nextOccurrence(c.fechaPago)));
+    return dias.length > 0 ? Math.min(...dias) : null;
+  })();
+
+  const compromisoMensual = monthlySubCost + cardObligation + monthlyCredit;
   const urgente = nextPaymentDays !== null && nextPaymentDays !== undefined && nextPaymentDays <= 3 && cardObligation > 0;
 
   const dist = [
@@ -120,10 +134,19 @@ export const Dashboard = () => {
                   <div style={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={dist} cx="50%" cy="50%" innerRadius={54} outerRadius={78} paddingAngle={2} dataKey="value" stroke="none">
+                        <Pie
+                          data={dist} cx="50%" cy="50%"
+                          innerRadius={54} outerRadius={78} paddingAngle={2}
+                          dataKey="value" stroke="none"
+                          style={{ cursor: 'pointer' }}
+                          onClick={(entry) => entry?.name && navigate(DIST_ROUTES[entry.name] ?? '/')}
+                        >
                           {dist.map((d, i) => <Cell key={i} fill={d.color} />)}
                         </Pie>
-                        <Tooltip formatter={(v) => fmt(v)} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }} />
+                        <Tooltip
+                          formatter={(v, name) => [fmt(v), name]}
+                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
@@ -134,8 +157,20 @@ export const Dashboard = () => {
                   <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {dist.map(d => {
                       const pct = compromisoMensual > 0 ? (d.value / compromisoMensual) * 100 : 0;
+                      const route = DIST_ROUTES[d.name];
                       return (
-                        <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div
+                          key={d.name}
+                          onClick={() => route && navigate(route)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            cursor: 'pointer', padding: '6px 8px', margin: '-6px -8px',
+                            borderRadius: 'var(--radius-md)',
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
                           <span style={{ width: 10, height: 10, borderRadius: 3, background: d.color, flexShrink: 0 }} />
                           <span style={{ fontSize: 13, color: 'var(--text-2)', flex: 1 }}>{d.name}</span>
                           <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>{pct.toFixed(0)}%</span>

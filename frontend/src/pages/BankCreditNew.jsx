@@ -8,7 +8,7 @@ import { Stepper } from '../components/ui/Stepper';
 import { fmt, fmtDateLong } from '../utils/format';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
-const STEP_FIELDS = [['nombre', 'entidad'], ['montoTotal', 'numeroCuotas', 'tasaInteres', 'cuotaAdministracion'], ['diaPago', 'fechaInicio']];
+const STEP_FIELDS = [['nombre', 'entidad', 'tipoCredito'], ['montoTotal', 'numeroCuotas', 'tasaInteres', 'cuotaAdministracion', 'seguro'], ['diaPago', 'fechaInicio']];
 
 const calcCuota = (monto, cuotas, tasaMensualPct) => {
   if (!monto || cuotas < 1) return 0;
@@ -25,8 +25,9 @@ export const BankCreditNew = () => {
   const [step, setStep] = useState(0);
   const [touched, setTouched] = useState({});
   const [formData, setFormData] = useState({
-    nombre: '', entidad: '', montoTotal: '', numeroCuotas: '',
-    tasaInteres: '', tipoTasa: 'mensual', cuotaAdministracion: '', diaPago: '', fechaInicio: '',
+    nombre: '', entidad: '', tipoCredito: 'otro', numeroReferencia: '',
+    montoTotal: '', numeroCuotas: '', tasaInteres: '', tipoTasa: 'mensual',
+    cuotaAdministracion: '', seguro: '', diaPago: '', fechaInicio: '',
   });
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -63,11 +64,14 @@ export const BankCreditNew = () => {
       await BankCreditService.create({
         nombre: formData.nombre,
         entidad: formData.entidad,
+        tipoCredito: formData.tipoCredito,
+        numeroReferencia: formData.numeroReferencia || undefined,
         montoTotal: Number(formData.montoTotal),
         numeroCuotas: Number(formData.numeroCuotas),
         tasaInteres: Number(formData.tasaInteres),
         tipoTasa: formData.tipoTasa,
         cuotaAdministracion: formData.cuotaAdministracion ? Number(formData.cuotaAdministracion) : 0,
+        seguro: formData.seguro ? Number(formData.seguro) : 0,
         diaPago: Number(formData.diaPago),
         fechaInicio: formData.fechaInicio,
       });
@@ -92,10 +96,11 @@ export const BankCreditNew = () => {
   const cuotas = Number(formData.numeroCuotas) || 0;
   const tasa = Number(formData.tasaInteres) || 0;
   const admin = Number(formData.cuotaAdministracion) || 0;
+  const seguro = Number(formData.seguro) || 0;
   const tasaMensual = tasa ? (formData.tipoTasa === 'anual' ? (Math.pow(1 + tasa / 100, 1 / 12) - 1) * 100 : tasa) : 0;
   const cuotaBase = monto && cuotas ? calcCuota(monto, cuotas, tasaMensual) : 0;
-  const cuotaMensual = cuotaBase + admin;
-  const totalAPagar = cuotaBase * cuotas + admin * cuotas;
+  const cuotaMensual = cuotaBase + admin + seguro;
+  const totalAPagar = cuotaMensual * cuotas;
   const totalIntereses = cuotaBase * cuotas - monto;
   const fechaFin = formData.fechaInicio && cuotas
     ? (() => { const d = new Date(formData.fechaInicio); d.setMonth(d.getMonth() + cuotas); return d.toISOString().slice(0, 10); })()
@@ -161,10 +166,25 @@ export const BankCreditNew = () => {
             {step === 0 && (
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Identidad del crédito</h3>
-                <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>¿Cómo se llama y de qué entidad es?</p>
+                <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>¿Cómo se llama, de qué entidad y qué tipo?</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  {field('nombre', 'Nombre / Alias *', 'Como quieres identificar este crédito', { placeholder: 'Ej: Crédito Addi Electrodomésticos' })}
+                  {field('entidad', 'Entidad *', null, { placeholder: 'Ej: Addi, Sistecrédito, Bancolombia…' })}
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  {field('nombre', 'Nombre / Alias *', 'Como quieres identificar este crédito', { placeholder: 'Ej: Crédito Libre Inversión' })}
-                  {field('entidad', 'Entidad / Banco *', null, { placeholder: 'Ej: Bancolombia...' })}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Tipo de crédito</label>
+                    <select className="form-input" name="tipoCredito" value={formData.tipoCredito} onChange={handleChange}>
+                      <option value="libre_inversion">Libre inversión</option>
+                      <option value="consumo">Consumo</option>
+                      <option value="libranza">Libranza</option>
+                      <option value="vehiculo">Vehículo</option>
+                      <option value="hipotecario">Hipotecario</option>
+                      <option value="fintech">Fintech (Addi / Sistecrédito…)</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                  {field('numeroReferencia', 'N.° referencia / obligación', 'Opcional — número que te da la entidad', { placeholder: 'Ej: OBL-2025-00123' })}
                 </div>
               </div>
             )}
@@ -186,8 +206,9 @@ export const BankCreditNew = () => {
                     </select>
                   </div>
                 </div>
-                <div style={{ maxWidth: 260 }}>
-                  {field('cuotaAdministracion', 'Cuota administración (opcional)', 'Si tu crédito cobra manejo mensual', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  {field('cuotaAdministracion', 'Cuota administración', 'Cargo fijo mensual de administración', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
+                  {field('seguro', 'Seguro / aval mensual', 'Seguro de vida o aval (Addi, Sistecrédito…)', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
                 </div>
               </div>
             )}

@@ -5,7 +5,7 @@ import { BankCreditService } from '../services/bankCreditService';
 import { Stepper } from '../components/ui/Stepper';
 
 const STEPS = ['Identidad', 'Ajustes'];
-const STEP_FIELDS = [['nombre', 'entidad'], ['cuotaAdministracion', 'diaPago']];
+const STEP_FIELDS = [['nombre', 'entidad', 'tipoCredito'], ['cuotaAdministracion', 'seguro', 'diaPago']];
 
 export const BankCreditEdit = () => {
   const { id } = useParams();
@@ -15,11 +15,19 @@ export const BankCreditEdit = () => {
   const [error, setError] = useState('');
   const [step, setStep] = useState(0);
   const [touched, setTouched] = useState({});
-  const [data, setData] = useState({ nombre: '', entidad: '', cuotaAdministracion: 0, diaPago: '' });
+  const [data, setData] = useState({ nombre: '', entidad: '', tipoCredito: 'otro', numeroReferencia: '', cuotaAdministracion: 0, seguro: 0, diaPago: '' });
 
   useEffect(() => {
     BankCreditService.getById(id)
-      .then(c => setData({ nombre: c.nombre, entidad: c.entidad, cuotaAdministracion: c.cuotaAdministracion ?? 0, diaPago: c.diaPago }))
+      .then(c => setData({
+        nombre: c.nombre,
+        entidad: c.entidad,
+        tipoCredito: c.tipoCredito ?? 'otro',
+        numeroReferencia: c.numeroReferencia ?? '',
+        cuotaAdministracion: c.cuotaAdministracion ?? 0,
+        seguro: c.seguro ?? 0,
+        diaPago: c.diaPago,
+      }))
       .catch(() => setError('No se pudo cargar el crédito.'))
       .finally(() => setLoading(false));
   }, [id]);
@@ -53,8 +61,13 @@ export const BankCreditEdit = () => {
     setSaving(true);
     try {
       await BankCreditService.update(id, {
-        nombre: data.nombre, entidad: data.entidad,
-        cuotaAdministracion: Number(data.cuotaAdministracion), diaPago: Number(data.diaPago),
+        nombre: data.nombre,
+        entidad: data.entidad,
+        tipoCredito: data.tipoCredito,
+        numeroReferencia: data.numeroReferencia || undefined,
+        cuotaAdministracion: Number(data.cuotaAdministracion),
+        seguro: Number(data.seguro),
+        diaPago: Number(data.diaPago),
       });
       navigate(`/bank-credits/${id}`);
     } catch (err) {
@@ -98,19 +111,35 @@ export const BankCreditEdit = () => {
           {step === 0 && (
             <div>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Identidad</h3>
-              <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Nombre y entidad del crédito</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Nombre, entidad y tipo del crédito</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                {field('nombre', 'Nombre *', null, { placeholder: 'Ej: Crédito Addi' })}
+                {field('entidad', 'Entidad *', null, { placeholder: 'Ej: Addi, Sistecrédito, Bancolombia' })}
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                {field('nombre', 'Nombre *', null, { placeholder: 'Ej: Crédito Libre Inversión' })}
-                {field('entidad', 'Entidad *', null, { placeholder: 'Ej: Bancolombia' })}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Tipo de crédito</label>
+                  <select className="form-input" name="tipoCredito" value={data.tipoCredito} onChange={handleChange}>
+                    <option value="libre_inversion">Libre inversión</option>
+                    <option value="consumo">Consumo</option>
+                    <option value="libranza">Libranza</option>
+                    <option value="vehiculo">Vehículo</option>
+                    <option value="hipotecario">Hipotecario</option>
+                    <option value="fintech">Fintech (Addi / Sistecrédito…)</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                {field('numeroReferencia', 'N.° referencia / obligación', null, { placeholder: 'Ej: OBL-2025-00123' })}
               </div>
             </div>
           )}
           {step === 1 && (
             <div>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Ajustes</h3>
-              <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Cuota de administración y día de pago</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                {field('cuotaAdministracion', 'Cuota de administración', null, { type: 'number', min: '0', step: '0.01' })}
+              <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Cargos adicionales y día de pago</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                {field('cuotaAdministracion', 'Cuota administración', null, { type: 'number', min: '0', step: '0.01' })}
+                {field('seguro', 'Seguro / aval mensual', null, { type: 'number', min: '0', step: '0.01' })}
                 {field('diaPago', 'Día de pago * (1–31)', null, { type: 'number', min: '1', max: '31' })}
               </div>
             </div>

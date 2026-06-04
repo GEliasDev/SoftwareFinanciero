@@ -36,12 +36,13 @@ export const CreditCardLayout = () => {
 
   const activePurchases = useMemo(() => purchases.filter(p => p.status === 'activa'), [purchases]);
 
-  // Corte cuyo pago está vigente: el anterior en ventana de pago (isPaymentDue) o,
-  // si no, el próximo (isCurrent). Es el ÚNICO corte que se paga con "Pagar este corte".
+  // Corte cuyo pago está vigente: el corte más antiguo CERRADO (pasado) que tenga cuotas pendientes.
+  // No exigimos el pago del corte vigente (isCurrent) hasta que este cierre físicamente.
   const payableSlot = useMemo(() => {
     if (!card) return null;
     const schedule = buildSchedule(purchases, card);
-    return schedule.find(s => s.isPaymentDue) ?? schedule.find(s => s.isCurrent) ?? null;
+    const oldestUnpaidPast = schedule.find(s => s.isPast && s.lines.some(l => !l.wasPaid));
+    return oldestUnpaidPast ?? null;
   }, [purchases, card]);
 
   // Solo las compras con una cuota PENDIENTE en ese corte (no todas las activas).
@@ -53,7 +54,14 @@ export const CreditCardLayout = () => {
     () => payableLines.reduce((s, l) => s + l.valorCuota, 0),
     [payableLines]
   );
-  const monthlyObligation = payableSlot?.total ?? 0;
+  
+  // Obligación original facturada en el ciclo vigente (para KPIs y comparaciones)
+  const monthlyObligation = useMemo(() => {
+    if (!card) return 0;
+    const schedule = buildSchedule(purchases, card);
+    const current = schedule.find(s => s.isCurrent);
+    return current?.total ?? 0;
+  }, [purchases, card]);
   const totalCapital      = useMemo(() => activePurchases.reduce((s, p) => s + parseFloat(p.montoTotal ?? 0), 0), [activePurchases]);
   const totalConIntereses = useMemo(() => activePurchases.reduce((s, p) => s + parseFloat(p.totalAPagar ?? 0), 0), [activePurchases]);
   const totalYaPagado     = useMemo(() => activePurchases.reduce((s, p) => s + Number(p.cuotasPagadas) * parseFloat(p.valorCuotaMensual ?? 0), 0), [activePurchases]);
@@ -67,10 +75,25 @@ export const CreditCardLayout = () => {
   const tasaEA      = ((Math.pow(1 + tasaMensual / 100, 12) - 1) * 100).toFixed(1);
   const isHighRate  = card && parseFloat(tasaEA) > TASA_USURA_EA;
 
-  const nextCorte = card ? nextOccurrence(card.fechaCorte) : null;
-  const nextPago  = card ? nextOccurrence(card.fechaPago)  : null;
-  const daysCorte = nextCorte ? daysUntil(nextCorte) : null;
-  const daysPago  = nextPago  ? daysUntil(nextPago)  : null;
+  const nextCorte = useMemo(() => {
+    if (!card) return null;
+    return nextOccurrence(card.fechaCorte);
+  }, [card]);
+
+  const nextPago = useMemo(() => {
+    if (!card) return null;
+    const date = nextOccurrence(card.fechaPago);
+    const today = new Date();
+    // Si ya se pagó todo lo facturado (payableSlot es null) y hoy aún no pasa el día de pago de este mes,
+    // significa que el pago de este mes ya se realizó. Por lo tanto, el próximo pago real es el del mes siguiente.
+    if (payableSlot === null && today.getDate() <= Number(card.fechaPago) && activePurchases.length > 0) {
+      date.setMonth(date.getMonth() + 1);
+    }
+    return date;
+  }, [card, payableSlot, activePurchases]);
+
+  const daysCorte = useMemo(() => (nextCorte ? daysUntil(nextCorte) : null), [nextCorte]);
+  const daysPago  = useMemo(() => (nextPago ? daysUntil(nextPago) : null), [nextPago]);
 
   const categoryData = useMemo(() =>
     CATEGORIES.map(cat => ({
@@ -142,6 +165,8 @@ export const CreditCardLayout = () => {
     cupoUsado, usagePct, barColor, tasaMensual, tasaEA, isHighRate,
     nextCorte, nextPago, daysCorte, daysPago, categoryData, handlePayAll,
     payableCount: payableLines.length,
+    payableTotal,
+    payableLines,
   };
 
   return (

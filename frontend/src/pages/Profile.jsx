@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
-import { User, Lock, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2 } from 'lucide-react';
 
 const Alert = ({ type, message, onClose }) => (
   <div className={`info-box ${type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -14,6 +16,7 @@ const Alert = ({ type, message, onClose }) => (
 );
 
 export const Profile = () => {
+  const navigate = useNavigate();
   const currentUser = AuthService.getCurrentUser();
   const userId = currentUser?.id;
 
@@ -39,6 +42,9 @@ export const Profile = () => {
   const [savingPassword, setSavingPassword] = useState(false);
   const [profileAlert, setProfileAlert] = useState(null);
   const [passwordAlert, setPasswordAlert] = useState(null);
+  const [showCurrent, setShowCurrent]   = useState(false);
+  const [showNew, setShowNew]           = useState(false);
+  const [showConfirm, setShowConfirm]   = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -287,45 +293,30 @@ export const Profile = () => {
           )}
 
           <form onSubmit={handlePasswordSubmit}>
-            <div className="form-group">
-              <label className="form-label">Contraseña actual *</label>
-              <input
-                className="form-input"
-                name="currentPassword"
-                type="password"
-                value={passwords.currentPassword}
-                onChange={handlePasswordChange}
-                required
-                placeholder="••••••••"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Nueva contraseña *</label>
-              <input
-                className="form-input"
-                name="newPassword"
-                type="password"
-                value={passwords.newPassword}
-                onChange={handlePasswordChange}
-                required
-                placeholder="••••••••"
-                minLength={6}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Confirmar nueva contraseña *</label>
-              <input
-                className="form-input"
-                name="confirmPassword"
-                type="password"
-                value={passwords.confirmPassword}
-                onChange={handlePasswordChange}
-                required
-                placeholder="••••••••"
-              />
-            </div>
+            {[
+              { name: 'currentPassword', label: 'Contraseña actual *',          show: showCurrent, setShow: setShowCurrent, auto: 'current-password' },
+              { name: 'newPassword',     label: 'Nueva contraseña *',            show: showNew,     setShow: setShowNew,     auto: 'new-password'     },
+              { name: 'confirmPassword', label: 'Confirmar nueva contraseña *',  show: showConfirm, setShow: setShowConfirm, auto: 'new-password'     },
+            ].map(({ name, label, show, setShow, auto }) => (
+              <div className="form-group" key={name}>
+                <label className="form-label">{label}</label>
+                <div className="auth-pwd-wrap">
+                  <input
+                    className="form-input"
+                    name={name}
+                    type={show ? 'text' : 'password'}
+                    value={passwords[name]}
+                    onChange={handlePasswordChange}
+                    required
+                    placeholder="••••••••"
+                    autoComplete={auto}
+                  />
+                  <button type="button" className="auth-eye-btn" onClick={() => setShow(v => !v)} aria-label={show ? 'Ocultar' : 'Mostrar'}>
+                    {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            ))}
 
             <div className="info-box primary" style={{ marginBottom: '1.25rem', fontSize: 12 }}>
               La contraseña debe tener al menos 6 caracteres.
@@ -338,6 +329,43 @@ export const Profile = () => {
           </form>
         </div>
       </div>
+      {/* Zona de peligro */}
+      <div className="card" style={{ marginTop: '1.5rem', border: '1px solid rgba(220,38,38,0.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <Trash2 size={16} style={{ color: 'var(--neg-600)' }} />
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--neg-600)', margin: 0 }}>Zona de peligro</h2>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          Una vez que elimines tu cuenta, todos tus datos serán borrados permanentemente. Esta acción no se puede deshacer.
+        </p>
+        <button
+          className="btn btn-danger"
+          onClick={async () => {
+            const result = await Swal.fire({
+              title: '¿Eliminar tu cuenta?',
+              html: 'Se borrarán <b>todos tus datos</b>: tarjetas, créditos, suscripciones y recordatorios.<br/><br/>Esta acción <b>no se puede deshacer</b>.',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#DC2626',
+              cancelButtonColor: '#64748B',
+              confirmButtonText: 'Sí, eliminar mi cuenta',
+              cancelButtonText: 'Cancelar',
+              reverseButtons: true,
+            });
+            if (!result.isConfirmed) return;
+            try {
+              await UserService.delete(userId);
+              AuthService.logout();
+              navigate('/login');
+            } catch {
+              Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar la cuenta. Intenta de nuevo.' });
+            }
+          }}
+        >
+          <Trash2 size={14} /> Eliminar mi cuenta
+        </button>
+      </div>
+
     </div>
   );
 };

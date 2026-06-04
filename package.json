@@ -2,7 +2,7 @@
   "name": "software-financiero",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\""
+    "dev": "concurrently \"cd backend && npm run dev\" \"npx wait-on -t 60000 tcp:localhost:3001 && cd frontend && npm run dev\""
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

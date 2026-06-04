@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Solventa — guía para Claude
 
 App de **finanzas personales** (antes "Debti"). Gestiona tarjetas de crédito,
@@ -8,6 +12,58 @@ créditos bancarios, suscripciones, recordatorios y reportes. Español (es-CO, C
   CSS plano con variables (sin Tailwind). `frontend/`.
 - **Backend:** Node + Express + Sequelize, Zod para validación. `backend/`.
 - Auth por JWT en `localStorage`. El frontend usa `baseURL: '/api'` (proxy de Vite).
+
+## Base de datos
+- **PostgreSQL** alojado en Supabase. Credenciales en `backend/.env`.
+- `sequelize.sync({ alter: true })` corre en cada arranque del servidor — **no hay migraciones manuales**. Los cambios al modelo se aplican automáticamente.
+- SSL habilitado automáticamente para hosts que no sean `localhost`/`127.0.0.1`.
+
+## Arquitectura del backend
+Cada recurso vive en `backend/src/modules/<nombre>/` con estos archivos:
+
+```
+<nombre>.model.js      — Sequelize Model (define tabla y asociaciones)
+<nombre>.schema.js     — Schemas Zod para validar entrada
+<nombre>.service.js    — Lógica de negocio (valida con Zod, opera sobre modelos)
+<nombre>.controller.js — Extrae req/res, llama al service
+<nombre>.routes.js     — Define rutas Express + middleware JWT
+utils/                 — Cálculos puros (sin efectos secundarios)
+```
+
+El service lanza `throw new AppError('mensaje', statusCode)` para errores esperados; el middleware `errorHandler` en `main.js` los captura y los convierte en JSON.
+
+### Módulos existentes
+`user | creditCard | bankCredit | suscription | reminder | analytics`
+
+> El módulo de suscripciones tiene un typo histórico: la carpeta es `suscription` (sin "b"), no `subscription`.
+
+### Cron jobs (`backend/src/jobs/`)
+- `reminderJob.js` — se inicia en `main.js` al arrancar el servidor.
+- `cuotaManejoJob.js` — genera cargos `cuota_manejo` idempotentemente al llegar la fecha de corte de cada tarjeta activa.
+
+### Rutas frontend completas (App.jsx)
+```
+/                          → Dashboard
+/subscriptions             → lista | /new | /:id
+/credit-cards              → lista | /new
+/credit-cards/:id          → CreditCardLayout (tabs anidados)
+  index                    → CardOverview
+  /statement               → CardStatementPage
+  /purchases               → CardPurchases
+  /analysis                → CardAnalysis
+/credit-cards/:id/edit
+/credit-cards/:id/purchases/new
+/credit-cards/:id/advances/new
+/credit-cards/:id/purchases/:purchaseId
+/bank-credits              → lista | /new
+/bank-credits/:id          → BankCreditLayout (tabs anidados)
+  index                    → BankCreditOverview
+  /schedule                → BankCreditSchedule
+/bank-credits/:id/edit
+/reminders                 → lista | /new
+/reports
+/profile
+```
 
 ## Comandos
 - Todo junto: `npm run dev` (raíz) — levanta backend y frontend.
@@ -58,6 +114,18 @@ motor antes de decidir:
   formularios simples pueden ser de una página seccionada.
 - Confirmaciones con **SweetAlert** (no `window.confirm`).
 
+## Modelo de datos clave: CreditCardPurchase.tipo
+El campo `tipo` distingue el origen del cargo:
+
+| tipo | descripción | cupo-neutral |
+|---|---|---|
+| `compra` | compra en cuotas normal | no (descuenta/restaura cupo) |
+| `avance` | avance de efectivo | no |
+| `comision` | comisión por avance (generada automáticamente) | **sí** |
+| `cuota_manejo` | cargo mensual por cuota de manejo | **sí** |
+
+Los tipos cupo-neutral (`comision`, `cuota_manejo`) **nunca** deben afectar `cupoDisponible` al crearse, pagarse ni borrarse. Cualquier lógica de cupo debe respetar esta distinción.
+
 ## Gotchas (bugs reales ya encontrados — no repetir)
 - **Sequelize DECIMAL llega como STRING** (`tasaMensual`, `montoTotal`, `saldoPendiente`,
   `valorCuota`, etc.). SIEMPRE `parseFloat(x)` antes de `.toFixed()` u operaciones.
@@ -71,6 +139,9 @@ motor antes de decidir:
 `ui-ux-pro-max` (diseño, OBLIGATORIO en frontend), `superpowers:brainstorming`
 (antes de construir features), `superpowers:systematic-debugging` (bugs),
 `superpowers:verification-before-completion`, `superpowers:test-driven-development`.
+
+## Mantenimiento de este archivo
+**Actualizar este CLAUDE.md con cada cambio relevante** al proyecto: nuevos módulos, rutas, convenciones, gotchas descubiertos, decisiones de arquitectura o cambios al sistema de diseño. El objetivo es que siempre refleje el estado actual del repositorio.
 
 ## Documentos
 - Spec de rediseño: `docs/superpowers/specs/2026-05-30-solventa-redesign-design.md`.

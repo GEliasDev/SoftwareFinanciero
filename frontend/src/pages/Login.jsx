@@ -1,18 +1,32 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff, TrendingUp, CreditCard, Bell, Landmark, AlertCircle, ArrowRight } from 'lucide-react';
 import { AuthService } from '../services/authService';
-import { TrendingUp, CreditCard, Bell, Landmark } from 'lucide-react';
 import { BrandMark } from '../components/ui/BrandMark';
 
+const FEATURES = [
+  { icon: TrendingUp, text: 'Seguimiento de deudas y saldos en tiempo real' },
+  { icon: CreditCard, text: 'Gestión completa de tarjetas y compras a cuotas' },
+  { icon: Landmark,   text: 'Créditos con tabla de amortización automática' },
+  { icon: Bell,       text: 'Recordatorios de vencimientos configurables' },
+];
+
 export const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [showPwd, setShowPwd]     = useState(false);
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [touched, setTouched]     = useState({});
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const emailError    = touched.email    && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) ? 'Ingresa un correo válido' : '';
+  const passwordError = touched.password && password.length < 6 ? 'Mínimo 6 caracteres' : '';
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ email: true, password: true });
+    if (emailError || passwordError) return;
     setLoading(true);
     setError('');
     try {
@@ -30,25 +44,30 @@ export const Login = () => {
       <div className="auth-wrapper">
 
         {/* Panel izquierdo */}
-        <div className="auth-image-section">
-          <div className="auth-image-content">
-            <div style={{ marginBottom: '1.5rem' }}>
-              <span style={{ fontSize: '1.375rem', fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>Solventa</span>
+        <div className="auth-panel-brand">
+          <div className="auth-panel-brand-inner">
+            <div className="auth-brand-logo">
+              <BrandMark size={36} shadow={false} />
+              <span>Solventa</span>
             </div>
-            <h2>Toma el control de tus finanzas personales</h2>
-            <p>Un panel unificado para gestionar suscripciones, tarjetas de crédito y créditos bancarios con claridad y precisión.</p>
-            <div className="auth-image-features">
-              {[
-                { icon: TrendingUp, label: 'Seguimiento de gastos y deudas en tiempo real' },
-                { icon: CreditCard, label: 'Gestión completa de tarjetas y compras a cuotas' },
-                { icon: Landmark,   label: 'Control de créditos bancarios con calculadora' },
-                { icon: Bell,       label: 'Recordatorios automáticos de vencimientos' },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="auth-image-feature">
-                  <div className="auth-feature-icon"><Icon size={14} color="white" /></div>
-                  <span>{label}</span>
-                </div>
+            <div>
+              <h2 className="auth-panel-headline">Tus finanzas, bajo control total</h2>
+              <p className="auth-panel-sub">Un panel unificado para gestionar deudas, tarjetas y créditos con claridad.</p>
+            </div>
+            <ul className="auth-feature-list">
+              {FEATURES.map(({ icon: Icon, text }) => (
+                <li key={text} className="auth-feature-item">
+                  <span className="auth-feature-dot"><Icon size={13} /></span>
+                  {text}
+                </li>
               ))}
+            </ul>
+            <div className="auth-panel-stat-row">
+              <div className="auth-panel-stat"><span>COP</span><strong>Moneda nativa</strong></div>
+              <div className="auth-panel-stat-sep" />
+              <div className="auth-panel-stat"><span>100%</span><strong>Privado</strong></div>
+              <div className="auth-panel-stat-sep" />
+              <div className="auth-panel-stat"><span>6</span><strong>Módulos</strong></div>
             </div>
           </div>
         </div>
@@ -59,7 +78,7 @@ export const Login = () => {
 
             <div className="auth-form-header">
               <div className="auth-logo">
-                <BrandMark size={30} />
+                <BrandMark size={28} />
                 <span className="auth-logo-text">Solventa</span>
               </div>
               <h2>Iniciar sesión</h2>
@@ -67,31 +86,72 @@ export const Login = () => {
             </div>
 
             <div className="auth-form-card">
-              {error && <div className="auth-message error" style={{ marginBottom: '1rem' }}>{error}</div>}
+              {error && (
+                <div className="auth-alert-error">
+                  <AlertCircle size={14} />
+                  {error}
+                </div>
+              )}
 
-              <form onSubmit={handleLogin}>
+              <form onSubmit={handleSubmit} noValidate>
                 <div className="form-group">
-                  <label className="form-label">Correo Electrónico</label>
-                  <input className="form-input" type="email" value={email}
-                    onChange={(e) => setEmail(e.target.value)} required
-                    placeholder="ejemplo@correo.com" autoComplete="email" />
+                  <label className="form-label" htmlFor="login-email">Correo electrónico</label>
+                  <input
+                    id="login-email"
+                    className={`form-input auth-input ${touched.email && emailError ? 'error' : ''}`}
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    onBlur={() => setTouched(t => ({ ...t, email: true }))}
+                    placeholder="correo@ejemplo.com"
+                    autoComplete="email"
+                    aria-describedby={emailError ? 'login-email-err' : undefined}
+                    aria-invalid={!!emailError}
+                  />
+                  {touched.email && emailError && (
+                    <p className="form-error" id="login-email-err"><AlertCircle size={11} /> {emailError}</p>
+                  )}
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Contraseña</label>
-                  <input className="form-input" type="password" value={password}
-                    onChange={(e) => setPassword(e.target.value)} required
-                    placeholder="••••••••" autoComplete="current-password" />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                    <label className="form-label" htmlFor="login-password" style={{ margin: 0 }}>Contraseña</label>
+                    <Link to="/forgot-password" style={{ fontSize: 12, color: 'var(--brand-600)', fontWeight: 500, textDecoration: 'none' }}
+                      onMouseOver={e => e.target.style.textDecoration = 'underline'}
+                      onMouseOut={e => e.target.style.textDecoration = 'none'}>
+                      ¿Olvidaste tu contraseña?
+                    </Link>
+                  </div>
+                  <div className="auth-pwd-wrap">
+                    <input
+                      id="login-password"
+                      className={`form-input auth-input ${touched.password && passwordError ? 'error' : ''}`}
+                      type={showPwd ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      onBlur={() => setTouched(t => ({ ...t, password: true }))}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      aria-describedby={passwordError ? 'login-pwd-err' : undefined}
+                      aria-invalid={!!passwordError}
+                    />
+                    <button type="button" className="auth-eye-btn" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                      {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {touched.password && passwordError && (
+                    <p className="form-error" id="login-pwd-err"><AlertCircle size={11} /> {passwordError}</p>
+                  )}
                 </div>
 
                 <button type="submit" className="auth-submit-btn" disabled={loading}>
-                  {loading ? 'Iniciando sesión...' : 'Ingresar a mi cuenta'}
+                  {loading ? 'Ingresando…' : <><span>Ingresar a mi cuenta</span><ArrowRight size={16} /></>}
                 </button>
               </form>
             </div>
 
             <div className="auth-footer-link">
-              ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
+              ¿No tienes cuenta? <Link to="/register">Regístrate gratis</Link>
             </div>
           </div>
         </div>

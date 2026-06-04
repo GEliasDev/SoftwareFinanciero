@@ -9,5 +9,21 @@ export const CARD_COLORS = [
   { key: 'teal',   label: 'Teal',    gradient: 'linear-gradient(135deg, #0891b2 0%, #155e75 100%)' },
 ];
 
-export const getCardGradient = (key) =>
-  CARD_COLORS.find(c => c.key === key)?.gradient ?? CARD_COLORS[0].gradient;
+// Oscurece un hex en la proporción indicada (0–1).
+export const darkenHex = (hex, amount) => {
+  const h = hex.replace('#', '');
+  const num = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  const r = Math.max(0, (num >> 16) - Math.round(255 * amount));
+  const g = Math.max(0, ((num >> 8) & 0xff) - Math.round(255 * amount));
+  const b = Math.max(0, (num & 0xff) - Math.round(255 * amount));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
+export const getCardGradient = (key) => {
+  if (!key) return CARD_COLORS[0].gradient;
+  const preset = CARD_COLORS.find(c => c.key === key);
+  if (preset) return preset.gradient;
+  // Color hex personalizado
+  if (key.startsWith('#')) return `linear-gradient(135deg, ${key} 0%, ${darkenHex(key, 0.25)} 100%)`;
+  return CARD_COLORS[0].gradient;
+};

@@ -12,6 +12,7 @@ import reminderRoutes from './modules/reminder/reminder.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { startReminderJob } from './jobs/reminderJob.js';
+import { startMoraJob } from './jobs/bankCreditMoraJob.js';
 
 const app = express();
 
@@ -32,7 +33,8 @@ const PORT = process.env.PORT || 3001;
 (async () => {
     try {
         await sequelize.sync({ alter: true });
-        startReminderJob(); // ✅ iniciar cron job junto con el servidor
+        startReminderJob();
+        startMoraJob();
         app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${PORT}`));
     } catch (error) {
         console.error('Error al iniciar el servidor:', error);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CreditCardService } from '../services/creditCardService';
 import { Plus, CreditCard as CardIcon, AlertTriangle, ShoppingBag, CalendarClock, Wallet } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
-import { fmt, nextOccurrence, daysUntil, urgencyStyle, fmtShort } from '../utils/creditCard';
+import { fmt, nextOccurrence, daysUntil, urgencyStyle, fmtShort, buildSchedule } from '../utils/creditCard';
 
 const usageColor = (pct) =>
   pct >= 80 ? '#ef4444' : pct >= 50 ? '#f59e0b' : '#22c55e';
@@ -17,8 +17,8 @@ const activeObl = (card) =>
 
 export const CreditCards = () => {
   const navigate = useNavigate();
-  const [cards, setCards]         = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filterDeuda, setFilterDeuda] = useState(false);
 
   useEffect(() => {
@@ -28,34 +28,97 @@ export const CreditCards = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalCupo    = cards.reduce((s, c) => s + parseFloat(c.cupoTotal ?? 0), 0);
-  const totalUsado   = cards.reduce((s, c) => s + (parseFloat(c.cupoTotal ?? 0) - parseFloat(c.cupoDisponible ?? c.cupoTotal ?? 0)), 0);
-  const totalDisp    = totalCupo - totalUsado;
-  const totalOblMes  = cards.reduce((s, c) => s + activeObl(c), 0);
+  const totalCupo = cards.reduce((s, c) => s + parseFloat(c.cupoTotal ?? 0), 0);
+  const totalUsado = cards.reduce((s, c) => s + (parseFloat(c.cupoTotal ?? 0) - parseFloat(c.cupoDisponible ?? c.cupoTotal ?? 0)), 0);
+  const totalDisp = totalCupo - totalUsado;
   const usoGlobalPct = totalCupo > 0 ? (totalUsado / totalCupo) * 100 : 0;
   const cardsConDeuda = cards.filter(c => activeObl(c) > 0);
 
+  // Pre-cálculo dinámico de estadísticas de pago de cada tarjeta para evitar desfases.
+  const cardStats = useMemo(() => {
+    return cards.map(c => {
+      const schedule = buildSchedule(c.CreditCardPurchases || [], c);
+      
+      // Encontrar el primer ciclo (pasado, actual o futuro) que tenga cuotas pendientes de pago.
+      // Este es el ciclo activo hacia el cual el usuario está aportando o debe pagar.
+      const activeSlot = schedule.find(s => s.lines.some(l => !l.wasPaid));
+      
+      if (!activeSlot) {
+        return {
+          cardId: c.id,
+          cardOblMes: 0,
+          nextPago: null,
+          dPago: 999,
+          activePurchases: [],
+          activeSlot: null,
+          tieneDeuda: false,
+        };
+      }
+
+      // Saldo pendiente de este ciclo activo
+      const pendingLines = activeSlot.lines.filter(l => !l.wasPaid);
+      const cardOblMes = pendingLines.reduce((s, l) => s + l.valorCuota, 0);
+      
+      const activePurchases = (c.CreditCardPurchases || []).filter(p => p.status === 'activa');
+      
+      // Calcular la fecha de pago exacta para este ciclo activo
+      const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
+      const date = new Date(activeSlot.date.getFullYear(), activeSlot.date.getMonth() + payMonthOffset, Number(c.fechaPago));
+      const dPago = daysUntil(date);
+      
+      // Tiene deuda exigible si el ciclo activo ya cerró (isPast)
+      const tieneDeuda = activeSlot.isPast && cardOblMes > 0;
+      
+      return {
+        cardId: c.id,
+        cardOblMes,
+        nextPago: date,
+        dPago,
+        activePurchases,
+        activeSlot,
+        tieneDeuda,
+      };
+    });
+  }, [cards]);
+
+  // Suma lo que realmente vence en el ciclo activo de cada tarjeta
+  const totalOblMes = useMemo(() =>
+    cardStats.reduce((s, cs) => s + cs.cardOblMes, 0),
+  [cardStats]);
+
   // Próximo vencimiento entre las tarjetas con deuda activa.
   const proximoVenc = useMemo(() => {
-    const conPago = cardsConDeuda
-      .map(c => ({ card: c, date: nextOccurrence(c.fechaPago), dias: daysUntil(nextOccurrence(c.fechaPago)) }))
+    const conPago = cardStats
+      .filter(cs => cs.activeSlot !== null)
+      .map(cs => {
+        const card = cards.find(c => c.id === cs.cardId);
+        return { card, date: cs.nextPago, dias: cs.dPago };
+      })
       .sort((a, b) => a.dias - b.dias);
     return conPago[0] ?? null;
-  }, [cardsConDeuda]);
+  }, [cardStats, cards]);
 
   const mesActual = new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+  const mesBanner = useMemo(() => {
+    if (proximoVenc && proximoVenc.date) {
+      return proximoVenc.date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    }
+    return mesActual;
+  }, [proximoVenc, mesActual]);
 
   // Orden por urgencia: primero las que tienen deuda, luego por días al pago.
   const displayCards = useMemo(() => {
-    const base = filterDeuda ? cards.filter(c => activeObl(c) > 0) : cards;
+    const base = filterDeuda ? cardsConDeuda : cards;
     return [...base].sort((a, b) => {
-      const oa = activeObl(a) > 0 ? 1 : 0;
-      const ob = activeObl(b) > 0 ? 1 : 0;
+      const statsA = cardStats.find(cs => cs.cardId === a.id);
+      const statsB = cardStats.find(cs => cs.cardId === b.id);
+      const oa = statsA && statsA.tieneDeuda ? 1 : 0;
+      const ob = statsB && statsB.tieneDeuda ? 1 : 0;
       if (oa !== ob) return ob - oa;
-      if (oa === 1) return daysUntil(nextOccurrence(a.fechaPago)) - daysUntil(nextOccurrence(b.fechaPago));
+      if (statsA && statsB) return statsA.dPago - statsB.dPago;
       return 0;
     });
-  }, [cards, filterDeuda]);
+  }, [cards, filterDeuda, cardsConDeuda, cardStats]);
 
   return (
     <div className="animate-fade-in">
@@ -89,7 +152,7 @@ export const CreditCards = () => {
           {/* Total del mes */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
-              <Wallet size={13} /> Estado de cuenta · {mesActual}
+              <Wallet size={13} /> Estado de cuenta · {mesBanner}
             </div>
             <div style={{ color: 'white', fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>
               {fmt(totalOblMes)}
@@ -169,8 +232,8 @@ export const CreditCards = () => {
       )}
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 210, borderRadius: 'var(--radius-md)' }} />)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.25rem' }}>
+          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-lg)' }} />)}
         </div>
       ) : cards.length === 0 ? (
         <div className="card">
@@ -195,106 +258,123 @@ export const CreditCards = () => {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.25rem' }}>
           {displayCards.map(card => {
-            const cupoUsado  = parseFloat(card.cupoTotal ?? 0) - parseFloat(card.cupoDisponible ?? card.cupoTotal ?? 0);
-            const usagePct   = card.cupoTotal ? Math.min((cupoUsado / parseFloat(card.cupoTotal)) * 100, 100) : 0;
-            const barColor   = usageColor(usagePct);
-            const activePurchases = (card.CreditCardPurchases || []).filter(p => p.status === 'activa');
+            const cupoUsado = parseFloat(card.cupoTotal ?? 0) - parseFloat(card.cupoDisponible ?? card.cupoTotal ?? 0);
+            const usagePct = card.cupoTotal ? Math.min((cupoUsado / parseFloat(card.cupoTotal)) * 100, 100) : 0;
+            const barColor = usageColor(usagePct);
             const statusLabel = STATUS_LABEL[card.status];
-            const cardOblMes = activePurchases.reduce((s, p) => s + parseFloat(p.valorCuotaMensual ?? 0), 0);
-            const tieneDeuda = cardOblMes > 0;
-            const dPago      = daysUntil(nextOccurrence(card.fechaPago));
-            const u          = urgencyStyle(dPago);
+            const stats        = cardStats.find(cs => cs.cardId === card.id);
+            const cardOblMes   = stats?.cardOblMes ?? 0;
+            const dPago        = stats?.dPago ?? 99;
+            const activePurchases = stats?.activePurchases ?? [];
+            const tieneDeuda   = cardOblMes > 0;
+            const u            = urgencyStyle(dPago);
 
             return (
               <div
                 key={card.id}
-                className="credit-card-visual"
-                style={{ cursor: 'pointer', minHeight: 210, background: getCardGradient(card.color) }}
                 onClick={() => navigate(`/credit-cards/${card.id}`)}
+                style={{
+                  borderRadius: 'var(--radius-lg)',
+                  overflow: 'hidden',
+                  boxShadow: 'var(--shadow-sm)',
+                  border: '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
               >
-                {/* Badges (estado + vencimiento) */}
-                <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', display: 'flex', gap: 6, zIndex: 2 }}>
-                  {tieneDeuda && card.status === 'activa' && (
-                    <div style={{
-                      background: u.level === 'danger' ? 'rgba(239,68,68,0.92)' : u.level === 'warning' ? 'rgba(217,119,6,0.92)' : 'rgba(255,255,255,0.22)',
-                      color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px',
-                      borderRadius: 99, letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 3,
-                      backdropFilter: 'blur(4px)',
-                    }}>
-                      <CalendarClock size={10} />
-                      {dPago === 0 ? 'Paga hoy' : dPago === 1 ? 'Paga mañana' : `Paga en ${dPago}d`}
+                {/* ── Franja de color superior ── */}
+                <div style={{ background: getCardGradient(card.color), padding: '0.875rem 1.125rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, fontWeight: 500, marginBottom: 2 }}>{card.entidad}</div>
+                      <div style={{ color: 'white', fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>{card.nombre}</div>
                     </div>
-                  )}
-                  {statusLabel && (
-                    <div style={{
-                      background: card.status === 'bloqueada' ? 'rgba(239,68,68,0.85)' : 'rgba(107,114,128,0.85)',
-                      color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 7px',
-                      borderRadius: 99, letterSpacing: '0.05em',
-                    }}>
-                      {statusLabel.toUpperCase()}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                      {statusLabel && (
+                        <span style={{
+                          background: card.status === 'bloqueada' ? 'rgba(239,68,68,0.85)' : 'rgba(107,114,128,0.85)',
+                          color: 'white', fontSize: 9, fontWeight: 800, padding: '2px 7px',
+                          borderRadius: 99, letterSpacing: '0.05em',
+                        }}>
+                          {statusLabel.toUpperCase()}
+                        </span>
+                      )}
+                      {card.ultimos4 && (
+                        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+                          •••• {card.ultimos4}
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 1 }}>
-                  <div>
-                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, margin: '0 0 0.15rem', fontWeight: 500 }}>{card.entidad}</p>
-                    <h3 style={{ color: 'white', fontWeight: 700, fontSize: '1rem', margin: 0, letterSpacing: '-0.01em' }}>{card.nombre}</h3>
-                  </div>
-                  <CardIcon size={20} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
-                </div>
+                {/* ── Cuerpo de datos ── */}
+                <div style={{ background: 'var(--surface)', padding: '0.875rem 1.125rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
 
-                {/* Cupo disponible */}
-                <div style={{ position: 'relative', zIndex: 1, marginBottom: '0.875rem' }}>
-                  <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: '0 0 0.2rem', fontWeight: 600, letterSpacing: '0.08em' }}>CUPO DISPONIBLE</p>
-                  <p style={{ color: 'white', fontSize: '1.55rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-                    {fmt(card.cupoDisponible ?? card.cupoTotal)}
-                  </p>
-                </div>
-
-                {/* Usage bar with semaphore color */}
-                <div style={{ position: 'relative', zIndex: 1, marginBottom: '0.875rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: '0.3rem' }}>
-                    <span>Usado {usagePct.toFixed(0)}%</span>
-                    <span>Total {fmt(card.cupoTotal)}</span>
-                  </div>
-                  <div style={{ height: 5, background: 'rgba(255,255,255,0.2)', borderRadius: 99 }}>
-                    <div style={{
-                      height: 5, width: `${usagePct}%`,
-                      background: barColor,
-                      borderRadius: 99, transition: 'width 0.5s ease',
-                      boxShadow: `0 0 6px ${barColor}99`,
-                    }} />
-                  </div>
-                  {usagePct >= 75 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, color: '#fbbf24', fontSize: 10, fontWeight: 600 }}>
-                      <AlertTriangle size={10} /> Cupo crítico
+                  {/* Números hero */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+                        Por pagar este mes
+                      </div>
+                      {tieneDeuda ? (
+                        <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                          {fmt(cardOblMes)}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-3)', paddingTop: 4 }}>
+                          Sin deuda activa
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+                        Disponible
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '-0.01em' }}>
+                        {fmt(card.cupoDisponible ?? card.cupoTotal)}
+                      </div>
+                    </div>
+                  </div>
 
-                {/* Last 4 digits */}
-                {card.ultimos4 && (
-                  <div style={{ position: 'relative', zIndex: 1, marginBottom: '0.5rem' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.15em' }}>
-                      •••• •••• •••• {card.ultimos4}
+                  {/* Barra de uso */}
+                  <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ height: 4, width: `${usagePct}%`, background: barColor, borderRadius: 99, transition: 'width 0.5s ease' }} />
+                  </div>
+
+                  {/* Footer */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <ShoppingBag size={11} />
+                      {activePurchases.length} compra{activePurchases.length !== 1 ? 's' : ''} · {usagePct.toFixed(0)}% usado
+                      {usagePct >= 75 && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: '#f59e0b', fontWeight: 700 }}>
+                          <AlertTriangle size={10} /> crítico
+                        </span>
+                      )}
                     </span>
+                    {tieneDeuda && card.status === 'activa' ? (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                        display: 'flex', alignItems: 'center', gap: 3,
+                        background: dPago <= 7 
+                          ? (u.level === 'danger' ? '#fef2f2' : u.level === 'warning' ? '#fffbeb' : 'var(--color-primary-light)')
+                          : 'var(--color-success-bg)',
+                        color: dPago <= 7
+                          ? (u.level === 'danger' ? '#dc2626' : u.level === 'warning' ? '#92400e' : 'var(--color-primary)')
+                          : 'var(--color-success)',
+                      }}>
+                        <CalendarClock size={10} />
+                        {dPago === 0 ? 'Paga hoy' : dPago === 1 ? 'Mañana' : `En ${dPago}d`}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Corte {card.fechaCorte}</span>
+                    )}
                   </div>
-                )}
-
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.65)', position: 'relative', zIndex: 1 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <ShoppingBag size={11} />
-                    {activePurchases.length > 0
-                      ? <><strong style={{ color: 'rgba(255,255,255,0.9)' }}>{fmt(cardOblMes)}</strong>/mes</>
-                      : 'Sin compras activas'
-                    }
-                  </span>
-                  <span>{activePurchases.length} activa{activePurchases.length !== 1 ? 's' : ''} · Corte {card.fechaCorte}</span>
                 </div>
               </div>
             );

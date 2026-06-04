@@ -1,13 +1,25 @@
-import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Repeat, Bell, CreditCard, Landmark,
-  LogOut, Menu, X, BarChart2, UserCircle,
+  Menu, X, BarChart2,
 } from 'lucide-react';
-import { AuthService } from '../../services/authService';
-import { CreditCardService } from '../../services/creditCardService';
-import { fmt, fmtK } from '../../utils/format';
 import { BrandMark } from '../ui/BrandMark';
+
+const SECTION_ICONS = {
+  '/':             LayoutDashboard,
+  '/subscriptions': Repeat,
+  '/credit-cards':  CreditCard,
+  '/bank-credits':  Landmark,
+  '/reminders':     Bell,
+  '/reports':       BarChart2,
+};
+
+function useActiveIcon() {
+  const { pathname } = useLocation();
+  const base = '/' + pathname.split('/')[1];
+  return SECTION_ICONS[base] ?? SECTION_ICONS['/'];
+}
 
 const NavItem = ({ to, icon: Icon, label, end, onClick }) => (
   <NavLink
@@ -23,31 +35,29 @@ const NavItem = ({ to, icon: Icon, label, end, onClick }) => (
 
 export const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [overview, setOverview] = useState(null);
-  const navigate = useNavigate();
   const close = () => setIsOpen(false);
-
-  useEffect(() => {
-    CreditCardService.getOverview()
-      .then(setOverview)
-      .catch(() => {});
-  }, []);
-
-  const handleLogout = () => {
-    if (window.confirm('¿Deseas cerrar sesión?')) {
-      AuthService.logout();
-      navigate('/login');
-    }
-  };
-
-  const oblMes   = overview?.totalObligacionMensual ?? 0;
-  const dias     = overview?.nextPaymentDays;
-  const urgente  = dias !== null && dias !== undefined && dias <= 3;
+  const ActiveIcon = useActiveIcon();
 
   return (
     <>
-      <button className="menu-toggle" onClick={() => setIsOpen(!isOpen)} aria-label="Toggle menu">
+      <button
+        className="menu-toggle"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label="Toggle menu"
+        style={{ position: 'relative' }}
+      >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
+        {/* Indicador de sección activa — solo visible cuando el sidebar está cerrado */}
+        {!isOpen && (
+          <span style={{
+            position: 'absolute', bottom: 2, right: 2,
+            width: 14, height: 14, borderRadius: '50%',
+            background: 'var(--brand-600)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ActiveIcon size={8} color="white" />
+          </span>
+        )}
       </button>
 
       {isOpen && (
@@ -83,15 +93,6 @@ export const Sidebar = () => {
               <span className="nav-icon"><CreditCard size={16} /></span>
               <span>Tarjetas</span>
             </span>
-            {oblMes > 0 && (
-              <span className="tabular" style={{
-                fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 99,
-                background: urgente ? 'var(--neg-50)' : 'var(--brand-100)',
-                color: urgente ? 'var(--neg-600)' : 'var(--brand-700)',
-              }}>
-                {fmtK(oblMes)}
-              </span>
-            )}
           </NavLink>
 
           <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
@@ -102,35 +103,8 @@ export const Sidebar = () => {
 
           <div className="nav-divider" />
           <span className="nav-section-title">Herramientas</span>
-          <NavItem to="/reports"  icon={BarChart2}  label="Reportes"  onClick={close} />
-          <NavItem to="/profile"  icon={UserCircle} label="Mi Perfil" onClick={close} />
+          <NavItem to="/reports" icon={BarChart2} label="Reportes" onClick={close} />
         </nav>
-
-        {oblMes > 0 && (
-          <div
-            className="sidebar-summary"
-            style={urgente ? { background: 'var(--neg-50)', borderColor: 'rgba(220,38,38,0.2)' } : undefined}
-            onClick={() => { navigate('/credit-cards'); close(); }}
-            role="button"
-          >
-            <p className="sidebar-summary-label" style={urgente ? { color: 'var(--neg-700)' } : undefined}>
-              Por pagar este mes
-            </p>
-            <p className="sidebar-summary-value tabular">{fmt(oblMes)}</p>
-            {dias !== null && dias !== undefined && (
-              <p className="sidebar-summary-sub" style={urgente ? { color: 'var(--neg-600)', fontWeight: 600 } : undefined}>
-                {dias === 0 ? 'Próximo pago hoy' : dias === 1 ? 'Próximo pago mañana' : `Próximo pago en ${dias} días`}
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="sidebar-footer">
-          <button className="sidebar-logout" onClick={handleLogout}>
-            <LogOut size={16} />
-            <span>Cerrar Sesión</span>
-          </button>
-        </div>
       </aside>
     </>
   );

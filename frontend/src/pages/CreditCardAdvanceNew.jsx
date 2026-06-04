@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { CreditCardService } from '../services/creditCardService';
-import { ArrowLeft, Banknote, Check, DollarSign, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Banknote, Check, DollarSign, ChevronRight, AlertCircle } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
 
 const fmt = (n) =>
@@ -20,9 +20,10 @@ export const CreditCardAdvanceNew = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [card, setCard]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
+  const [card, setCard]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [touched, setTouched]   = useState({});
   const [form, setForm] = useState({
     descripcion: 'Avance en efectivo',
     montoTotal: '',
@@ -45,10 +46,20 @@ export const CreditCardAdvanceNew = () => {
   const totalPreview = cuotaPreview * Number(form.numeroCuotas || 1);
   const totalConCupo = Number(form.montoTotal || 0) + comision;
 
+  const errs = {};
+  if (!form.descripcion.trim())           errs.descripcion  = 'Ingresa una descripción';
+  if (!(Number(form.montoTotal) > 0))     errs.montoTotal   = 'El monto debe ser mayor a 0';
+  if (!(Number(form.numeroCuotas) >= 1))  errs.numeroCuotas = 'Mínimo 1 cuota';
+  if (!form.fechaCompra)                  errs.fechaCompra  = 'Selecciona una fecha';
+
+  const blur = k => setTouched(t => ({ ...t, [k]: true }));
+  const showErr = k => touched[k] && errs[k];
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ descripcion: true, montoTotal: true, numeroCuotas: true, fechaCompra: true });
+    if (Object.keys(errs).length) return;
     if (!card) return;
     if (totalConCupo > parseFloat(card.cupoDisponible)) {
       Swal.fire({ icon: 'warning', title: 'Cupo insuficiente', text: `Avance + comisión (${fmt(totalConCupo)}) supera el cupo disponible (${fmt(card.cupoDisponible)}).` });
@@ -155,27 +166,67 @@ export const CreditCardAdvanceNew = () => {
 
         {/* Form */}
         <div className="card" style={{ padding: '1.75rem' }}>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
-              <label className="form-label">Descripción *</label>
-              <input className="form-input" value={form.descripcion} onChange={set('descripcion')} required placeholder="Ej: Avance en cajero" />
+              <label className="form-label" htmlFor="adv-desc">Descripción *</label>
+              <input
+                id="adv-desc"
+                className={`form-input ${showErr('descripcion') ? 'error' : ''}`}
+                value={form.descripcion}
+                onChange={set('descripcion')}
+                onBlur={() => blur('descripcion')}
+                placeholder="Ej: Avance en cajero"
+                aria-invalid={!!showErr('descripcion')}
+                aria-describedby={showErr('descripcion') ? 'adv-desc-err' : undefined}
+              />
+              {showErr('descripcion') && <p className="form-error" id="adv-desc-err"><AlertCircle size={11} /> {errs.descripcion}</p>}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Monto del avance *</label>
-                <input className="form-input" type="number" value={form.montoTotal} onChange={set('montoTotal')} required min="0.01" step="0.01" placeholder="0.00" />
-                {card && totalConCupo > parseFloat(card.cupoDisponible) && (
-                  <p style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>Avance + comisión supera el cupo</p>
+                <label className="form-label" htmlFor="adv-monto">Monto del avance *</label>
+                <input
+                  id="adv-monto"
+                  className={`form-input ${showErr('montoTotal') ? 'error' : ''}`}
+                  type="number"
+                  value={form.montoTotal}
+                  onChange={set('montoTotal')}
+                  onBlur={() => blur('montoTotal')}
+                  min="0.01" step="0.01" placeholder="0.00"
+                  aria-invalid={!!showErr('montoTotal')}
+                  aria-describedby={showErr('montoTotal') ? 'adv-monto-err' : undefined}
+                />
+                {showErr('montoTotal') && <p className="form-error" id="adv-monto-err"><AlertCircle size={11} /> {errs.montoTotal}</p>}
+                {!showErr('montoTotal') && card && totalConCupo > parseFloat(card.cupoDisponible) && (
+                  <p className="form-error"><AlertCircle size={11} /> Avance + comisión supera el cupo</p>
                 )}
               </div>
               <div className="form-group">
-                <label className="form-label">Cuotas *</label>
-                <input className="form-input" type="number" value={form.numeroCuotas} onChange={set('numeroCuotas')} required min="1" step="1" placeholder="1" />
+                <label className="form-label" htmlFor="adv-cuotas">Cuotas *</label>
+                <input
+                  id="adv-cuotas"
+                  className={`form-input ${showErr('numeroCuotas') ? 'error' : ''}`}
+                  type="number"
+                  value={form.numeroCuotas}
+                  onChange={set('numeroCuotas')}
+                  onBlur={() => blur('numeroCuotas')}
+                  min="1" step="1" placeholder="1"
+                  aria-invalid={!!showErr('numeroCuotas')}
+                />
+                {showErr('numeroCuotas') && <p className="form-error"><AlertCircle size={11} /> {errs.numeroCuotas}</p>}
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Fecha del avance *</label>
-              <input className="form-input" type="date" value={form.fechaCompra} onChange={set('fechaCompra')} required />
+              <label className="form-label" htmlFor="adv-fecha">Fecha del avance *</label>
+              <input
+                id="adv-fecha"
+                className={`form-input ${showErr('fechaCompra') ? 'error' : ''}`}
+                type="date"
+                value={form.fechaCompra}
+                onChange={set('fechaCompra')}
+                onBlur={() => blur('fechaCompra')}
+                aria-invalid={!!showErr('fechaCompra')}
+              />
+              {showErr('fechaCompra') && <p className="form-error"><AlertCircle size={11} /> {errs.fechaCompra}</p>}
             </div>
 
             {comision > 0 && (

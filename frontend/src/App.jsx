@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './components/layout/MainLayout';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 
 // Suscripciones
@@ -28,6 +30,7 @@ import { BankCreditNew } from './pages/BankCreditNew';
 import { BankCreditLayout } from './pages/bank-credit/BankCreditLayout';
 import { BankCreditOverview } from './pages/bank-credit/BankCreditOverview';
 import { BankCreditSchedule } from './pages/bank-credit/BankCreditSchedule';
+import { BankCreditAnalysis } from './pages/bank-credit/BankCreditAnalysis';
 import { BankCreditEdit } from './pages/BankCreditEdit';
 
 // Recordatorios
@@ -39,6 +42,8 @@ import { Reports } from './pages/Reports';
 import { Profile } from './pages/Profile';
 
 import { AuthService } from './services/authService';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { NotFound } from './pages/NotFound';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -49,11 +54,14 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <Routes>
         {/* Públicas */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protegidas — bajo MainLayout */}
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
@@ -84,6 +92,7 @@ function App() {
           <Route path="bank-credits/:id" element={<BankCreditLayout />}>
             <Route index element={<BankCreditOverview />} />
             <Route path="schedule" element={<BankCreditSchedule />} />
+            <Route path="analysis" element={<BankCreditAnalysis />} />
           </Route>
           <Route path="bank-credits/:id/edit" element={<BankCreditEdit />} />
 
@@ -96,9 +105,10 @@ function App() {
           <Route path="profile" element={<Profile />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

@@ -14,6 +14,11 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
   const future   = useMemo(() => schedule.filter(s => !s.isPast && !s.isCurrent), [schedule]);
   const maxTotal = useMemo(() => Math.max(...schedule.map(s => s.total), 1),  [schedule]);
 
+  // Corte más antiguo con saldo pendiente para realizar pagos (solo de cortes cerrados en el pasado)
+  const oldestUnpaid = useMemo(() => {
+    return schedule.find(s => s.isPast && s.lines.some(l => !l.wasPaid));
+  }, [schedule]);
+
   const payDate  = card ? weekendToFriday(nextOccurrence(card.fechaPago))  : null;
   const cutDate  = card ? weekendToFriday(nextOccurrence(card.fechaCorte)) : null;
   const daysPago = payDate ? daysUntil(payDate) : null;
@@ -67,20 +72,25 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
     const pendingLines = slot.lines.filter(l => !l.wasPaid);
     const pendingTotal = pendingLines.reduce((s, l) => s + l.valorCuota, 0);
 
-    // "Pago pendiente" solo si el corte ya cortó (ventana de pago) Y aún quedan
-    // cuotas sin pagar. Si ya se pagó todo, se trata como un corte normal del historial.
+    // Si es un corte pasado y aún tiene saldo pendiente, está atrasado
+    const isOverdue = slot.isPast && pendingLines.length > 0;
+
+    // Si es el corte más antiguo con saldo pendiente, se habilita para pago
+    const isPayable = oldestUnpaid && slot.key === oldestUnpaid.key && pendingLines.length > 0;
+
+    // showPaymentDue: para alertas visuales si corresponde a la ventana de pago pendiente
     const showPaymentDue = slot.isPaymentDue && pendingLines.length > 0;
 
-    // showPaymentDue: corte vencido con saldo → colores de urgencia
+    // showPaymentDue o isOverdue: corte vencido/atrasado → colores de urgencia
     // isCurrent: próximo corte (aún no ha cortado) → índigo neutro
-    const accentColor  = showPaymentDue ? u.color
-                       : isCurrent       ? 'var(--brand-600)'
-                       :                   'var(--color-primary)';
-    const accentBg     = showPaymentDue ? u.bg
-                       : isCurrent       ? 'var(--color-primary-light)'
-                       :                   'transparent';
-    const accentBorder = (showPaymentDue || isCurrent) && isOpen
-                       ? (showPaymentDue ? u.border : 'rgba(91,77,241,0.2)')
+    const accentColor  = (showPaymentDue || isOverdue) ? u.color
+                       : isCurrent                      ? 'var(--brand-600)'
+                       :                                  'var(--color-primary)';
+    const accentBg     = (showPaymentDue || isOverdue) ? u.bg
+                       : isCurrent                      ? 'var(--color-primary-light)'
+                       :                                  'transparent';
+    const accentBorder = (showPaymentDue || isOverdue || isCurrent) && isOpen
+                       ? ((showPaymentDue || isOverdue) ? u.border : 'rgba(91,77,241,0.2)')
                        : 'var(--color-border)';
 
     return (
@@ -105,9 +115,9 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
               {isOpen
                 ? <ChevronDown  size={14} style={{ color: accentColor, flexShrink: 0 }} />
-                : <ChevronRight size={14} style={{ color: (showPaymentDue || isCurrent) ? accentColor : 'var(--color-text-muted)', flexShrink: 0 }} />
+                : <ChevronRight size={14} style={{ color: (showPaymentDue || isOverdue || isCurrent) ? accentColor : 'var(--color-text-muted)', flexShrink: 0 }} />
               }
-              <span style={{ fontSize: 13, fontWeight: 700, color: (showPaymentDue || isCurrent) ? accentColor : 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: (showPaymentDue || isOverdue || isCurrent) ? accentColor : 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
                 {monthName}
               </span>
               {isCurrent && (
@@ -116,15 +126,15 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
                   background: 'var(--brand-600)', color: 'white', padding: '1px 6px', borderRadius: 99, flexShrink: 0,
                 }}>Próximo</span>
               )}
-              {showPaymentDue && (
+              {(showPaymentDue || isOverdue) && (
                 <span style={{
                   fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
                   background: u.color, color: 'white', padding: '1px 6px', borderRadius: 99, flexShrink: 0,
-                }}>Pago pendiente</span>
+                }}>{isOverdue ? 'Atrasado' : 'Pago pendiente'}</span>
               )}
               {slot.endingCount > 0 && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99, flexShrink: 0 }}>
-                  <TrendingDown size={10} /> baja {slot.endingCount}
+                  <TrendingDown size={10} /> {slot.endingCount === 1 ? 'Termina 1 compra' : `Terminan ${slot.endingCount} compras`}
                 </span>
               )}
             </div>
@@ -163,26 +173,37 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
 
         {/* Contenido expandido */}
         {isOpen && (
-          <div style={{ padding: '0.25rem 0.875rem 0.75rem', borderTop: `1px solid ${showPaymentDue ? u.border : 'var(--color-border)'}` }}>
+          <div style={{ padding: '0.25rem 0.875rem 0.75rem', borderTop: `1px solid ${(showPaymentDue || isOverdue) ? u.border : 'var(--color-border)'}` }}>
             {slot.lines.map(line => (
               <LineRow key={`${line.id}-${line.cuotaActual}`} line={line} />
             ))}
 
-            {/* Urgencia + botón pagar — corte anterior con pago venciendo */}
-            {showPaymentDue && (
+            {/* Urgencia + botón pagar — corte activo y pagable */}
+            {isPayable && (
               <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 5,
-                  background: u.bg, border: `1px solid ${u.border}`,
+                  background: slot.isCurrent ? 'var(--color-primary-light)' : u.bg,
+                  border: `1px solid ${slot.isCurrent ? 'rgba(91,77,241,0.2)' : u.border}`,
                   borderRadius: 'var(--radius-md)', padding: '0.5rem 0.75rem',
                 }}>
-                  <CalendarClock size={13} style={{ color: u.color }} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: u.color }}>
-                    Vence el pago:{' '}
-                    <strong>
-                      {daysPago === 0 ? 'Hoy' : daysPago === 1 ? 'Mañana' : `En ${daysPago} días`}
-                    </strong>
-                    {payDate && ` · ${fmtShort(payDate)}`}
+                  <CalendarClock size={13} style={{ color: slot.isCurrent ? 'var(--brand-600)' : u.color }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: slot.isCurrent ? 'var(--brand-700)' : u.color }}>
+                    {slot.isCurrent ? (
+                      <span>Corte en curso (puedes pre-pagar este ciclo)</span>
+                    ) : showPaymentDue ? (
+                      <span>
+                        Vence el pago:{' '}
+                        <strong>
+                          {daysPago === 0 ? 'Hoy' : daysPago === 1 ? 'Mañana' : `En ${daysPago} días`}
+                        </strong>
+                        {payDate && ` · ${fmtShort(payDate)}`}
+                      </span>
+                    ) : (
+                      <span>
+                        <strong>Pago atrasado</strong> (Corresponde al corte vencido de {monthName})
+                      </span>
+                    )}
                   </span>
                 </div>
                 {onPayMonth && (

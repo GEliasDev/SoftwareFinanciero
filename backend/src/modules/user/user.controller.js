@@ -65,4 +65,23 @@ export const UserController = {
             next(error);
         }
     },
+
+    forgotPassword: async (req, res, next) => {
+        try {
+            const result = await UserService.forgotPassword(req.body.email);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    resetPasswordByToken: async (req, res, next) => {
+        try {
+            const { token, newPassword } = req.body;
+            const result = await UserService.resetPasswordByToken(token, newPassword);
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
 };

@@ -7,6 +7,7 @@
  * @param {number} tasaInteres - Tasa ingresada por el usuario
  * @param {'mensual'|'anual'} tipoTasa - Tipo de tasa ingresada
  * @param {number} cuotaAdministracion - Cuota fija adicional (opcional)
+ * @param {number} seguro - Seguro/aval mensual (opcional)
  * @param {string} fechaInicio - Fecha de inicio en formato YYYY-MM-DD
  * @param {number} diaPago - Día del mes del pago
  */
@@ -16,6 +17,7 @@ export function bankCreditCalculation({
     tasaInteres,
     tipoTasa,
     cuotaAdministracion = 0,
+    seguro = 0,
     fechaInicio,
     diaPago,
 }) {
@@ -26,14 +28,14 @@ export function bankCreditCalculation({
             ? Math.pow(1 + tasaInteres / 100, 1 / 12) - 1
             : tasaInteres / 100;
 
-    // Cuota fija sin administración
+    // Cuota fija sin cargos adicionales
     // C = P × [i(1+i)^n] / [(1+i)^n - 1]
     const factor = Math.pow(1 + tasaMensual, numeroCuotas);
     const valorCuotaBase = montoTotal * (tasaMensual * factor) / (factor - 1);
-    const valorCuota = valorCuotaBase + cuotaAdministracion;
+    const valorCuota = valorCuotaBase + cuotaAdministracion + seguro;
 
     const totalAPagar = valorCuota * numeroCuotas;
-    const totalIntereses = totalAPagar - montoTotal - (cuotaAdministracion * numeroCuotas);
+    const totalIntereses = valorCuotaBase * numeroCuotas - montoTotal;
 
     // Calcular fecha de fin sumando los meses de cuotas
     const fecha = new Date(fechaInicio);
