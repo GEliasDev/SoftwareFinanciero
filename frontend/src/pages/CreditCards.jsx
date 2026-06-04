@@ -6,7 +6,7 @@ import { getCardGradient } from '../utils/cardColors';
 import { fmt, nextOccurrence, daysUntil, urgencyStyle, fmtShort, buildSchedule } from '../utils/creditCard';
 
 const usageColor = (pct) =>
-  pct >= 80 ? '#ef4444' : pct >= 50 ? '#f59e0b' : '#22c55e';
+  pct >= 80 ? 'var(--neg-600)' : pct >= 50 ? 'var(--warn-600)' : 'var(--pos-600)';
 
 const STATUS_LABEL = { activa: null, bloqueada: 'Bloqueada', cancelada: 'Cancelada' };
 
@@ -274,7 +274,11 @@ export const CreditCards = () => {
             return (
               <div
                 key={card.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/credit-cards/${card.id}`)}
+                onKeyDown={e => e.key === 'Enter' && navigate(`/credit-cards/${card.id}`)}
+                aria-label={`Ver detalle de ${card.nombre}`}
                 style={{
                   borderRadius: 'var(--radius-lg)',
                   overflow: 'hidden',
@@ -343,7 +347,7 @@ export const CreditCards = () => {
 
                   {/* Barra de uso */}
                   <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden' }}>
-                    <div style={{ height: 4, width: `${usagePct}%`, background: barColor, borderRadius: 99, transition: 'width 0.5s ease' }} />
+                    <div style={{ height: 4, width: '100%', background: barColor, borderRadius: 99, transition: 'transform 0.5s ease', transformOrigin: 'left', transform: `scaleX(${usagePct / 100})` }} />
                   </div>
 
                   {/* Footer */}
@@ -352,7 +356,7 @@ export const CreditCards = () => {
                       <ShoppingBag size={11} />
                       {activePurchases.length} compra{activePurchases.length !== 1 ? 's' : ''} · {usagePct.toFixed(0)}% usado
                       {usagePct >= 75 && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: '#f59e0b', fontWeight: 700 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--warn-600)', fontWeight: 700 }}>
                           <AlertTriangle size={10} /> crítico
                         </span>
                       )}

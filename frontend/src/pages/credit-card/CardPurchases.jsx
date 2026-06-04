@@ -124,10 +124,10 @@ export const CardPurchases = () => {
                       const cuotasPagadas = Number(p.cuotasPagadas);
                       const numeroCuotas = Number(p.numeroCuotas);
                       const progress = isPaid ? 100 : numeroCuotas > 0 ? (cuotasPagadas / numeroCuotas) * 100 : 0;
-                      const pgColor = isPaid ? '#16a34a' : cuotasPagadas > 0 ? 'var(--brand-600)' : '#94a3b8';
+                      const pgColor = isPaid ? 'var(--pos-600)' : cuotasPagadas > 0 ? 'var(--brand-600)' : 'var(--text-3)';
                       return (
                         <div key={p.id} onClick={() => navigate(`/credit-cards/${id}/purchases/${p.id}`)}
-                          style={{ border: '1px solid var(--color-border)', borderLeft: `3px solid ${cat.color}`, borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: isPaid ? 'var(--color-bg)' : 'var(--color-surface)', opacity: isPaid ? 0.82 : 1, transition: 'background 0.12s ease' }}
+                          style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: isPaid ? 'var(--color-bg)' : 'var(--color-surface)', opacity: isPaid ? 0.82 : 1, transition: 'background 0.12s ease' }}
                           onMouseEnter={e => e.currentTarget.style.background = 'var(--brand-50)'}
                           onMouseLeave={e => e.currentTarget.style.background = isPaid ? 'var(--color-bg)' : 'var(--color-surface)'}>
                           <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: `${cat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -152,7 +152,7 @@ export const CardPurchases = () => {
                               <span>{isPaid ? 'Completada' : `${cuotasPagadas}/${numeroCuotas} cuotas`}</span>
                             </div>
                             <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden' }}>
-                              <div style={{ height: 4, width: `${progress}%`, background: pgColor, borderRadius: 99, transition: 'width 0.4s ease', minWidth: cuotasPagadas > 0 || isPaid ? 6 : 0 }} />
+                              <div style={{ height: 4, width: '100%', background: pgColor, borderRadius: 99, transition: 'transform 0.4s ease', transformOrigin: 'left', transform: `scaleX(${progress / 100})` }} />
                             </div>
                           </div>
                           <ChevronRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />

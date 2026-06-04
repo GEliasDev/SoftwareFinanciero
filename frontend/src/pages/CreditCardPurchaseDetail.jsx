@@ -309,11 +309,12 @@ export const CreditCardPurchaseDetail = () => {
               <div style={{ height: 10, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden' }}>
                 <div style={{
                   height: 10,
-                  width: `${progress}%`,
+                  width: '100%',
                   background: isPaid ? 'linear-gradient(90deg, #059669, #34D399)' : 'linear-gradient(90deg, #1D4ED8, var(--color-primary))',
                   borderRadius: 99,
-                  transition: 'width 0.5s ease',
-                  minWidth: progress > 0 ? 10 : 0,
+                  transition: 'transform 0.5s ease',
+                  transformOrigin: 'left',
+                  transform: `scaleX(${progress / 100})`,
                 }} />
               </div>
               {!isPaid && (

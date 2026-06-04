@@ -76,11 +76,9 @@ export const Sidebar = () => {
         </div>
 
         <nav className="sidebar-nav">
-          <span className="nav-section-title">Principal</span>
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" end onClick={close} />
 
           <div className="nav-divider" />
-          <span className="nav-section-title">Finanzas</span>
           <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" onClick={close} />
 
           <NavLink
@@ -98,11 +96,9 @@ export const Sidebar = () => {
           <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
 
           <div className="nav-divider" />
-          <span className="nav-section-title">Agenda</span>
           <NavItem to="/reminders" icon={Bell} label="Recordatorios" onClick={close} />
 
           <div className="nav-divider" />
-          <span className="nav-section-title">Herramientas</span>
           <NavItem to="/reports" icon={BarChart2} label="Reportes" onClick={close} />
         </nav>
       </aside>

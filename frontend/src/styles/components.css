@@ -474,9 +474,12 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
 
 .progress-fill {
   height: 100%;
+  width: 100%;
   border-radius: 99px;
   background: var(--color-success);
-  transition: width 0.4s ease;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
 }
 
 .progress-fill.danger  { background: var(--color-danger); }

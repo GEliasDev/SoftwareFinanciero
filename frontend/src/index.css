@@ -41,7 +41,7 @@
   --border-strong: #CBD5E1;
   --text:          #0F172A;
   --text-2:        #475569;
-  --text-3:        #94A3B8;
+  --text-3:        #64748B;
 
   /* ── Alias de compatibilidad (NO eliminar: en uso por toda la app) ── */
   --color-bg:             var(--bg);
@@ -262,6 +262,10 @@ a:hover { color: var(--color-primary-hover); }
 
 .animate-fade-in {
   animation: fadeSlideIn 0.22s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in { animation: none; }
 }
 
 /* Responsive */

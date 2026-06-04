@@ -8,7 +8,7 @@ export const authenticateToken = (req, res, next) => {
     if (!token) return next(new AppError('Token requerido', 401));
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return next(new AppError('Token inválido o expirado', 403));
+        if (err) return next(new AppError('Token inválido o expirado', 401));
         req.user = user;
         next();
     });
