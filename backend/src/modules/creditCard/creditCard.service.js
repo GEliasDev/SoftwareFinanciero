@@ -2,7 +2,7 @@ import { CreditCard } from './creditCard.model.js';
 import { CreditCardPurchase } from './creditCardPurchase.model.js';
 import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema, purchaseUpdateSchema, advanceCreateSchema } from './creditCard.schema.js';
 import { calcularCuotaCompra, calcularPagoMinimo } from './utils/creditCardCalculation.js';
-import { AppError } from '../../middlewares/AppError.js';
+import { AppError } from '../../middlewares/appError.js';
 
 export const CreditCardService = {
     // ── Tarjeta ──────────────────────────────────────────────

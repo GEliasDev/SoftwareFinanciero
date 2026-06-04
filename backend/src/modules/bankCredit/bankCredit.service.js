@@ -1,7 +1,7 @@
 import { BankCredit } from './bankCredit.model.js';
 import { bankCreditCreateSchema, bankCreditUpdateSchema } from './bankCredit.schema.js';
 import { bankCreditCalculation } from './utils/bankCreditCalculation.js';
-import { AppError } from '../../middlewares/AppError.js';
+import { AppError } from '../../middlewares/appError.js';
 
 export const BankCreditService = {
     createBankCredit: async (data) => {
