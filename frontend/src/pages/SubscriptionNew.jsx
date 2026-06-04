@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import { SubscriptionService } from '../services/subscriptionService';
 import {
-  ArrowLeft, Info, Repeat, ChevronRight, ChevronLeft, Check, AlertCircle,
+  ArrowLeft, Repeat, ChevronRight, ChevronLeft, Check, AlertCircle,
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
 import { fmt } from '../utils/format';
@@ -13,7 +14,6 @@ const STEP_FIELDS = [['nombre', 'monto'], ['diaCobro', 'fechaInicio']];
 export const SubscriptionNew = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [step, setStep] = useState(0);
   const [touched, setTouched] = useState({});
   const [formData, setFormData] = useState({
@@ -46,7 +46,6 @@ export const SubscriptionNew = () => {
     setTouched(Object.fromEntries(Object.keys(formData).map(k => [k, true])));
     if (Object.keys(errors).length > 0) return;
     setLoading(true);
-    setError('');
     try {
       await SubscriptionService.create({
         nombre: formData.nombre,
@@ -60,7 +59,7 @@ export const SubscriptionNew = () => {
       });
       navigate('/subscriptions');
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al crear la suscripción.');
+      Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'Error al crear la suscripción.' });
     } finally {
       setLoading(false);
     }
@@ -89,8 +88,6 @@ export const SubscriptionNew = () => {
           </div>
         </div>
       </div>
-
-      {error && <div className="info-box danger" style={{ marginBottom: '1rem' }}><Info size={14} />{error}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: '1.5rem', alignItems: 'start' }}>
         {/* Preview */}

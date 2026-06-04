@@ -60,6 +60,11 @@ CreditCardPurchase.init(
             allowNull: false,
             defaultValue: 'activa',
         },
+        tipo: {
+            type: DataTypes.ENUM('compra', 'avance', 'comision', 'cuota_manejo'),
+            allowNull: false,
+            defaultValue: 'compra',
+        },
         creditCardId: {
             type: DataTypes.INTEGER,
             allowNull: false,

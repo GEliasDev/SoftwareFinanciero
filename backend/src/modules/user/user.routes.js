@@ -7,6 +7,8 @@ const router = Router();
 // Rutas públicas — no requieren token
 router.post('/login', UserController.login);
 router.post('/', UserController.createUser);
+router.post('/forgot-password', UserController.forgotPassword);
+router.post('/reset-password', UserController.resetPasswordByToken);
 
 // Rutas protegidas — requieren token
 router.get('/', authenticateToken, UserController.getAllUsers);

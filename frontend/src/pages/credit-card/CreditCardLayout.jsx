@@ -5,7 +5,7 @@ import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, PieChart }
 import { CreditCardService } from '../../services/creditCardService';
 import { TabNav } from '../../components/ui/TabNav';
 import { fmt, nextOccurrence, daysUntil } from '../../utils/format';
-import { CATEGORIES } from '../../utils/creditCard';
+import { CATEGORIES, buildSchedule } from '../../utils/creditCard';
 
 export const TASA_USURA_EA = 28.5;
 
@@ -35,7 +35,33 @@ export const CreditCardLayout = () => {
   useEffect(() => { load(); }, [id]);
 
   const activePurchases = useMemo(() => purchases.filter(p => p.status === 'activa'), [purchases]);
-  const monthlyObligation = useMemo(() => activePurchases.reduce((s, p) => s + parseFloat(p.valorCuotaMensual ?? 0), 0), [activePurchases]);
+
+  // Corte cuyo pago está vigente: el corte más antiguo CERRADO (pasado) que tenga cuotas pendientes.
+  // No exigimos el pago del corte vigente (isCurrent) hasta que este cierre físicamente.
+  const payableSlot = useMemo(() => {
+    if (!card) return null;
+    const schedule = buildSchedule(purchases, card);
+    const oldestUnpaidPast = schedule.find(s => s.isPast && s.lines.some(l => !l.wasPaid));
+    return oldestUnpaidPast ?? null;
+  }, [purchases, card]);
+
+  // Solo las compras con una cuota PENDIENTE en ese corte (no todas las activas).
+  const payableLines = useMemo(
+    () => (payableSlot ? payableSlot.lines.filter(l => !l.wasPaid) : []),
+    [payableSlot]
+  );
+  const payableTotal = useMemo(
+    () => payableLines.reduce((s, l) => s + l.valorCuota, 0),
+    [payableLines]
+  );
+  
+  // Obligación original facturada en el ciclo vigente (para KPIs y comparaciones)
+  const monthlyObligation = useMemo(() => {
+    if (!card) return 0;
+    const schedule = buildSchedule(purchases, card);
+    const current = schedule.find(s => s.isCurrent);
+    return current?.total ?? 0;
+  }, [purchases, card]);
   const totalCapital      = useMemo(() => activePurchases.reduce((s, p) => s + parseFloat(p.montoTotal ?? 0), 0), [activePurchases]);
   const totalConIntereses = useMemo(() => activePurchases.reduce((s, p) => s + parseFloat(p.totalAPagar ?? 0), 0), [activePurchases]);
   const totalYaPagado     = useMemo(() => activePurchases.reduce((s, p) => s + Number(p.cuotasPagadas) * parseFloat(p.valorCuotaMensual ?? 0), 0), [activePurchases]);
@@ -49,10 +75,25 @@ export const CreditCardLayout = () => {
   const tasaEA      = ((Math.pow(1 + tasaMensual / 100, 12) - 1) * 100).toFixed(1);
   const isHighRate  = card && parseFloat(tasaEA) > TASA_USURA_EA;
 
-  const nextCorte = card ? nextOccurrence(card.fechaCorte) : null;
-  const nextPago  = card ? nextOccurrence(card.fechaPago)  : null;
-  const daysCorte = nextCorte ? daysUntil(nextCorte) : null;
-  const daysPago  = nextPago  ? daysUntil(nextPago)  : null;
+  const nextCorte = useMemo(() => {
+    if (!card) return null;
+    return nextOccurrence(card.fechaCorte);
+  }, [card]);
+
+  const nextPago = useMemo(() => {
+    if (!card) return null;
+    const date = nextOccurrence(card.fechaPago);
+    const today = new Date();
+    // Si ya se pagó todo lo facturado (payableSlot es null) y hoy aún no pasa el día de pago de este mes,
+    // significa que el pago de este mes ya se realizó. Por lo tanto, el próximo pago real es el del mes siguiente.
+    if (payableSlot === null && today.getDate() <= Number(card.fechaPago) && activePurchases.length > 0) {
+      date.setMonth(date.getMonth() + 1);
+    }
+    return date;
+  }, [card, payableSlot, activePurchases]);
+
+  const daysCorte = useMemo(() => (nextCorte ? daysUntil(nextCorte) : null), [nextCorte]);
+  const daysPago  = useMemo(() => (nextPago ? daysUntil(nextPago) : null), [nextPago]);
 
   const categoryData = useMemo(() =>
     CATEGORIES.map(cat => ({
@@ -80,22 +121,22 @@ export const CreditCardLayout = () => {
   };
 
   const handlePayAll = async () => {
-    if (activePurchases.length === 0) return;
+    if (payableLines.length === 0) return;
     const result = await Swal.fire({
-      title: 'Pagar cuota del mes',
-      html: `Se registrará <b>1 cuota</b> para cada una de las <b>${activePurchases.length} compras activas</b>.<br/><span style="color:#64748b;font-size:0.85rem">Total: <b>${fmt(monthlyObligation)}</b></span>`,
+      title: 'Pagar este corte',
+      html: `Se registrará <b>1 cuota</b> de las <b>${payableLines.length} compra${payableLines.length !== 1 ? 's' : ''}</b> de este corte.<br/><span style="color:#64748b;font-size:0.85rem">Total: <b>${fmt(payableTotal)}</b></span>`,
       icon: 'question', showCancelButton: true,
       confirmButtonColor: '#5B4DF1', cancelButtonColor: '#64748B',
-      confirmButtonText: 'Pagar todas', cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Pagar corte', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
     let errors = 0;
-    await Promise.all(activePurchases.map(p => CreditCardService.registerPurchasePayment(id, p.id).catch(() => { errors++; })));
+    await Promise.all(payableLines.map(l => CreditCardService.registerPurchasePayment(id, l.id).catch(() => { errors++; })));
     await load();
     if (errors === 0) {
-      Swal.fire({ icon: 'success', title: '¡Mes pagado!', text: `${activePurchases.length} cuotas registradas.`, timer: 2000, showConfirmButton: false });
+      Swal.fire({ icon: 'success', title: '¡Corte pagado!', text: `${payableLines.length} cuota${payableLines.length !== 1 ? 's' : ''} registrada${payableLines.length !== 1 ? 's' : ''}.`, timer: 2000, showConfirmButton: false });
     } else {
-      Swal.fire({ icon: 'warning', title: 'Parcialmente completado', text: `${activePurchases.length - errors} pagos ok, ${errors} fallaron.` });
+      Swal.fire({ icon: 'warning', title: 'Parcialmente completado', text: `${payableLines.length - errors} pagos ok, ${errors} fallaron.` });
     }
   };
 
@@ -123,6 +164,9 @@ export const CreditCardLayout = () => {
     monthlyObligation, totalCapital, totalConIntereses, totalYaPagado, totalRestante, maxMesesRestantes,
     cupoUsado, usagePct, barColor, tasaMensual, tasaEA, isHighRate,
     nextCorte, nextPago, daysCorte, daysPago, categoryData, handlePayAll,
+    payableCount: payableLines.length,
+    payableTotal,
+    payableLines,
   };
 
   return (

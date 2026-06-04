@@ -52,4 +52,14 @@ export const daysUntil = (date) => {
 export const urgencyStyle = (days) =>
   days <= 3 ? { bg: '#fef2f2', color: '#991b1b', border: 'rgba(220,38,38,0.2)', badge: 'var(--color-danger)', level: 'danger' }
   : days <= 7 ? { bg: '#fffbeb', color: '#92400e', border: 'rgba(217,119,6,0.2)', badge: 'var(--color-warning)', level: 'warning' }
-  : { bg: 'var(--color-primary-light)', color: 'var(--brand-700)', border: 'rgba(91,77,241,0.15)', badge: 'var(--color-primary)', level: 'normal' };
+  : { bg: 'var(--color-primary-light)', color: 'var(--brand-700)', border: 'rgba(4,120,87,0.15)', badge: 'var(--color-primary)', level: 'normal' };
+
+// Si la fecha cae sábado o domingo, devuelve el viernes anterior (días hábiles).
+export const weekendToFriday = (date) => {
+  if (!date) return date;
+  const d = new Date(date);
+  const day = d.getDay();              // 0 = domingo, 6 = sábado
+  if (day === 6) d.setDate(d.getDate() - 1);
+  else if (day === 0) d.setDate(d.getDate() - 2);
+  return d;
+};

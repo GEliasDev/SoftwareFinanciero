@@ -7,9 +7,10 @@ import { StatCard } from '../components/ui/StatCard';
 import { fmt, nextOccurrence, daysUntil, urgencyStyle } from '../utils/format';
 
 const STATUS = {
-  activo:   { label: 'Activo',   cls: 'badge badge-success' },
-  pagado:   { label: 'Pagado',   cls: 'badge badge-primary' },
-  atrasado: { label: 'Atrasado', cls: 'badge badge-danger' },
+  activo:    { label: 'Activo',    cls: 'badge badge-success' },
+  pagado:    { label: 'Pagado',    cls: 'badge badge-primary' },
+  en_mora:   { label: 'En mora',   cls: 'badge badge-danger' },
+  cancelado: { label: 'Cancelado', cls: 'badge badge-neutral' },
 };
 
 export const BankCredits = () => {
@@ -26,7 +27,7 @@ export const BankCredits = () => {
 
   const activos       = credits.filter(c => c.status === 'activo');
   const totalDebt     = credits.reduce((a, c) => a + (c.saldoPendiente ?? 0), 0);
-  const monthlyCuotas = activos.reduce((a, c) => a + (c.valorCuota ?? 0) + (c.cuotaAdministracion ?? 0), 0);
+  const monthlyCuotas = activos.reduce((a, c) => a + (c.valorCuota ?? 0), 0);
 
   // Orden: activos primero, por proximidad de pago.
   const ordered = useMemo(() => [...credits].sort((a, b) => {

@@ -13,17 +13,21 @@ export const buildLoanSchedule = (credit) => {
   if (!credit) return { rows: [], remaining: [] };
 
   const i      = (parseFloat(credit.tasaMensual) || 0) / 100;
-  const cuota  = parseFloat(credit.valorCuota) || 0;
+  const seguro = parseFloat(credit.seguro) || 0;
   const admin  = parseFloat(credit.cuotaAdministracion) || 0;
   const n      = Number(credit.numeroCuotas) || 0;
   const pagadas = Number(credit.cuotasPagadas) || 0;
+
+  // valorCuota ya incluye admin + seguro; la cuota base de capital+interés es:
+  const cargosAdicionales = admin + seguro;
+  const cuotaBaseCapital  = (parseFloat(credit.valorCuota) || 0) - cargosAdicionales;
 
   let saldo = parseFloat(credit.montoTotal) || 0;
   const rows = [];
   for (let k = 1; k <= n; k++) {
     const interes = saldo * i;
-    let capital = cuota - interes;
-    if (k === n) capital = saldo;            // ajuste de redondeo en la última cuota
+    let capital = cuotaBaseCapital - interes;
+    if (k === n) capital = saldo;
     capital = Math.min(capital, saldo);
     saldo = Math.max(0, saldo - capital);
     rows.push({
@@ -31,9 +35,10 @@ export const buildLoanSchedule = (credit) => {
       interes: Math.max(0, interes),
       capital: Math.max(0, capital),
       saldo,
-      valorCuota: cuota,
+      valorCuota: cuotaBaseCapital,
       admin,
-      totalMes: cuota + admin,
+      seguro,
+      totalMes: cuotaBaseCapital + admin + seguro,
     });
   }
 

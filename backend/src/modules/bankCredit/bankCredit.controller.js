@@ -24,7 +24,7 @@ export const BankCreditController = {
 
     getBankCreditById: async (req, res, next) => {
         try {
-            const credit = await BankCreditService.getBankCreditById(req.params.id);
+            const credit = await BankCreditService.getBankCreditById(req.params.id, req.user.id);
             res.json(credit);
         } catch (error) {
             next(error);
@@ -33,7 +33,7 @@ export const BankCreditController = {
 
     updateBankCredit: async (req, res, next) => {
         try {
-            const credit = await BankCreditService.updateBankCredit(req.params.id, req.body);
+            const credit = await BankCreditService.updateBankCredit(req.params.id, req.body, req.user.id);
             res.json(credit);
         } catch (error) {
             next(error);
@@ -43,7 +43,7 @@ export const BankCreditController = {
     // Endpoint para registrar que se pagó una cuota
     registerPayment: async (req, res, next) => {
         try {
-            const credit = await BankCreditService.registerPayment(req.params.id);
+            const credit = await BankCreditService.registerPayment(req.params.id, req.user.id);
             res.json({
                 message: 'Cuota registrada exitosamente',
                 cuotasPagadas: credit.cuotasPagadas,
@@ -58,7 +58,7 @@ export const BankCreditController = {
 
     deleteBankCredit: async (req, res, next) => {
         try {
-            await BankCreditService.deleteBankCredit(req.params.id);
+            await BankCreditService.deleteBankCredit(req.params.id, req.user.id);
             res.status(204).send();
         } catch (error) {
             next(error);

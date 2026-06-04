@@ -82,6 +82,45 @@
   --transition:      all 0.18s ease;
 }
 
+/* ══════════════════════════════════════════════
+   DARK MODE — tokens sobrescritos
+══════════════════════════════════════════════ */
+[data-theme="dark"] {
+  --bg:            #0F172A;
+  --surface:       #1E293B;
+  --surface-2:     #334155;
+  --border:        #334155;
+  --border-strong: #475569;
+  --text:          #F1F5F9;
+  --text-2:        #94A3B8;
+  --text-3:        #64748B;
+
+  --brand-50:  rgba(4,120,87,0.15);
+  --brand-100: rgba(4,120,87,0.25);
+  --brand-200: rgba(16,185,129,0.3);
+  --pos-50:    rgba(5,150,105,0.13);
+  --neg-50:    rgba(220,38,38,0.13);
+  --warn-50:   rgba(217,119,6,0.13);
+
+  /* Alias de compatibilidad */
+  --color-bg:             var(--bg);
+  --color-surface:        var(--surface);
+  --color-border:         var(--border);
+  --color-border-strong:  var(--border-strong);
+  --color-primary-light:  var(--brand-50);
+  --color-text-primary:   var(--text);
+  --color-text-secondary: var(--text-2);
+  --color-text-muted:     var(--text-3);
+  --color-success-bg:     var(--pos-50);
+  --color-danger-bg:      var(--neg-50);
+  --color-warning-bg:     var(--warn-50);
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.55);
+  --shadow-lg: 0 12px 28px -6px rgba(0,0,0,0.65);
+}
+
 /* Cifras monetarias / numéricas alineadas en columnas (look financiero) */
 .tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 

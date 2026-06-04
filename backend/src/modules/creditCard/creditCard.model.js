@@ -50,6 +50,16 @@ CreditCard.init(
             allowNull: true,
             defaultValue: 'blue',
         },
+        comisionAvance: {
+            type: DataTypes.DECIMAL(15, 2),
+            allowNull: true,
+            defaultValue: 0,
+        },
+        cuotaManejo: {
+            type: DataTypes.DECIMAL(15, 2),
+            allowNull: true,
+            defaultValue: 0,
+        },
         status: {
             type: DataTypes.ENUM('activa', 'bloqueada', 'cancelada'),
             allowNull: false,

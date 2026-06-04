@@ -24,5 +24,13 @@ export const UserService = {
   delete: async (id) => {
     const response = await api.delete(`/users/${id}`);
     return response.data;
-  }
+  },
+  forgotPassword: async (email) => {
+    const response = await api.post('/users/forgot-password', { email });
+    return response.data;
+  },
+  resetPassword: async (token, newPassword) => {
+    const response = await api.post('/users/reset-password', { token, newPassword });
+    return response.data;
+  },
 };

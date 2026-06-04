@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  ShoppingBag, CheckSquare, Plus, Search, X, SlidersHorizontal, ChevronUp, ChevronDown, ChevronRight,
+  ShoppingBag, CheckSquare, Plus, Search, X, SlidersHorizontal, ChevronUp, ChevronDown, ChevronRight, Banknote,
 } from 'lucide-react';
 import { fmt, fmtDate, monthLabel } from '../../utils/format';
-import { getCat, CATEGORIES } from '../../utils/creditCard';
+import { getMovimientoVisual, CATEGORIES } from '../../utils/creditCard';
 
 export const CardPurchases = () => {
-  const { purchases, activePurchases, id, handlePayAll } = useOutletContext();
+  const { purchases, activePurchases, id, handlePayAll, payableCount } = useOutletContext();
   const navigate = useNavigate();
 
   const [searchText, setSearchText]     = useState('');
@@ -50,7 +50,8 @@ export const CardPurchases = () => {
           {purchases.length > activePurchases.length && <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 99 }}>{purchases.length - activePurchases.length} pagada{purchases.length - activePurchases.length !== 1 ? 's' : ''}</span>}
         </h2>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {activePurchases.length > 1 && <button className="btn btn-success" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={handlePayAll}><CheckSquare size={13} /> Pagar mes</button>}
+          {payableCount > 0 && <button className="btn btn-success" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={handlePayAll}><CheckSquare size={13} /> Pagar corte</button>}
+          <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/advances/new`)}><Banknote size={13} /> Avance</button>
           <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/purchases/new`)}><Plus size={13} /> Nueva compra</button>
         </div>
       </div>
@@ -118,7 +119,7 @@ export const CardPurchases = () => {
                       if (sortBy === 'categoria') return (a.categoria || '').localeCompare(b.categoria || '');
                       return 0;
                     }).map(p => {
-                      const cat = getCat(p.categoria || 'otros');
+                      const cat = getMovimientoVisual(p.tipo, p.categoria || 'otros');
                       const isPaid = p.status === 'pagada';
                       const cuotasPagadas = Number(p.cuotasPagadas);
                       const numeroCuotas = Number(p.numeroCuotas);
@@ -134,7 +135,12 @@ export const CardPurchases = () => {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                              <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.descripcion}</span>
+                              <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {p.tipo && p.tipo !== 'compra' && (
+                                  <span style={{ background: `${cat.color}1a`, color: cat.color, fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 99, textTransform: 'uppercase', flexShrink: 0 }}>{cat.label}</span>
+                                )}
+                                {p.descripcion}
+                              </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                 <span className="tabular" style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-primary)' }}>{fmt(p.montoTotal)}</span>
                                 {isPaid ? <span style={{ background: '#dcfce7', color: '#15803d', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>PAGADA</span> : <span style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>ACTIVA</span>}

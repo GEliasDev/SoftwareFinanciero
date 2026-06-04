@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCircle, LogOut, CalendarClock } from 'lucide-react';
+import { UserCircle, LogOut, CalendarClock, Sun, Moon } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { CreditCardService } from '../../services/creditCardService';
+
+const getStoredTheme = () => localStorage.getItem('solventa-theme') || 'light';
+const applyTheme = (theme) => {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('solventa-theme', theme);
+};
 
 const ROUTE_LABELS = {
   '/':              'Dashboard',
@@ -27,10 +33,17 @@ export const Navbar = () => {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [overview, setOverview] = useState(null);
+  const [theme, setTheme] = useState(getStoredTheme);
   const menuRef = useRef(null);
 
+  useEffect(() => { applyTheme(theme); }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
   useEffect(() => {
-    CreditCardService.getOverview().then(setOverview).catch(() => {});
+    CreditCardService.getOverview()
+      .then(setOverview)
+      .catch(() => setOverview(null)); // no bloquear UI si falla; badge simplemente no aparece
   }, []);
 
   // Cerrar el menú al hacer click fuera.
@@ -61,6 +74,21 @@ export const Navbar = () => {
       <span className="navbar-title">{getPageLabel(location.pathname)}</span>
 
       <div className="navbar-right">
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          style={{
+            background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--text-3)', transition: 'color 0.15s, border-color 0.15s',
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-strong)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+        >
+          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
+
         {urgente && (
           <button className="navbar-pill urgent" onClick={() => navigate('/credit-cards')}>
             <CalendarClock size={13} />

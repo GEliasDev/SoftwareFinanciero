@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { User } from './user.model.js';
 import { userCreateSchema, userUpdateSchema } from './user.schema.js';
 import { generateToken } from './utils/generateToken.js';
@@ -82,5 +83,53 @@ export const UserService = {
         const user = await User.findByPk(id);
         if (!user) throw new AppError('Usuario no encontrado', 404);
         return user.destroy();
+    },
+
+    /**
+     * Genera un token de restablecimiento de 1 hora y lo almacena en el usuario.
+     * Por seguridad la respuesta es idéntica si el email existe o no.
+     * En producción, sustituir el return del token por envío de correo.
+     */
+    forgotPassword: async (email) => {
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            // No revelar si el email existe o no
+            return { message: 'Si ese correo está registrado, recibirás instrucciones.' };
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+        await user.update({ resetToken: token, resetTokenExpiry: expiry });
+
+        // TODO producción: enviar token por correo en lugar de devolverlo
+        console.log(`[ForgotPassword] Token para ${email}: ${token}`);
+
+        return {
+            message: 'Si ese correo está registrado, recibirás instrucciones.',
+            // Se expone en desarrollo para que funcione sin servidor de correo.
+            // Eliminar esta línea al configurar envío de email.
+            resetToken: token,
+        };
+    },
+
+    resetPasswordByToken: async (token, newPassword) => {
+        if (!token || !newPassword) {
+            throw new AppError('Token y nueva contraseña son requeridos', 400);
+        }
+        if (newPassword.length < 8) {
+            throw new AppError('La contraseña debe tener al menos 8 caracteres', 400);
+        }
+
+        const user = await User.findOne({ where: { resetToken: token } });
+        if (!user) throw new AppError('Token inválido o ya utilizado', 400);
+        if (new Date() > user.resetTokenExpiry) {
+            throw new AppError('El enlace de restablecimiento ha expirado', 400);
+        }
+
+        const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
+        await user.update({ password: hashed, resetToken: null, resetTokenExpiry: null });
+
+        return { message: 'Contraseña restablecida correctamente' };
     },
 };

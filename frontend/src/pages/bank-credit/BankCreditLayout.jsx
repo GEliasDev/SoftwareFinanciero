@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { ArrowLeft, Edit2, Trash2, LayoutGrid, CalendarClock } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, LayoutGrid, CalendarClock, BarChart2 } from 'lucide-react';
 import { BankCreditService } from '../../services/bankCreditService';
 import { TabNav } from '../../components/ui/TabNav';
 import { fmt } from '../../utils/format';
 
 const STATUS_BADGE = {
-  activo:   { label: 'Activo',   bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
-  pagado:   { label: 'Pagado',   bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
-  atrasado: { label: 'Atrasado', bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' },
+  activo:    { label: 'Activo',    bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
+  pagado:    { label: 'Pagado',    bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
+  en_mora:   { label: 'En mora',   bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' },
+  cancelado: { label: 'Cancelado', bg: 'var(--surface-2)', color: 'var(--text-3)' },
 };
 
 export const BankCreditLayout = () => {
@@ -83,6 +84,7 @@ export const BankCreditLayout = () => {
   const tabs = [
     { to: '', label: 'Resumen', icon: LayoutGrid, end: true },
     { to: 'schedule', label: 'Plan de pagos', icon: CalendarClock },
+    { to: 'analysis', label: 'Análisis', icon: BarChart2 },
   ];
 
   return (

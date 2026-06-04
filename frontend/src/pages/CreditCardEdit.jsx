@@ -6,7 +6,7 @@ import {
   ArrowLeft, CreditCard, Check, AlertTriangle, Percent,
   ChevronRight, ChevronLeft, AlertCircle,
 } from 'lucide-react';
-import { CARD_COLORS, getCardGradient } from '../utils/cardColors';
+import { CARD_COLORS, getCardGradient, darkenHex } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
 import { fmt } from '../utils/format';
 
@@ -22,7 +22,8 @@ export const CreditCardEdit = () => {
   const [touched, setTouched] = useState({});
   const [data, setData] = useState({
     nombre: '', entidad: '', cupoTotal: '', tasaInteresMensual: '',
-    fechaCorte: '', fechaPago: '', status: 'activa', ultimos4: '', color: 'blue',
+    fechaCorte: '', fechaPago: '', status: 'activa', ultimos4: '',
+    comisionAvance: '', cuotaManejo: '', color: 'blue',
   });
 
   useEffect(() => {
@@ -30,7 +31,9 @@ export const CreditCardEdit = () => {
       .then(card => setData({
         nombre: card.nombre, entidad: card.entidad, cupoTotal: card.cupoTotal,
         tasaInteresMensual: card.tasaInteresMensual, fechaCorte: card.fechaCorte, fechaPago: card.fechaPago,
-        status: card.status, ultimos4: card.ultimos4 ?? '', color: card.color ?? 'blue',
+        status: card.status, ultimos4: card.ultimos4 ?? '',
+        comisionAvance: card.comisionAvance ?? '', cuotaManejo: card.cuotaManejo ?? '',
+        color: card.color ?? 'blue',
       }))
       .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la tarjeta.' }))
       .finally(() => setLoading(false));
@@ -71,6 +74,8 @@ export const CreditCardEdit = () => {
         nombre: data.nombre, entidad: data.entidad,
         cupoTotal: Number(data.cupoTotal), tasaInteresMensual: Number(data.tasaInteresMensual),
         fechaCorte: Number(data.fechaCorte), fechaPago: Number(data.fechaPago),
+        comisionAvance: Number(data.comisionAvance) || 0,
+        cuotaManejo: Number(data.cuotaManejo) || 0,
         status: data.status, ultimos4: data.ultimos4 || null, color: data.color,
       });
       Swal.fire({ icon: 'success', title: '¡Actualizado!', timer: 1500, showConfirmButton: false });
@@ -140,12 +145,41 @@ export const CreditCardEdit = () => {
 
           <div className="card" style={{ padding: '1rem' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Color de la tarjeta</p>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {CARD_COLORS.map(c => (
                 <button key={c.key} type="button" title={c.label} onClick={() => setData(prev => ({ ...prev, color: c.key }))}
                   style={{ width: 30, height: 30, borderRadius: '50%', background: c.gradient, border: data.color === c.key ? '2px solid var(--text)' : '2px solid transparent', boxShadow: data.color === c.key ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer', padding: 0, outline: 'none', transform: data.color === c.key ? 'scale(1.18)' : 'scale(1)', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }} />
               ))}
+              <div style={{ width: 1, height: 22, background: 'var(--color-border)', margin: '0 2px' }} />
+              {/* Picker de color libre */}
+              <div title="Color personalizado" style={{ position: 'relative', width: 30, height: 30, flexShrink: 0 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: data.color.startsWith('#')
+                    ? `linear-gradient(135deg, ${data.color} 0%, ${darkenHex(data.color, 0.25)} 100%)`
+                    : 'conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)',
+                  border: data.color.startsWith('#') ? '2px solid var(--text)' : '2px solid var(--color-border)',
+                  boxShadow: data.color.startsWith('#') ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.15)',
+                  transform: data.color.startsWith('#') ? 'scale(1.18)' : 'scale(1)',
+                  transition: 'transform 0.15s ease',
+                }} />
+                <input type="color"
+                  style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none' }}
+                  value={data.color.startsWith('#') ? data.color : '#5B4DF1'}
+                  onChange={e => setData(prev => ({ ...prev, color: e.target.value }))}
+                />
+              </div>
             </div>
+            {data.color.startsWith('#') && (
+              <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: data.color, border: '1px solid var(--color-border)' }} />
+                {data.color}
+                <button type="button" onClick={() => setData(prev => ({ ...prev, color: 'blue' }))}
+                  style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                  usar preset
+                </button>
+              </p>
+            )}
           </div>
 
           {tasaEA && (
@@ -201,6 +235,10 @@ export const CreditCardEdit = () => {
                     {showErr('tasaInteresMensual') ? <p className="form-error"><AlertCircle size={11} /> {errors.tasaInteresMensual}</p>
                       : tasaEA ? <p className="form-hint" style={{ color: isHighRate ? 'var(--color-warning)' : 'var(--color-success)' }}>≈ {tasaEA}% E.A. {isHighRate ? '⚠ Alta' : '✓ Normal'}</p> : null}
                   </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  {field('comisionAvance', 'Comisión por avance (COP)', 'Déjalo en 0 si la tarjeta no cobra avances', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 9900' })}
+                  {field('cuotaManejo', 'Cuota de manejo (COP)', 'Cargo fijo que se agrega en cada corte. 0 si no aplica', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 30000' })}
                 </div>
               </div>
             )}

@@ -74,6 +74,18 @@ export const CreditCardController = {
         }
     },
 
+    createAdvance: async (req, res, next) => {
+        try {
+            const result = await CreditCardService.createAdvance(
+                req.params.creditCardId,
+                req.body
+            );
+            res.status(201).json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
+
     getPurchasesByCard: async (req, res, next) => {
         try {
             const purchases = await CreditCardService.getPurchasesByCard(req.params.creditCardId);

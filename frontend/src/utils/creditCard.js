@@ -1,6 +1,8 @@
 import {
   Utensils, Car, Heart, Tv2, Home, Laptop, Tag, BookOpen, Plane, Package,
+  Banknote, Receipt, Wallet,
 } from 'lucide-react';
+import { nextOccurrence as _nextOccurrence } from './format';
 
 /* ── Formato ──────────────────────────────────────────────────────────── */
 export const fmt = (n) =>
@@ -38,44 +40,87 @@ export const CATEGORIES = [
 
 export const getCat = (v) => CATEGORIES.find(c => c.value === v) ?? CATEGORIES[CATEGORIES.length - 1];
 
+/**
+ * Visual (ícono, label, color) de un movimiento según su tipo.
+ * Para 'compra' usa la categoría; el resto tiene su propio distintivo.
+ */
+export const getMovimientoVisual = (tipo, categoria) => {
+  switch (tipo) {
+    case 'avance':       return { Icon: Banknote, label: 'Avance',          color: '#0891b2' };
+    case 'comision':     return { Icon: Receipt,  label: 'Comisión',        color: '#b45309' };
+    case 'cuota_manejo': return { Icon: Wallet,   label: 'Cuota de manejo', color: '#7c3aed' };
+    default: {
+      const cat = getCat(categoria);
+      return { Icon: cat.Icon, label: cat.label, color: cat.color };
+    }
+  }
+};
+
 /* ── Fechas de corte / pago y urgencia ────────────────────────────────── */
 // Helpers genéricos centralizados en format.js; se re-exportan aquí por
 // compatibilidad con los consumidores existentes del módulo de tarjetas.
-export { nextOccurrence, daysUntil, urgencyStyle } from './format';
+export { nextOccurrence, daysUntil, urgencyStyle, weekendToFriday } from './format';
+
+// Índice absoluto de mes (año*12 + mes, 0-based) del PRIMER corte en que una
+// compra empieza a facturar. Regla: si la compra se hizo el día de corte o
+// después, ya pasó el corte de ese mes → factura en el siguiente ciclo.
+const firstCutMonthIndex = (fechaCompra, cutDay) => {
+  const [y, m, d] = String(fechaCompra).split('-').map(Number);
+  const pIdx = y * 12 + (m - 1);
+  return d >= cutDay ? pIdx + 1 : pIdx;
+};
 
 /* ── Extracto / calendario de pagos ───────────────────────────────────── */
 /**
- * Construye el calendario de obligaciones mes a mes a partir de las compras activas.
- * El índice 0 corresponde al corte/ciclo vigente.
+ * Construye el extracto ciclo a ciclo a partir de todas las compras y el día
+ * de corte de la tarjeta.
  *
- * Cada compra a `m` meses contribuye su cuota mensual mientras le queden cuotas
- * (restantes = numeroCuotas - cuotasPagadas > m). El número de cuota proyectado
- * para ese mes es `cuotasPagadas + m + 1`.
+ * Cortes pasados (isPast): incluyen todas las cuotas válidas (pagadas o no).
+ * Corte vigente (isCurrent) y futuros: solo cuotas pendientes (> cuotasPagadas).
  *
- * @returns Array<{ key, date, label, total, lines, endingCount }>
- *   lines: [{ id, descripcion, categoria, valorCuota, cuotaActual, numeroCuotas, isLast }]
+ * @returns Array<{ key, date, label, total, lines, endingCount, isPast, isCurrent }>
+ *   lines: [{ id, descripcion, categoria, valorCuota, cuotaActual, numeroCuotas, isLast, wasPaid }]
  */
-export const buildSchedule = (activePurchases, monthsAhead = 12) => {
-  const today = new Date();
-  const points = Array.from({ length: monthsAhead }, (_, m) => {
-    const date  = new Date(today.getFullYear(), today.getMonth() + m, 1);
-    const label = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-    const key   = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+export const buildSchedule = (purchases, card, monthsAhead = 12, monthsBack = 3) => {
+  if (!card) return [];
+  const cutDay    = Number(card.fechaCorte);
+  const anchor    = _nextOccurrence(cutDay);
+  const anchorIdx = anchor.getFullYear() * 12 + anchor.getMonth();
 
-    const lines = activePurchases.reduce((acc, p) => {
-      const pagadas   = Number(p.cuotasPagadas);
-      const total     = Number(p.numeroCuotas);
-      const restantes = total - pagadas;
-      if (restantes > m) {
-        const cuotaActual = pagadas + m + 1;
+  // Ventana de pago: el vencimiento del corte anterior cae ANTES del próximo corte.
+  // Ej: corte el 30, pago hasta el 10 → el 1-ero el pago (10) viene antes que el próximo corte (30).
+  const nextPayDate       = _nextOccurrence(Number(card.fechaPago));
+  const isInPaymentWindow = nextPayDate < anchor;
+
+  const buildSlot = (mOff) => {
+    const isPast       = mOff < 0;
+    const isCurrent    = mOff === 0;
+    // El corte anterior (mOff=-1) es el que necesita pago cuando estamos en ventana de pago.
+    const isPaymentDue = mOff === -1 && isInPaymentWindow;
+    const cutIdx       = anchorIdx + mOff;
+    const date      = new Date(Math.floor(cutIdx / 12), cutIdx % 12, 1);
+    const label     = date.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+    const key       = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+    const lines = purchases.reduce((acc, p) => {
+      const pagadas     = Number(p.cuotasPagadas);
+      const total       = Number(p.numeroCuotas);
+      const cuotaActual = (cutIdx - firstCutMonthIndex(p.fechaCompra, cutDay)) + 1;
+      const validCuota  = cuotaActual >= 1 && cuotaActual <= total;
+      const isPending   = cuotaActual > pagadas;
+
+      // Pasados: mostrar todas las cuotas válidas (historial). Vigente/futuros: solo pendientes.
+      if (validCuota && (isPast || isPending)) {
         acc.push({
           id: p.id,
           descripcion: p.descripcion,
           categoria: p.categoria || 'otros',
+          tipo: p.tipo,
           valorCuota: parseFloat(p.valorCuotaMensual ?? 0),
           cuotaActual,
           numeroCuotas: total,
           isLast: cuotaActual === total,
+          wasPaid: !isPending,
         });
       }
       return acc;
@@ -83,11 +128,17 @@ export const buildSchedule = (activePurchases, monthsAhead = 12) => {
 
     const totalMes    = lines.reduce((s, l) => s + l.valorCuota, 0);
     const endingCount = lines.filter(l => l.isLast).length;
-    return { key, date, label, total: totalMes, lines, endingCount };
-  });
+    return { key, date, label, total: totalMes, lines, endingCount, isPast, isCurrent, isPaymentDue };
+  };
 
-  // Recortar meses finales sin obligaciones.
-  let last = points.length - 1;
-  while (last > 0 && points[last].total === 0) last--;
-  return points.slice(0, last + 1);
+  const pastSlots   = Array.from({ length: monthsBack }, (_, i) => buildSlot(-(monthsBack - i)));
+  const currentSlot = buildSlot(0);
+  const futureSlots = Array.from({ length: monthsAhead - 1 }, (_, i) => buildSlot(i + 1));
+
+  const past = pastSlots.filter(s => s.total > 0);
+  let lastF  = futureSlots.length - 1;
+  while (lastF > 0 && futureSlots[lastF].total === 0) lastF--;
+  const future = futureSlots.slice(0, lastF + 1);
+
+  return [...past, currentSlot, ...future];
 };
