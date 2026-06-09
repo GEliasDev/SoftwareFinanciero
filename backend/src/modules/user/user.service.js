@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { User } from './user.model.js';
 import { userCreateSchema, userUpdateSchema } from './user.schema.js';
 import { generateToken } from './utils/generateToken.js';
-import { AppError } from '../../middlewares/appError.js';
+import logger from '../../utils/logger.js';
 import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
@@ -22,11 +22,13 @@ export const UserService = {
         const user = await User.findOne({ where: { email } });
         const isValid = user ? await bcrypt.compare(password, user.password) : false;
         if (!user || !isValid) {
+            logger.warn(`Failed login attempt for email: ${email}`);
             throw new AppError('Credenciales inválidas', 401);
         }
 
         const token = generateToken(user);
         const { password: _, ...userData } = user.toJSON();
+        logger.info(`User ${user.id} logged in successfully`);
         return { user: userData, token };
     },
 
@@ -35,6 +37,7 @@ export const UserService = {
         const hashedPassword = await bcrypt.hash(parsed.password, SALT_ROUNDS);
         const user = await User.create({ ...parsed, password: hashedPassword });
         const { password: _, ...userData } = user.toJSON();
+        logger.info(`User ${user.id} created`);
         return userData;
     },
 
@@ -76,13 +79,17 @@ export const UserService = {
         const isValid = await bcrypt.compare(currentPassword, user.password);
         if (!isValid) throw new AppError('Contraseña actual incorrecta', 401);
         const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
-        return user.update({ password: hashed });
+        await user.update({ password: hashed });
+        logger.info(`User ${id} changed password`);
+        return user;
     },
 
     deleteUser: async (id) => {
         const user = await User.findByPk(id);
         if (!user) throw new AppError('Usuario no encontrado', 404);
-        return user.destroy();
+        await user.destroy();
+        logger.info(`User ${id} deleted`);
+        return;
     },
 
     /**
@@ -102,14 +109,10 @@ export const UserService = {
 
         await user.update({ resetToken: token, resetTokenExpiry: expiry });
 
-        // TODO producción: enviar token por correo en lugar de devolverlo
         console.log(`[ForgotPassword] Token para ${email}: ${token}`);
-
+        logger.info(`Password reset requested for email ${email}`);
         return {
             message: 'Si ese correo está registrado, recibirás instrucciones.',
-            // Se expone en desarrollo para que funcione sin servidor de correo.
-            // Eliminar esta línea al configurar envío de email.
-            resetToken: token,
         };
     },
 

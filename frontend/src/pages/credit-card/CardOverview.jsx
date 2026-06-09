@@ -57,7 +57,7 @@ export const CardOverview = () => {
                   <span>Cupo total: {fmt(card?.cupoTotal)}</span>
                 </div>
                 <div style={{ height: 5, background: 'rgba(255,255,255,0.2)', borderRadius: 99 }}>
-                  <div style={{ height: 5, width: `${Math.min(usagePct, 100)}%`, background: barColor, borderRadius: 99, boxShadow: `0 0 6px ${barColor}88`, transition: 'width 0.5s ease' }} />
+                  <div style={{ height: 5, width: '100%', background: barColor, borderRadius: 99, boxShadow: `0 0 6px ${barColor}88`, transition: 'transform 0.5s ease', transformOrigin: 'left', transform: `scaleX(${Math.min(usagePct, 100) / 100})` }} />
                 </div>
               </div>
               <div style={{ position: 'relative', zIndex: 1 }}>

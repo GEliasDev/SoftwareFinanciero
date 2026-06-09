@@ -22,22 +22,31 @@ export const SubscriptionService = {
         return Subscription.findAll({ where: { userId } });
     },
 
-    getSubscriptionById: async (id) => {
+    getSubscriptionById: async (id, userId, isAdmin) => {
         const subscription = await Subscription.findByPk(id);
         if (!subscription) throw new AppError('Suscripción no encontrada', 404);
+        if (!isAdmin && subscription.userId !== userId) {
+            throw new AppError('Acceso no autorizado a suscripción', 403);
+        }
         return subscription;
     },
 
-    updateSubscription: async (id, data) => {
+    updateSubscription: async (id, data, userId, isAdmin) => {
         const subscription = await Subscription.findByPk(id);
         if (!subscription) throw new AppError('Suscripción no encontrada', 404);
+        if (!isAdmin && subscription.userId !== userId) {
+            throw new AppError('Acceso no autorizado a suscripción', 403);
+        }
         const parsed = subscriptionUpdateSchema.parse(data);
         return subscription.update(parsed);
     },
 
-    deleteSubscription: async (id) => {
+    deleteSubscription: async (id, userId, isAdmin) => {
         const subscription = await Subscription.findByPk(id);
         if (!subscription) throw new AppError('Suscripción no encontrada', 404);
+        if (!isAdmin && subscription.userId !== userId) {
+            throw new AppError('Acceso no autorizado a suscripción', 403);
+        }
         return subscription.destroy();
     },
 

@@ -2,18 +2,21 @@ import { CreditCard } from './creditCard.model.js';
 import { CreditCardPurchase } from './creditCardPurchase.model.js';
 import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema, purchaseUpdateSchema, advanceCreateSchema } from './creditCard.schema.js';
 import { calcularCuotaCompra, calcularPagoMinimo } from './utils/creditCardCalculation.js';
-import { AppError } from '../../middlewares/AppError.js';
+import { AppError } from '../../middlewares/appError.js';
+import logger from '../../utils/logger.js';
 
 export const CreditCardService = {
     // ── Tarjeta ──────────────────────────────────────────────
 
     createCreditCard: async (data) => {
         const parsed = creditCardCreateSchema.parse(data);
-        return CreditCard.create({
-            ...parsed,
-            cupoDisponible: parsed.cupoTotal, // al crear, el cupo disponible es el total
-            userId: data.userId,
-        });
+            const card = await CreditCard.create({
+                ...parsed,
+                cupoDisponible: parsed.cupoTotal,
+                userId: data.userId,
+            });
+            logger.info(`Credit card ${card.id} created for user ${data.userId}`);
+            return card;
     },
 
     getAllCreditCards: async (userId) => {
@@ -23,17 +26,23 @@ export const CreditCardService = {
         });
     },
 
-    getCreditCardById: async (id) => {
+    getCreditCardById: async (id, userId, isAdmin) => {
         const card = await CreditCard.findByPk(id, {
             include: [{ model: CreditCardPurchase }],
         });
         if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
+        if (!isAdmin && card.userId !== userId) {
+            throw new AppError('Acceso no autorizado a tarjeta de crédito', 403);
+        }
         return card;
     },
 
-    updateCreditCard: async (id, data) => {
+    updateCreditCard: async (id, data, userId, isAdmin) => {
         const card = await CreditCard.findByPk(id);
         if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
+        if (!isAdmin && card.userId !== userId) {
+            throw new AppError('Acceso no autorizado a tarjeta de crédito', 403);
+        }
         const parsed = creditCardUpdateSchema.parse(data);
 
         const updates = { ...parsed };
@@ -42,13 +51,20 @@ export const CreditCardService = {
             updates.cupoDisponible = parseFloat(Math.max(0, parsed.cupoTotal - usedAmount).toFixed(2));
         }
 
-        return card.update(updates);
+        await card.update(updates);
+logger.info(`Credit card ${id} updated by user ${userId}`);
+return card;
     },
 
-    deleteCreditCard: async (id) => {
+    deleteCreditCard: async (id, userId, isAdmin) => {
         const card = await CreditCard.findByPk(id);
         if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
-        return card.destroy();
+        if (!isAdmin && card.userId !== userId) {
+            throw new AppError('Acceso no autorizado a tarjeta de crédito', 403);
+        }
+        await card.destroy();
+logger.info(`Credit card ${id} deleted by user ${userId}`);
+return;
     },
 
     // ── Resumen mensual ───────────────────────────────────────
@@ -86,9 +102,12 @@ export const CreditCardService = {
 
     // ── Compras ───────────────────────────────────────────────
 
-    createPurchase: async (creditCardId, data) => {
+    createPurchase: async (creditCardId, data, userId, isAdmin) => {
         const card = await CreditCard.findByPk(creditCardId);
         if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
+        if (!isAdmin && card.userId !== userId) {
+            throw new AppError('Acceso no autorizado a tarjeta de crédito', 403);
+        }
         if (card.status !== 'activa') throw new AppError('La tarjeta no está activa', 400);
 
         const parsed = purchaseCreateSchema.parse(data);
@@ -111,24 +130,27 @@ export const CreditCardService = {
             cupoDisponible: parseFloat((card.cupoDisponible - parsed.montoTotal).toFixed(2)),
         });
 
-        return CreditCardPurchase.create({
+        const purchase = await CreditCardPurchase.create({
             ...parsed,
             ...calculos,
             creditCardId,
         });
+        logger.info(`Purchase ${purchase.id} created for credit card ${creditCardId} by user ${userId}`);
+        return purchase;
     },
 
     // ── Avances ───────────────────────────────────────────────
 
-    createAdvance: async (creditCardId, data) => {
+    createAdvance: async (creditCardId, data, userId, isAdmin) => {
         const card = await CreditCard.findByPk(creditCardId);
         if (!card) throw new AppError('Tarjeta de crédito no encontrada', 404);
+        if (!isAdmin && card.userId !== userId) {
+            throw new AppError('Acceso no autorizado a tarjeta de crédito', 403);
+        }
         if (card.status !== 'activa') throw new AppError('La tarjeta no está activa', 400);
 
         const parsed = advanceCreateSchema.parse(data);
         const comision = parseFloat(card.comisionAvance ?? 0);
-        const hoy = new Date();
-        const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
         if (parsed.montoTotal + comision > parseFloat(card.cupoDisponible)) {
             throw new AppError(
@@ -165,8 +187,9 @@ export const CreditCardService = {
                 totalIntereses: 0,
                 categoria: 'otros',
                 tipo: 'comision',
-                fechaCompra: fechaHoy,
+                fechaCompra: parsed.fechaCompra,
                 creditCardId,
+                avanceId: avance.id,
             });
         }
 
@@ -175,6 +198,7 @@ export const CreditCardService = {
             cupoDisponible: parseFloat((parseFloat(card.cupoDisponible) - parsed.montoTotal - comision).toFixed(2)),
         });
 
+        logger.info(`Advance ${avance.id} created for credit card ${creditCardId} by user ${userId}`);
         return { avance, comision: comisionRecord };
     },
 
@@ -211,10 +235,12 @@ export const CreditCardService = {
             await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
         }
 
-        return purchase.update({
+        await purchase.update({
             cuotasPagadas: nuevasCuotasPagadas,
             status: pagada ? 'pagada' : 'activa',
         });
+        logger.info(`Payment registered for purchase ${purchaseId}, new status: ${pagada ? 'pagada' : 'activa'}`);
+        return purchase;
     },
 
     updatePurchase: async (purchaseId, data) => {
@@ -230,16 +256,33 @@ export const CreditCardService = {
         });
         if (!purchase) throw new AppError('Compra no encontrada', 404);
 
+        const card = purchase.CreditCard;
+        let cupoARestaurar = 0;
+
         // Restaurar cupo proporcional al capital no pagado (no intereses).
         // La cuota de manejo es cupo-neutral: no restaura cupo.
         const cuotasRestantes = purchase.numeroCuotas - purchase.cuotasPagadas;
         if (cuotasRestantes > 0 && purchase.tipo !== 'cuota_manejo') {
-            const card = purchase.CreditCard;
             const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
-            const montoRestante = cuotasRestantes * capitalPorCuota;
-            const nuevoCupo = parseFloat(
-                (parseFloat(card.cupoDisponible) + montoRestante).toFixed(2)
-            );
+            cupoARestaurar += cuotasRestantes * capitalPorCuota;
+        }
+
+        // Si es un avance, eliminar la comisión dependiente y restaurar su cupo.
+        if (purchase.tipo === 'avance') {
+            const comision = await CreditCardPurchase.findOne({
+                where: { avanceId: purchaseId, tipo: 'comision' },
+            });
+            if (comision) {
+                const cuotasComisionRestantes = comision.numeroCuotas - comision.cuotasPagadas;
+                if (cuotasComisionRestantes > 0) {
+                    cupoARestaurar += parseFloat(comision.montoTotal);
+                }
+                await comision.destroy();
+            }
+        }
+
+        if (cupoARestaurar > 0) {
+            const nuevoCupo = parseFloat((parseFloat(card.cupoDisponible) + cupoARestaurar).toFixed(2));
             await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
         }
 
@@ -373,6 +416,8 @@ export const CreditCardService = {
             (parseFloat(card.cupoDisponible) + monto).toFixed(2)
         );
         await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
+logger.info(`Abono of ${monto} applied to purchase ${purchaseId} by user ${userId}`);
+return purchase.update({ numeroCuotas: nuevoNumeroCuotas });
 
         return purchase.update({ numeroCuotas: nuevoNumeroCuotas });
     },

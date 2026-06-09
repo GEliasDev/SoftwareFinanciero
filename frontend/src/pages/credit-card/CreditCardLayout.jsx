@@ -70,7 +70,7 @@ export const CreditCardLayout = () => {
 
   const cupoUsado   = card ? parseFloat(card.cupoTotal) - parseFloat(card.cupoDisponible) : 0;
   const usagePct    = card ? (cupoUsado / parseFloat(card.cupoTotal)) * 100 : 0;
-  const barColor    = usagePct >= 80 ? '#ef4444' : usagePct >= 50 ? '#f59e0b' : '#22c55e';
+  const barColor    = usagePct >= 80 ? '#DC2626' : usagePct >= 50 ? '#D97706' : '#059669';
   const tasaMensual = card ? parseFloat(card.tasaInteresMensual) : 0;
   const tasaEA      = ((Math.pow(1 + tasaMensual / 100, 12) - 1) * 100).toFixed(1);
   const isHighRate  = card && parseFloat(tasaEA) > TASA_USURA_EA;

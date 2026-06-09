@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { ArrowLeft, Edit2, Trash2, LayoutGrid, CalendarClock, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, LayoutGrid, CalendarClock, BarChart2, RotateCcw } from 'lucide-react';
 import { BankCreditService } from '../../services/bankCreditService';
 import { TabNav } from '../../components/ui/TabNav';
 import { fmt } from '../../utils/format';
@@ -19,6 +19,7 @@ export const BankCreditLayout = () => {
   const [credit, setCredit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [undoing, setUndoing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -37,7 +38,7 @@ export const BankCreditLayout = () => {
       title: 'Registrar pago de cuota',
       html: `Se registrará la siguiente cuota de <b>${credit?.nombre}</b>.<br/><span style="color:#64748b;font-size:0.85rem">Cuota: <b>${fmt(credit?.valorCuota)}</b></span>`,
       icon: 'question', showCancelButton: true,
-      confirmButtonColor: '#5B4DF1', cancelButtonColor: '#64748B',
+      confirmButtonColor: '#047857', cancelButtonColor: '#64748B',
       confirmButtonText: 'Registrar pago', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
@@ -50,6 +51,27 @@ export const BankCreditLayout = () => {
       Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'Error al registrar el pago.' });
     } finally {
       setPaying(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    const result = await Swal.fire({
+      title: 'Deshacer último pago',
+      html: `Se revertirá la cuota ${credit?.cuotasPagadas} de <b>${credit?.nombre}</b>.`,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#047857', cancelButtonColor: '#64748B',
+      confirmButtonText: 'Sí, deshacer', cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+    setUndoing(true);
+    try {
+      await BankCreditService.undoPayment(id);
+      await load();
+      Swal.fire({ icon: 'success', title: 'Pago revertido', timer: 1500, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'No se pudo revertir el pago.' });
+    } finally {
+      setUndoing(false);
     }
   };
 
@@ -99,13 +121,18 @@ export const BankCreditLayout = () => {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99, textTransform: 'uppercase' }}>{st.label}</span>
+          {credit?.cuotasPagadas > 0 && credit?.status !== 'pagado' && (
+            <button className="btn btn-secondary" onClick={handleUndo} disabled={undoing} title="Deshacer último pago">
+              <RotateCcw size={14} /> {undoing ? '…' : 'Deshacer pago'}
+            </button>
+          )}
           <button className="btn btn-secondary" onClick={() => navigate(`${base}/edit`)}><Edit2 size={14} /> Editar</button>
           <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={14} /> Eliminar</button>
         </div>
       </div>
 
       <TabNav tabs={tabs} base={base} />
-      <Outlet context={{ credit, reload: load, handlePay, paying }} />
+      <Outlet context={{ credit, reload: load, handlePay, paying, handleUndo, undoing }} />
     </div>
   );
 };

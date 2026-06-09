@@ -492,7 +492,7 @@ export const Reports = () => {
           {health && (
             <div className="card" style={{
               background: `linear-gradient(135deg, var(--color-surface) 60%, ${hc.bg} 100%)`,
-              borderLeft: `4px solid ${hc.color}`,
+              border: `1px solid ${hc.color}40`,
               padding: '20px 24px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
@@ -534,14 +534,14 @@ export const Reports = () => {
                 </div>
 
                 {/* KPIs rápidos */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', minWidth: 260 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1.25rem', minWidth: 240 }}>
                   {[
                     { label: 'Obligación mensual', value: fmt(summary.obligations.total), color: 'var(--color-text-primary)' },
                     { label: 'Deuda total',          value: fmt(summary.debt.total),        color: 'var(--color-danger)' },
                     { label: 'Suscripciones activas', value: summary.counts.activeSubscriptions, color: 'var(--color-primary)' },
                     { label: 'Pagos próximos 30d',   value: summary.upcoming.length,        color: 'var(--color-warning)' },
                   ].map(({ label, value, color }) => (
-                    <div key={label} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '0.625rem' }}>
+                    <div key={label} style={{ padding: '0.25rem 0' }}>
                       <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 0.15rem', fontWeight: 600, textTransform: 'uppercase' }}>{label}</p>
                       <p style={{ fontWeight: 800, color, margin: 0, fontSize: '0.95rem' }}>{value}</p>
                     </div>
@@ -638,11 +638,12 @@ export const Reports = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: 220, overflowY: 'auto' }}>
                   {summary.upcoming.map((p, i) => (
                     <div key={i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '0.5rem 0.625rem', borderRadius: 'var(--radius-sm)',
-                      background: 'var(--color-bg)', borderLeft: `3px solid ${TYPE_COLORS[p.type] || 'var(--color-border)'}`,
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.5rem 0',
+                      borderBottom: i < summary.upcoming.length - 1 ? '1px solid var(--color-border)' : 'none',
                     }}>
-                      <div style={{ minWidth: 0 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: TYPE_COLORS[p.type] || 'var(--color-border)', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
                         <p style={{ fontSize: 11.5, color: 'var(--color-text-muted)', margin: 0 }}>
                           {new Date(p.date + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })} · {TYPE_LABEL[p.type]}

@@ -69,6 +69,12 @@ CreditCardPurchase.init(
             type: DataTypes.INTEGER,
             allowNull: false,
         },
+        // Solo en registros tipo 'comision': referencia al avance que la generó.
+        avanceId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: null,
+        },
     },
     { sequelize, modelName: 'CreditCardPurchase', tableName: 'credit_card_purchases' }
 );

@@ -61,15 +61,21 @@ export const ReminderService = {
         return Reminder.findAll({ where: { userId } });
     },
 
-    getReminderById: async (id) => {
+    getReminderById: async (id, userId, isAdmin) => {
         const reminder = await Reminder.findByPk(id);
         if (!reminder) throw new AppError('Recordatorio no encontrado', 404);
+        if (!isAdmin && reminder.userId !== userId) {
+            throw new AppError('Acceso no autorizado al recordatorio', 403);
+        }
         return reminder;
     },
 
-    updateReminder: async (id, data) => {
+    updateReminder: async (id, data, userId, isAdmin) => {
         const reminder = await Reminder.findByPk(id);
         if (!reminder) throw new AppError('Recordatorio no encontrado', 404);
+        if (!isAdmin && reminder.userId !== userId) {
+            throw new AppError('Acceso no autorizado al recordatorio', 403);
+        }
         const parsed = reminderUpdateSchema.parse(data);
 
         // Si cambian los días de anticipación, recalcular fechas
@@ -84,9 +90,12 @@ export const ReminderService = {
         return reminder.update(parsed);
     },
 
-    deleteReminder: async (id) => {
+    deleteReminder: async (id, userId, isAdmin) => {
         const reminder = await Reminder.findByPk(id);
         if (!reminder) throw new AppError('Recordatorio no encontrado', 404);
+        if (!isAdmin && reminder.userId !== userId) {
+            throw new AppError('Acceso no autorizado al recordatorio', 403);
+        }
         return reminder.destroy();
     },
 

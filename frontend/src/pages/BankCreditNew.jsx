@@ -8,7 +8,7 @@ import { Stepper } from '../components/ui/Stepper';
 import { fmt, fmtDateLong } from '../utils/format';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
-const STEP_FIELDS = [['nombre', 'entidad', 'tipoCredito'], ['montoTotal', 'numeroCuotas', 'tasaInteres', 'cuotaAdministracion', 'seguro'], ['diaPago', 'fechaInicio']];
+const STEP_FIELDS = [['nombre', 'entidad', 'tipoCredito'], ['montoTotal', 'numeroCuotas', 'tasaInteres', 'cuotaAdministracion', 'seguro', 'cuotasPagadas'], ['diaPago', 'fechaInicio']];
 
 const calcCuota = (monto, cuotas, tasaMensualPct) => {
   if (!monto || cuotas < 1) return 0;
@@ -27,7 +27,7 @@ export const BankCreditNew = () => {
   const [formData, setFormData] = useState({
     nombre: '', entidad: '', tipoCredito: 'otro', numeroReferencia: '',
     montoTotal: '', numeroCuotas: '', tasaInteres: '', tipoTasa: 'mensual',
-    cuotaAdministracion: '', seguro: '', diaPago: '', fechaInicio: '',
+    cuotaAdministracion: '', seguro: '', cuotasPagadas: '0', diaPago: '', fechaInicio: '',
   });
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -40,6 +40,9 @@ export const BankCreditNew = () => {
   if (!(Number(formData.numeroCuotas) >= 1)) errors.numeroCuotas = 'Mínimo 1 cuota';
   if (!(Number(formData.tasaInteres) > 0)) errors.tasaInteres = 'Debe ser mayor a 0';
   if (formData.cuotaAdministracion && Number(formData.cuotaAdministracion) < 0) errors.cuotaAdministracion = 'No puede ser negativa';
+  const cuotasPag = Number(formData.cuotasPagadas) || 0;
+  if (cuotasPag < 0) errors.cuotasPagadas = 'No puede ser negativo';
+  if (Number(formData.numeroCuotas) > 0 && cuotasPag >= Number(formData.numeroCuotas)) errors.cuotasPagadas = 'Debe ser menor al total de cuotas';
   const dia = Number(formData.diaPago);
   if (!(dia >= 1 && dia <= 31)) errors.diaPago = 'Día entre 1 y 31';
   if (!formData.fechaInicio) errors.fechaInicio = 'Selecciona una fecha';
@@ -72,6 +75,7 @@ export const BankCreditNew = () => {
         tipoTasa: formData.tipoTasa,
         cuotaAdministracion: formData.cuotaAdministracion ? Number(formData.cuotaAdministracion) : 0,
         seguro: formData.seguro ? Number(formData.seguro) : 0,
+        cuotasPagadas: Number(formData.cuotasPagadas) || 0,
         diaPago: Number(formData.diaPago),
         fechaInicio: formData.fechaInicio,
       });
@@ -206,10 +210,11 @@ export const BankCreditNew = () => {
                     </select>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   {field('cuotaAdministracion', 'Cuota administración', 'Cargo fijo mensual de administración', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
                   {field('seguro', 'Seguro / aval mensual', 'Seguro de vida o aval (Addi, Sistecrédito…)', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
                 </div>
+                {field('cuotasPagadas', 'Cuotas ya pagadas', 'Si registras un crédito en curso, indica cuántas cuotas ya pagaste', { type: 'number', min: '0', step: '1', placeholder: '0' })}
               </div>
             )}
             {step === 2 && (

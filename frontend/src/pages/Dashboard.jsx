@@ -11,7 +11,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
-import { fmt, nextOccurrence, daysUntil } from '../utils/format';
+import { fmt, daysUntil } from '../utils/format';
 import { buildSchedule } from '../utils/creditCard';
 
 const DIST_COLORS = { tarjetas: '#047857', creditos: '#10B981', suscripciones: '#6EE7B7' };
@@ -48,18 +48,22 @@ export const Dashboard = () => {
   const totalDebt        = data.credits.reduce((acc, c) => acc + (c.saldoPendiente ?? 0), 0);
   const upcomingRenewals = data.subSummary?.upcomingRenewals ?? [];
 
-  // Obligación de tarjetas: mismo cálculo que el extracto (ciclo activo, no suma bruta)
-  const cardObligation = data.cards.reduce((s, c) => {
+  // Obligación de tarjetas: ciclo activo = primer slot con cuotas pendientes (misma lógica que CreditCards)
+  const _cardStats = data.cards.map(c => {
     const schedule = buildSchedule(c.CreditCardPurchases || [], c);
-    const slot = schedule.find(sl => sl.isPaymentDue) ?? schedule.find(sl => sl.isCurrent);
-    return s + (slot?.total ?? 0);
-  }, 0);
+    const activeSlot = schedule.find(sl => sl.lines.some(l => !l.wasPaid));
+    if (!activeSlot) return { cardOblMes: 0, dPago: null };
+    const cardOblMes = activeSlot.lines.filter(l => !l.wasPaid).reduce((a, l) => a + l.valorCuota, 0);
+    const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
+    const payDate = new Date(activeSlot.date.getFullYear(), activeSlot.date.getMonth() + payMonthOffset, Number(c.fechaPago));
+    return { cardOblMes, dPago: daysUntil(payDate) };
+  });
 
-  // Próximo pago: menor cantidad de días entre tarjetas con deuda activa
+  const cardObligation = _cardStats.reduce((s, cs) => s + cs.cardOblMes, 0);
+
+  // Próximo pago: fecha de vencimiento del ciclo activo de cada tarjeta
   const nextPaymentDays = (() => {
-    const dias = data.cards
-      .filter(c => (c.CreditCardPurchases || []).some(p => p.status === 'activa'))
-      .map(c => daysUntil(nextOccurrence(c.fechaPago)));
+    const dias = _cardStats.filter(cs => cs.cardOblMes > 0 && cs.dPago !== null).map(cs => cs.dPago);
     return dias.length > 0 ? Math.min(...dias) : null;
   })();
 
@@ -231,13 +235,20 @@ export const Dashboard = () => {
                   {activeCreditsArr.slice(0, 4).map(credit => {
                     const pct = credit.numeroCuotas ? (credit.cuotasPagadas / credit.numeroCuotas) * 100 : 0;
                     return (
-                      <div key={credit.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/bank-credits/${credit.id}`)}>
+                      <div key={credit.id} role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => navigate(`/bank-credits/${credit.id}`)} onKeyDown={e => e.key === 'Enter' && navigate(`/bank-credits/${credit.id}`)} aria-label={`Ver detalle de ${credit.nombre}`}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                           <span className="truncate" style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{credit.nombre}</span>
                           <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: 8 }}>{credit.cuotasPagadas}/{credit.numeroCuotas}</span>
                         </div>
-                        <div className="progress-track">
-                          <div className="progress-fill" style={{ width: `${pct}%` }} />
+                        <div
+                          className="progress-track"
+                          role="progressbar"
+                          aria-valuenow={Math.round(pct)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`Progreso: ${credit.cuotasPagadas} de ${credit.numeroCuotas} cuotas pagadas`}
+                        >
+                          <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
                           <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)' }}>{fmt(credit.valorCuota)}/mes</span>

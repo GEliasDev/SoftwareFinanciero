@@ -1,4 +1,6 @@
 import { UserService } from './user.service.js';
+import logger from '../../utils/logger.js';
+import { AppError } from '../../middlewares/appError.js';
 
 export const UserController = {
     login: async (req, res, next) => {
@@ -22,8 +24,13 @@ export const UserController = {
 
     getAllUsers: async (req, res, next) => {
         try {
+            if (!req.user.isAdmin) {
+                logger.warn(`Unauthorized access attempt to user list by user ${req.user.id}`);
+                throw new AppError('Acceso no autorizado a lista de usuarios', 403);
+            }
             const { page, limit } = req.query;
-            const result = await UserService.getAllUsers({ page: +page, limit: +limit });
+            const cappedLimit = Math.min(parseInt(limit) || 10, 100);
+            const result = await UserService.getAllUsers({ page: +page, limit: cappedLimit });
             res.json(result);
         } catch (error) {
             next(error);
@@ -32,6 +39,10 @@ export const UserController = {
 
     getUserById: async (req, res, next) => {
         try {
+            if (!req.user.isAdmin && req.user.id !== Number(req.params.id)) {
+                logger.warn(`Unauthorized access to user ${req.params.id} by user ${req.user.id}`);
+                throw new AppError('Acceso no autorizado al usuario', 403);
+            }
             const user = await UserService.getUserById(req.params.id);
             res.json(user);
         } catch (error) {
@@ -41,6 +52,10 @@ export const UserController = {
 
     updateUser: async (req, res, next) => {
         try {
+            if (!req.user.isAdmin && req.user.id !== Number(req.params.id)) {
+                logger.warn(`Unauthorized update attempt on user ${req.params.id} by user ${req.user.id}`);
+                throw new AppError('Acceso no autorizado al usuario', 403);
+            }
             const user = await UserService.updateUser(req.params.id, req.body);
             res.json(user);
         } catch (error) {
@@ -50,6 +65,10 @@ export const UserController = {
 
     changePassword: async (req, res, next) => {
         try {
+            if (!req.user.isAdmin && req.user.id !== Number(req.params.id)) {
+                logger.warn(`Unauthorized password change attempt for user ${req.params.id} by user ${req.user.id}`);
+                throw new AppError('Acceso no autorizado al cambio de contraseña', 403);
+            }
             await UserService.changePassword(req.params.id, req.body);
             res.status(200).json({ message: 'Contraseña actualizada exitosamente' });
         } catch (error) {
@@ -59,6 +78,10 @@ export const UserController = {
 
     deleteUser: async (req, res, next) => {
         try {
+            if (!req.user.isAdmin && req.user.id !== Number(req.params.id)) {
+                logger.warn(`Unauthorized delete attempt for user ${req.params.id} by user ${req.user.id}`);
+                throw new AppError('Acceso no autorizado al usuario', 403);
+            }
             await UserService.deleteUser(req.params.id);
             res.status(204).send();
         } catch (error) {

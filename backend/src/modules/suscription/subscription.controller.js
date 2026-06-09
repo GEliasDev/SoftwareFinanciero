@@ -24,7 +24,7 @@ export const SubscriptionController = {
 
     getSubscriptionById: async (req, res, next) => {
         try {
-            const subscription = await SubscriptionService.getSubscriptionById(req.params.id);
+            const subscription = await SubscriptionService.getSubscriptionById(req.params.id, req.user.id, req.user.isAdmin);
             res.json(subscription);
         } catch (error) {
             next(error);
@@ -35,7 +35,9 @@ export const SubscriptionController = {
         try {
             const subscription = await SubscriptionService.updateSubscription(
                 req.params.id,
-                req.body
+                req.body,
+                req.user.id,
+                req.user.isAdmin
             );
             res.json(subscription);
         } catch (error) {
@@ -45,7 +47,7 @@ export const SubscriptionController = {
 
     deleteSubscription: async (req, res, next) => {
         try {
-            await SubscriptionService.deleteSubscription(req.params.id);
+            await SubscriptionService.deleteSubscription(req.params.id, req.user.id, req.user.isAdmin);
             res.status(204).send();
         } catch (error) {
             next(error);

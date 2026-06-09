@@ -163,10 +163,11 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
           {/* Barra proporcional */}
           <div style={{ height: 3, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden', marginLeft: 22 }}>
             <div style={{
-              height: 3, width: `${barWidth}%`,
+              height: 3, width: '100%',
               background: accentColor,
               opacity: (showPaymentDue || isCurrent) ? 0.65 : 0.45,
-              borderRadius: 99, transition: 'width 0.4s ease',
+              borderRadius: 99, transition: 'transform 0.4s ease',
+              transformOrigin: 'left', transform: `scaleX(${barWidth / 100})`,
             }} />
           </div>
         </button>

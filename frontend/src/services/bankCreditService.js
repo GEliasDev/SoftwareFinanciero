@@ -17,9 +17,12 @@ export const BankCreditService = {
     const response = await api.patch(`/bank-credits/${id}`, data);
     return response.data;
   },
-  // El backend solo usa req.params.id, no recibe body
   registerPayment: async (id) => {
     const response = await api.patch(`/bank-credits/${id}/pay`);
+    return response.data;
+  },
+  undoPayment: async (id) => {
+    const response = await api.patch(`/bank-credits/${id}/undo-pay`);
     return response.data;
   },
   delete: async (id) => {
