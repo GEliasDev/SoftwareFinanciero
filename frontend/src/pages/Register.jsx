@@ -101,7 +101,7 @@ export const Register = () => {
           <div className="auth-panel-brand-inner">
             <div className="auth-brand-logo">
               <BrandMark size={36} shadow={false} />
-              <span>Debit</span>
+              <span>Debti</span>
             </div>
             <div>
               <h2 className="auth-panel-headline">Crea tu cuenta y empieza a ordenar tus finanzas</h2>
@@ -129,7 +129,7 @@ export const Register = () => {
             <div className="auth-form-header">
               <div className="auth-logo">
                 <BrandMark size={28} />
-                <span className="auth-logo-text">Debit</span>
+                <span className="auth-logo-text">Debti</span>
               </div>
               <h2>Crear cuenta</h2>
               <p>Completa el formulario para comenzar</p>

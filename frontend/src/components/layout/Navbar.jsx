@@ -4,10 +4,10 @@ import { UserCircle, LogOut, CalendarClock, Sun, Moon } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { CreditCardService } from '../../services/creditCardService';
 
-const getStoredTheme = () => localStorage.getItem('debit-theme') || 'light';
+const getStoredTheme = () => localStorage.getItem('debti-theme') || 'light';
 const applyTheme = (theme) => {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('debit-theme', theme);
+  localStorage.setItem('debti-theme', theme);
 };
 
 const ROUTE_LABELS = {
@@ -23,7 +23,7 @@ const ROUTE_LABELS = {
 const getPageLabel = (pathname) => {
   if (pathname === '/') return 'Dashboard';
   const base = '/' + pathname.split('/')[1];
-  return ROUTE_LABELS[base] || 'Debit';
+  return ROUTE_LABELS[base] || 'Debti';
 };
 
 export const Navbar = () => {

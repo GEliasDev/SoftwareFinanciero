@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Debit — guía para Claude
+# Debti — guía para Claude
 
 App de **finanzas personales**. Gestiona tarjetas de crédito,
 créditos bancarios, suscripciones, recordatorios y reportes. Español (es-CO, COP).
@@ -84,7 +84,7 @@ motor antes de decidir:
 `py -3 <skill>/scripts/search.py "<consulta>" --domain ux|color|typography ...`
 (la skill vive en el cache de plugins; `py -3`, no `python`).
 
-## Sistema de diseño (Debit)
+## Sistema de diseño (Debti)
 - **Estilo:** fintech corporativo limpio (Stripe/Mercury/Ramp).
 - **Tokens** en `frontend/src/index.css :root`. Usar variables, nunca hex crudo:
   - Marca índigo-violeta: `--brand-600 #5B4DF1` (+ rampa 50..800). Evitar gradientes

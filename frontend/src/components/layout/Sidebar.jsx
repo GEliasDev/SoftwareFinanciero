@@ -71,7 +71,7 @@ export const Sidebar = () => {
         <div className="sidebar-header">
           <NavLink to="/" className="sidebar-logo" onClick={close}>
             <BrandMark size={28} />
-            <span className="sidebar-logo-name">Debit</span>
+            <span className="sidebar-logo-name">Debti</span>
           </NavLink>
         </div>
 

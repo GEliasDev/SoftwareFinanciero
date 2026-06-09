@@ -95,15 +95,15 @@ export const Reports = () => {
 
   // Variables de configuración de simulación en LocalStorage para persistencia
   const [ingresoNeto, setIngresoNeto] = useState(() => {
-    const saved = localStorage.getItem('debit_ingreso_neto');
+    const saved = localStorage.getItem('debti_ingreso_neto');
     return saved !== null ? saved : "4000000";
   });
   const [gastosFijos, setGastosFijos] = useState(() => {
-    const saved = localStorage.getItem('debit_gastos_fijos');
+    const saved = localStorage.getItem('debti_gastos_fijos');
     return saved !== null ? saved : "1000000";
   });
   const [abonoExtra, setAbonoExtra] = useState(() => {
-    const saved = localStorage.getItem('debit_abono_extra');
+    const saved = localStorage.getItem('debti_abono_extra');
     return saved !== null ? saved : "500000";
   });
   const [desmonteMetodo, setDesmonteMetodo] = useState('avalancha'); // 'avalancha' | 'bolanieve'
@@ -134,17 +134,17 @@ export const Reports = () => {
   const handleIngresoChange = (e) => {
     const val = e.target.value;
     setIngresoNeto(val);
-    localStorage.setItem('debit_ingreso_neto', val);
+    localStorage.setItem('debti_ingreso_neto', val);
   };
   const handleGastosChange = (e) => {
     const val = e.target.value;
     setGastosFijos(val);
-    localStorage.setItem('debit_gastos_fijos', val);
+    localStorage.setItem('debti_gastos_fijos', val);
   };
   const handleAbonoExtraChange = (e) => {
     const val = e.target.value;
     setAbonoExtra(val);
-    localStorage.setItem('debit_abono_extra', val);
+    localStorage.setItem('debti_abono_extra', val);
   };
 
   // ── Algoritmo de Proyección Dinámica ──
@@ -411,7 +411,7 @@ export const Reports = () => {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(trendSheet), 'Tendencia');
       }
 
-      XLSX.writeFile(wb, `Debit_Reporte_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, `Debti_Reporte_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (err) {
       console.error('Error al exportar Excel:', err);
       import('sweetalert2').then(({ default: Swal }) => {
