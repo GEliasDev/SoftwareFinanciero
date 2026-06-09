@@ -1,4 +1,11 @@
-import { ReminderService } from './reminder.service.js';
+import { z } from 'zod';
+const pushSubscriptionSchema = z.object({
+    endpoint: z.string().url(),
+    keys: z.object({
+        auth: z.string(),
+        p256dh: z.string()
+    })
+});
 
 export const ReminderController = {
     createReminder: async (req, res, next) => {
@@ -51,9 +58,10 @@ export const ReminderController = {
 
     savePushSubscription: async (req, res, next) => {
         try {
+            const pushSubscription = pushSubscriptionSchema.parse(req.body.pushSubscription);
             const result = await ReminderService.savePushSubscription(
                 req.user.id,
-                req.body.pushSubscription
+                pushSubscription
             );
             res.json(result);
         } catch (error) {

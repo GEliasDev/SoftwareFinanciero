@@ -34,6 +34,11 @@ User.init(
             type: DataTypes.STRING,
             unique: false,
         },
+        isAdmin: { 
+            type: DataTypes.BOOLEAN, 
+            allowNull: false, 
+            defaultValue: false 
+        },
         pais: {
             type: DataTypes.STRING,
             allowNull: false,

@@ -9,7 +9,7 @@ export const userCreateSchema = z.object({
     telefono: z.string().min(10).max(10),
     pais: z.string(),
     ciudad: z.string(),
-    password: z.string().min(6, { message: 'La contraseña debe tener al menos 6 caracteres' }),
+    password: z.string().min(8, { message: 'La contraseña debe tener al menos 8 caracteres' }).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/, { message: 'La contraseña debe incluir mayúsculas, minúsculas, dígitos y símbolos' }),
 });
 
 // Schema separado para actualización: email y password NO son actualizables directamente

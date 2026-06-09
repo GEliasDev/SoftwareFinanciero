@@ -204,7 +204,8 @@ export const AnalyticsController = {
     getMonthlyTrend: async (req, res, next) => {
         try {
             const userId = req.user.id;
-            const months = parseInt(req.query.months) || 6;
+            const monthsRaw = parseInt(req.query.months) || 6;
+            const months = Math.min(Math.max(monthsRaw, 1), 24);
 
             const [subscriptions, bankCredits] = await Promise.all([
                 Subscription.findAll({ where: { userId } }),

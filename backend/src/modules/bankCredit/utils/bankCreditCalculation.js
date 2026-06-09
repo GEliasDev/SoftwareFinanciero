@@ -37,11 +37,10 @@ export function bankCreditCalculation({
     const totalAPagar = valorCuota * numeroCuotas;
     const totalIntereses = valorCuotaBase * numeroCuotas - montoTotal;
 
-    // Calcular fecha de fin sumando los meses de cuotas
-    const fecha = new Date(fechaInicio);
-    fecha.setMonth(fecha.getMonth() + numeroCuotas);
-    fecha.setDate(diaPago);
-    const fechaFin = fecha.toISOString().split('T')[0];
+    // Calcular fecha de fin: usar constructor Date(y, m, d) para evitar overflow de fin de mes
+    const inicio = new Date(fechaInicio + 'T00:00:00');
+    const finDate = new Date(inicio.getFullYear(), inicio.getMonth() + numeroCuotas, diaPago);
+    const fechaFin = `${finDate.getFullYear()}-${String(finDate.getMonth() + 1).padStart(2, '0')}-${String(finDate.getDate()).padStart(2, '0')}`;
 
     return {
         tasaMensual: parseFloat(tasaMensual.toFixed(6)),

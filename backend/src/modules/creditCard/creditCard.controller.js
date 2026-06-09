@@ -1,4 +1,5 @@
 import { CreditCardService } from './creditCard.service.js';
+import { abonoSchema } from './creditCard.schema.js';
 
 export const CreditCardController = {
     // ── Tarjeta ───────────────────────────────────────────────
@@ -66,7 +67,9 @@ export const CreditCardController = {
         try {
             const purchase = await CreditCardService.createPurchase(
                 req.params.creditCardId,
-                req.body
+                req.body,
+                req.user.id,
+                req.user.isAdmin
             );
             res.status(201).json(purchase);
         } catch (error) {
@@ -78,7 +81,9 @@ export const CreditCardController = {
         try {
             const result = await CreditCardService.createAdvance(
                 req.params.creditCardId,
-                req.body
+                req.body,
+                req.user.id,
+                req.user.isAdmin
             );
             res.status(201).json(result);
         } catch (error) {
@@ -160,10 +165,10 @@ export const CreditCardController = {
 
     registerAbono: async (req, res, next) => {
         try {
-            const purchase = await CreditCardService.registerAbono(
-                req.params.purchaseId,
-                req.body.montoAbono
-            );
+            const { purchaseId } = req.params;
+            // Validate request body
+            const { montoAbono } = abonoSchema.parse(req.body);
+            const purchase = await CreditCardService.registerAbono(purchaseId, montoAbono);
             res.json({ message: 'Abono registrado exitosamente', purchase });
         } catch (error) {
             next(error);

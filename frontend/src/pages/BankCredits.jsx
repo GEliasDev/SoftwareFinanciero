@@ -26,8 +26,8 @@ export const BankCredits = () => {
   }, []);
 
   const activos       = credits.filter(c => c.status === 'activo');
-  const totalDebt     = credits.reduce((a, c) => a + (c.saldoPendiente ?? 0), 0);
-  const monthlyCuotas = activos.reduce((a, c) => a + (c.valorCuota ?? 0), 0);
+  const totalDebt     = credits.reduce((a, c) => a + parseFloat(c.saldoPendiente ?? 0), 0);
+  const monthlyCuotas = activos.reduce((a, c) => a + parseFloat(c.valorCuota ?? 0), 0);
 
   // Orden: activos primero, por proximidad de pago.
   const ordered = useMemo(() => [...credits].sort((a, b) => {
@@ -113,7 +113,7 @@ export const BankCredits = () => {
                         <span className="tabular" style={{ fontSize: 12, fontWeight: 700, color: 'var(--pos-600)' }}>{pct.toFixed(0)}%</span>
                       </div>
                       <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${pct}%` }} />
+                        <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
                       </div>
                     </div>
                   </div>

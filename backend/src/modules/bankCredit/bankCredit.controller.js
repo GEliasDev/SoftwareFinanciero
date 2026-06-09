@@ -56,6 +56,20 @@ export const BankCreditController = {
         }
     },
 
+    undoPayment: async (req, res, next) => {
+        try {
+            const credit = await BankCreditService.undoPayment(req.params.id, req.user.id);
+            res.json({
+                message: 'Último pago revertido',
+                cuotasPagadas: credit.cuotasPagadas,
+                saldoPendiente: credit.saldoPendiente,
+                status: credit.status,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
     deleteBankCredit: async (req, res, next) => {
         try {
             await BankCreditService.deleteBankCredit(req.params.id, req.user.id);

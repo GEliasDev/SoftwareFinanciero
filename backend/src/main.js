@@ -2,9 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
-import cors from 'cors';
-import sequelize from './db/client.js';
-import userRoutes from './modules/user/user.routes.js';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import bankCreditRoutes from './modules/bankCredit/bankCredit.routes.js';
 import creditCardRoutes from './modules/creditCard/creditCard.routes.js';
 import subscriptionRoutes from './modules/suscription/subscription.routes.js';
@@ -16,7 +15,19 @@ import { startMoraJob } from './jobs/bankCreditMoraJob.js';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
+  credentials: true,
+}));
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 min
+    max: 100, // limit each IP
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+);
+app.use(helmet());
 app.use(express.json());
 
 app.use('/api/users', userRoutes);
