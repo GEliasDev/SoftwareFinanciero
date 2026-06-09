@@ -27,7 +27,7 @@ export const CreditCardController = {
 
     getCreditCardById: async (req, res, next) => {
         try {
-            const card = await CreditCardService.getCreditCardById(req.params.id);
+            const card = await CreditCardService.getCreditCardById(req.params.id, req.user.id, req.user.isAdmin);
             res.json(card);
         } catch (error) {
             next(error);
@@ -36,7 +36,7 @@ export const CreditCardController = {
 
     updateCreditCard: async (req, res, next) => {
         try {
-            const card = await CreditCardService.updateCreditCard(req.params.id, req.body);
+            const card = await CreditCardService.updateCreditCard(req.params.id, req.body, req.user.id, req.user.isAdmin);
             res.json(card);
         } catch (error) {
             next(error);
@@ -45,7 +45,7 @@ export const CreditCardController = {
 
     deleteCreditCard: async (req, res, next) => {
         try {
-            await CreditCardService.deleteCreditCard(req.params.id);
+            await CreditCardService.deleteCreditCard(req.params.id, req.user.id, req.user.isAdmin);
             res.status(204).send();
         } catch (error) {
             next(error);

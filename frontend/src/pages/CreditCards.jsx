@@ -137,16 +137,13 @@ export const CreditCards = () => {
       {/* ── Banner consolidado: estado de cuenta del mes ──────────────── */}
       {!loading && cardsConDeuda.length > 0 && (
         <div
+          className="cc-banner-grid"
           style={{
             background: 'linear-gradient(135deg, var(--brand-800) 0%, var(--brand-600) 100%)',
             borderRadius: 'var(--radius-lg)',
             padding: '1.25rem 1.5rem',
             marginBottom: '1.25rem',
             boxShadow: 'var(--shadow-md)',
-            display: 'grid',
-            gridTemplateColumns: 'minmax(200px, 1.4fr) repeat(3, minmax(120px, 1fr))',
-            gap: '1.25rem',
-            alignItems: 'center',
           }}
         >
           {/* Total del mes */}
@@ -232,7 +229,7 @@ export const CreditCards = () => {
       )}
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.25rem' }}>
+        <div className="cc-cards-grid">
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-lg)' }} />)}
         </div>
       ) : cards.length === 0 ? (
@@ -258,7 +255,7 @@ export const CreditCards = () => {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.25rem' }}>
+        <div className="cc-cards-grid">
           {displayCards.map(card => {
             const cupoUsado = parseFloat(card.cupoTotal ?? 0) - parseFloat(card.cupoDisponible ?? card.cupoTotal ?? 0);
             const usagePct = card.cupoTotal ? Math.min((cupoUsado / parseFloat(card.cupoTotal)) * 100, 100) : 0;

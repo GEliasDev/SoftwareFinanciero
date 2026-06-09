@@ -25,6 +25,7 @@ const NavItem = ({ to, icon: Icon, label, end, onClick }) => (
   <NavLink
     to={to}
     end={end}
+    title={label}
     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
     onClick={onClick}
   >
@@ -44,7 +45,6 @@ export const Sidebar = () => {
         className="menu-toggle"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Toggle menu"
-        style={{ position: 'relative' }}
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
         {/* Indicador de sección activa — solo visible cuando el sidebar está cerrado */}
@@ -82,17 +82,7 @@ export const Sidebar = () => {
           <div className="nav-divider" />
           <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" onClick={close} />
 
-          <NavLink
-            to="/credit-cards"
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-            onClick={close}
-            style={{ justifyContent: 'space-between' }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="nav-icon"><CreditCard size={16} /></span>
-              <span>Tarjetas</span>
-            </span>
-          </NavLink>
+          <NavItem to="/credit-cards" icon={CreditCard} label="Tarjetas" onClick={close} />
 
           <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
 

@@ -381,6 +381,65 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
 }
 .modal-close:hover { color: var(--color-text-primary); background: var(--color-bg); }
 
+/* ── Credit Cards: banner de resumen ── */
+.cc-banner-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.4fr) repeat(3, minmax(120px, 1fr));
+  gap: 1.25rem;
+  align-items: center;
+}
+
+/* En tablet estrecha: total ocupa fila completa, el resto en dos columnas */
+@media (max-width: 700px) {
+  .cc-banner-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cc-banner-grid > div:first-child {
+    grid-column: 1 / -1;
+  }
+  .cc-banner-grid > div:not(:first-child) {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+}
+
+/* En móvil pequeño: una columna */
+@media (max-width: 430px) {
+  .cc-banner-grid {
+    grid-template-columns: 1fr;
+  }
+  .cc-banner-grid > div:not(:first-child) {
+    border-top: 1px solid rgba(255,255,255,0.15);
+    padding-top: 0.75rem;
+    margin-top: 0.25rem;
+  }
+}
+
+/* ── Credit Cards: grid de tarjetas ── */
+.cc-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 520px) {
+  .cc-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Touch targets móvil (≤768px) ── */
+@media (max-width: 768px) {
+  /* 44px de alto es el mínimo recomendado para targets táctiles (HIG / Material) */
+  .form-input {
+    height: 44px;
+    font-size: 16px; /* Evita auto-zoom de iOS al enfocar */
+  }
+  .btn { height: 40px; }
+  .btn-icon { width: 40px; height: 40px; }
+  .tab-nav-item { padding: 11px 14px; }
+}
+
 @media (max-width: 480px) {
   .modal-content { border-radius: var(--radius-lg); max-width: 100%; margin: 8px; }
   .modal-header { padding: 16px 18px; }
@@ -838,4 +897,53 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
   border-color: var(--color-primary);
   background: var(--color-primary-light);
   color: var(--color-primary);
+}
+
+/* ══════════════════════════════════════════════
+   CardPurchases — barra de acciones y filtros
+══════════════════════════════════════════════ */
+
+/* Botones de acción (Nueva compra, Avance, Pagar corte) */
+.purchases-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 540px) {
+  .purchases-actions {
+    width: 100%;
+  }
+  .purchases-actions .btn {
+    flex: 1 1 calc(50% - 0.25rem);
+    justify-content: center;
+  }
+}
+
+/* Barra de filtros */
+.purchases-filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.purchases-filter-search {
+  position: relative;
+  flex: 1 1 160px;
+}
+
+.purchases-filter-select {
+  flex: 1 1 130px;
+  min-width: 0;
+}
+
+@media (max-width: 540px) {
+  .purchases-filter-search {
+    flex: 1 1 100%;
+  }
+  .purchases-filter-select {
+    flex: 1 1 calc(50% - 0.25rem);
+  }
 }

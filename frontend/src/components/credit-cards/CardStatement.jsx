@@ -110,36 +110,17 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
             display: 'flex', flexDirection: 'column', gap: '0.35rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-            {/* Izquierda */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
+          {/* Fila 1: siempre cabe — chevron + mes | contador + total + chip urgencia */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
               {isOpen
                 ? <ChevronDown  size={14} style={{ color: accentColor, flexShrink: 0 }} />
                 : <ChevronRight size={14} style={{ color: (showPaymentDue || isOverdue || isCurrent) ? accentColor : 'var(--color-text-muted)', flexShrink: 0 }} />
               }
-              <span style={{ fontSize: 13, fontWeight: 700, color: (showPaymentDue || isOverdue || isCurrent) ? accentColor : 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: (showPaymentDue || isOverdue || isCurrent) ? accentColor : 'var(--color-text-secondary)', textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {monthName}
               </span>
-              {isCurrent && (
-                <span style={{
-                  fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
-                  background: 'var(--brand-600)', color: 'white', padding: '1px 6px', borderRadius: 99, flexShrink: 0,
-                }}>Próximo</span>
-              )}
-              {(showPaymentDue || isOverdue) && (
-                <span style={{
-                  fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
-                  background: u.color, color: 'white', padding: '1px 6px', borderRadius: 99, flexShrink: 0,
-                }}>{isOverdue ? 'Atrasado' : 'Pago pendiente'}</span>
-              )}
-              {slot.endingCount > 0 && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99, flexShrink: 0 }}>
-                  <TrendingDown size={10} /> {slot.endingCount === 1 ? 'Termina 1 compra' : `Terminan ${slot.endingCount} compras`}
-                </span>
-              )}
             </div>
-
-            {/* Derecha */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                 {slot.lines.length} compra{slot.lines.length !== 1 ? 's' : ''}
@@ -147,7 +128,6 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
               <span style={{ fontSize: 13, fontWeight: 700, color: (showPaymentDue || isCurrent) ? accentColor : 'var(--color-text-primary)' }}>
                 {fmt(slot.total)}
               </span>
-              {/* Chip de urgencia visible al colapsar el corte con pago pendiente */}
               {showPaymentDue && !isOpen && daysPago !== null && (
                 <span style={{
                   fontSize: 10, fontWeight: 700, color: u.color,
@@ -159,6 +139,29 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
               )}
             </div>
           </div>
+
+          {/* Fila 2: badges de estado — se envuelven solos sin pisar el total */}
+          {(isCurrent || showPaymentDue || isOverdue || slot.endingCount > 0) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginLeft: '1.375rem' }}>
+              {isCurrent && (
+                <span style={{
+                  fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
+                  background: 'var(--brand-600)', color: 'white', padding: '1px 6px', borderRadius: 99,
+                }}>Próximo</span>
+              )}
+              {(showPaymentDue || isOverdue) && (
+                <span style={{
+                  fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
+                  background: u.color, color: 'white', padding: '1px 6px', borderRadius: 99,
+                }}>{isOverdue ? 'Atrasado' : 'Pago pendiente'}</span>
+              )}
+              {slot.endingCount > 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>
+                  <TrendingDown size={10} /> {slot.endingCount === 1 ? 'Termina 1 compra' : `Terminan ${slot.endingCount} compras`}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Barra proporcional */}
           <div style={{ height: 3, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden', marginLeft: 22 }}>

@@ -43,13 +43,13 @@ export const CardPurchases = () => {
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
           <ShoppingBag size={16} style={{ color: 'var(--brand-600)' }} />
           Compras
           {activePurchases.length > 0 && <span style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 99 }}>{activePurchases.length} activa{activePurchases.length !== 1 ? 's' : ''}</span>}
           {purchases.length > activePurchases.length && <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 99 }}>{purchases.length - activePurchases.length} pagada{purchases.length - activePurchases.length !== 1 ? 's' : ''}</span>}
         </h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="purchases-actions">
           {payableCount > 0 && <button className="btn btn-success" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={handlePayAll}><CheckSquare size={13} /> Pagar corte</button>}
           <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/advances/new`)}><Banknote size={13} /> Avance</button>
           <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/purchases/new`)}><Plus size={13} /> Nueva compra</button>
@@ -57,27 +57,27 @@ export const CardPurchases = () => {
       </div>
 
       {purchases.length > 0 && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: '1 1 160px' }}>
+        <div className="purchases-filter-bar">
+          <div className="purchases-filter-search">
             <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
-            <input className="form-input" style={{ paddingLeft: 28, fontSize: 12, height: 34 }} placeholder="Buscar compra…" value={searchText} onChange={e => setSearchText(e.target.value)} />
+            <input className="form-input" style={{ paddingLeft: 28, fontSize: 12, height: 34, width: '100%' }} placeholder="Buscar compra…" value={searchText} onChange={e => setSearchText(e.target.value)} />
           </div>
-          <select className="form-input" style={{ fontSize: 12, height: 34, flex: '0 0 auto' }} value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+          <select className="form-input purchases-filter-select" style={{ fontSize: 12, height: 34 }} value={filterCat} onChange={e => setFilterCat(e.target.value)}>
             <option value="all">Todas las categorías</option>
             {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
-          <select className="form-input" style={{ fontSize: 12, height: 34, flex: '0 0 auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <select className="form-input purchases-filter-select" style={{ fontSize: 12, height: 34 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="all">Activas + pagadas</option>
             <option value="activa">Solo activas</option>
             <option value="pagada">Solo pagadas</option>
           </select>
-          <select className="form-input" style={{ fontSize: 12, height: 34, flex: '0 0 auto' }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
+          <select className="form-input purchases-filter-select" style={{ fontSize: 12, height: 34 }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
             <option value="fecha">Ordenar: fecha</option>
             <option value="monto">Ordenar: monto ↓</option>
-            <option value="cuotas-restantes">Ordenar: cuotas restantes ↓</option>
+            <option value="cuotas-restantes">Ordenar: cuotas ↓</option>
             <option value="categoria">Ordenar: categoría</option>
           </select>
-          {hasFilters && <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: 11, height: 34 }} onClick={() => { setSearchText(''); setFilterCat('all'); setFilterStatus('all'); }}><X size={11} /> Limpiar</button>}
+          {hasFilters && <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: 11, height: 34, flexShrink: 0 }} onClick={() => { setSearchText(''); setFilterCat('all'); setFilterStatus('all'); }}><X size={11} /> Limpiar</button>}
         </div>
       )}
 
