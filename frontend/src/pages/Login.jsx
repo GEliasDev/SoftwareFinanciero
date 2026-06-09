@@ -48,7 +48,7 @@ export const Login = () => {
           <div className="auth-panel-brand-inner">
             <div className="auth-brand-logo">
               <BrandMark size={36} shadow={false} />
-              <span>Solventa</span>
+              <span>Debit</span>
             </div>
             <div>
               <h2 className="auth-panel-headline">Tus finanzas, bajo control total</h2>
@@ -79,7 +79,7 @@ export const Login = () => {
             <div className="auth-form-header">
               <div className="auth-logo">
                 <BrandMark size={28} />
-                <span className="auth-logo-text">Solventa</span>
+                <span className="auth-logo-text">Debit</span>
               </div>
               <h2>Iniciar sesión</h2>
               <p>Bienvenido de vuelta a tu panel financiero</p>

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: solventa-api
+    name: debit-api
     runtime: node
     repo: https://github.com/YOUR_USER/YOUR_REPO
     plan: free
@@ -28,7 +28,7 @@ services:
         sync: false
 
   - type: static
-    name: solventa-web
+    name: debit-web
     runtime: node
     repo: https://github.com/YOUR_USER/YOUR_REPO
     plan: free
@@ -47,6 +47,6 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      # Debe incluir /api al final, ej: https://solventa-api.onrender.com/api
+      # Debe incluir /api al final, ej: https://debit-api.onrender.com/api
       - key: VITE_API_URL
         sync: false

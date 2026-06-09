@@ -523,7 +523,7 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
   color: var(--color-text-muted);
 }
 
-/* ── Stat card (Solventa) ── */
+/* ── Stat card (Debit) ── */
 .stat-card {
   position: relative;
   background: var(--color-surface);

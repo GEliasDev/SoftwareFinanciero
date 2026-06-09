@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Solventa — guía para Claude
+# Debit — guía para Claude
 
-App de **finanzas personales** (antes "Debti"). Gestiona tarjetas de crédito,
+App de **finanzas personales**. Gestiona tarjetas de crédito,
 créditos bancarios, suscripciones, recordatorios y reportes. Español (es-CO, COP).
 
 ## Stack
@@ -84,7 +84,7 @@ motor antes de decidir:
 `py -3 <skill>/scripts/search.py "<consulta>" --domain ux|color|typography ...`
 (la skill vive en el cache de plugins; `py -3`, no `python`).
 
-## Sistema de diseño (Solventa)
+## Sistema de diseño (Debit)
 - **Estilo:** fintech corporativo limpio (Stripe/Mercury/Ramp).
 - **Tokens** en `frontend/src/index.css :root`. Usar variables, nunca hex crudo:
   - Marca índigo-violeta: `--brand-600 #5B4DF1` (+ rampa 50..800). Evitar gradientes
@@ -144,4 +144,4 @@ Los tipos cupo-neutral (`comision`, `cuota_manejo`) **nunca** deben afectar `cup
 **Actualizar este CLAUDE.md con cada cambio relevante** al proyecto: nuevos módulos, rutas, convenciones, gotchas descubiertos, decisiones de arquitectura o cambios al sistema de diseño. El objetivo es que siempre refleje el estado actual del repositorio.
 
 ## Documentos
-- Spec de rediseño: `docs/superpowers/specs/2026-05-30-solventa-redesign-design.md`.
+- Spec de rediseño: `docs/superpowers/specs/2026-05-30-solventa-redesign-design.md` (histórico, cuando se llamaba Solventa).
