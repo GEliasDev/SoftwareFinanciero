@@ -131,7 +131,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Distribución + Próximos vencimientos */}
-          <div style={{ display: 'grid', gridTemplateColumns: '5fr 4fr', gap: 16, marginBottom: 16 }}>
+          <div className="split-grid" style={{ marginBottom: 16 }}>
             <SectionCard title="Distribución del compromiso mensual" subtitle="A dónde va tu dinero cada mes" icon={PieIcon}>
               {dist.length > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
@@ -223,7 +223,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Créditos activos + Accesos rápidos */}
-          <div style={{ display: 'grid', gridTemplateColumns: '5fr 4fr', gap: 16 }}>
+          <div className="split-grid">
             <SectionCard
               title="Créditos activos"
               subtitle="Seguimiento de pagos"

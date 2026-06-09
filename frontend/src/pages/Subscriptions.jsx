@@ -88,7 +88,7 @@ export const Subscriptions = () => {
             </button>
           </div>
         ) : (
-          <div className="table-container">
+          <div className="table-container responsive-table">
             <table>
               <thead>
                 <tr>
@@ -106,7 +106,7 @@ export const Subscriptions = () => {
                   const urgente = dias <= 3;
                   return (
                     <tr key={sub.id} className="clickable" onClick={() => navigate(`/subscriptions/${sub.id}`)}>
-                      <td>
+                      <td data-label="Nombre">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                           <div style={{ width: 30, height: 30, borderRadius: 'var(--radius-sm)', background: 'var(--brand-50)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
                             {sub.nombre.charAt(0).toUpperCase()}
@@ -117,13 +117,13 @@ export const Subscriptions = () => {
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Monto">
                         <span className="tabular" style={{ fontWeight: 700, color: 'var(--text)' }}>{fmt(sub.monto, sub.moneda)}</span>
                         <span style={{ marginLeft: 4, fontSize: 12, color: 'var(--text-3)' }}>{sub.moneda}</span>
                       </td>
-                      <td><span className={FREQ_BADGE[sub.frecuencia]?.cls || 'badge badge-neutral'}>{FREQ_BADGE[sub.frecuencia]?.label || sub.frecuencia}</span></td>
-                      <td><span className="tabular" style={{ color: 'var(--text-2)', fontWeight: 600 }}>{fmt(annualEquiv(sub), sub.moneda)}</span></td>
-                      <td>
+                      <td data-label="Frecuencia"><span className={FREQ_BADGE[sub.frecuencia]?.cls || 'badge badge-neutral'}>{FREQ_BADGE[sub.frecuencia]?.label || sub.frecuencia}</span></td>
+                      <td data-label="Costo anual"><span className="tabular" style={{ color: 'var(--text-2)', fontWeight: 600 }}>{fmt(annualEquiv(sub), sub.moneda)}</span></td>
+                      <td data-label="Cobro">
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                           <span style={{ color: 'var(--text-2)' }}>Día {sub.diaCobro}</span>
                           {urgente && (
@@ -133,7 +133,7 @@ export const Subscriptions = () => {
                           )}
                         </span>
                       </td>
-                      <td style={{ width: 32 }}><ChevronRight size={14} style={{ color: 'var(--text-3)' }} /></td>
+                      <td data-label="" style={{ width: 32 }}><ChevronRight size={14} style={{ color: 'var(--text-3)' }} /></td>
                     </tr>
                   );
                 })}

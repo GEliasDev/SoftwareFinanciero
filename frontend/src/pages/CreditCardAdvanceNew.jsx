@@ -120,7 +120,7 @@ export const CreditCardAdvanceNew = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="wizard-grid">
         {/* Preview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {card && (

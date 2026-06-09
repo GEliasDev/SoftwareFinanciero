@@ -130,7 +130,7 @@ export const CreditCardPurchaseNew = () => {
       </div>
 
       {/* 2-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="wizard-grid">
 
         {/* Left: Preview panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

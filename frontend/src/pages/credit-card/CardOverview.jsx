@@ -33,7 +33,7 @@ export const CardOverview = () => {
       )}
 
       {/* HERO: flip card + countdown + KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '6fr 5fr', gap: '1rem', marginBottom: '1rem' }}>
+      <div className="hero-split" style={{ marginBottom: '1rem' }}>
         <div className={`cc-flip-wrapper ${flipped ? 'flipped' : ''}`} onClick={() => setFlipped(f => !f)} style={{ marginBottom: 0 }}>
           <div className="cc-flip-inner">
             <div className="cc-flip-front" style={{ background: getCardGradient(card?.color) }}>

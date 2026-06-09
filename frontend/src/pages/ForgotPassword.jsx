@@ -40,10 +40,7 @@ export const ForgotPassword = () => {
 
   return (
     <div className="auth-container">
-      <div style={{
-        margin: 'auto', width: '100%', maxWidth: 440,
-        padding: '40px 24px', display: 'flex', flexDirection: 'column', gap: 24,
-      }}>
+      <div className="auth-single-panel">
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

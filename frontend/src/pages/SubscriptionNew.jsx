@@ -89,9 +89,9 @@ export const SubscriptionNew = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="wizard-grid">
         {/* Preview */}
-        <div style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ borderRadius: 16, background: 'linear-gradient(135deg, var(--pos-600) 0%, var(--pos-700) 100%)', padding: '1.5rem', color: 'white', boxShadow: '0 16px 40px rgba(5,150,105,0.28)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
               <Repeat size={18} style={{ color: 'rgba(255,255,255,0.85)' }} />

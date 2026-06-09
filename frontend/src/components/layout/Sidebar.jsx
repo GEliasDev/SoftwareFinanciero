@@ -63,6 +63,7 @@ export const Sidebar = () => {
       {isOpen && (
         <div
           onClick={close}
+          className="sidebar-overlay"
           style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', zIndex: 49 }}
         />
       )}

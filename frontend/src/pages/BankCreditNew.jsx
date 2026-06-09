@@ -124,9 +124,9 @@ export const BankCreditNew = () => {
 
       {error && <div className="info-box danger" style={{ marginBottom: '1rem' }}><Info size={14} />{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="wizard-grid">
         {/* Preview */}
-        <div style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ borderRadius: 16, background: 'linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%)', padding: '1.5rem', color: 'white', boxShadow: '0 16px 40px rgba(91,77,241,0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
               <Landmark size={18} style={{ color: 'rgba(255,255,255,0.85)' }} />
