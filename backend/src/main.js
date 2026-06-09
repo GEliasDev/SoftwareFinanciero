@@ -2,8 +2,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
+import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import sequelize from './db/client.js';
+import userRoutes from './modules/user/user.routes.js';
 import bankCreditRoutes from './modules/bankCredit/bankCredit.routes.js';
 import creditCardRoutes from './modules/creditCard/creditCard.routes.js';
 import subscriptionRoutes from './modules/suscription/subscription.routes.js';
