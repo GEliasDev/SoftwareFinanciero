@@ -4,6 +4,7 @@ import { userCreateSchema, userUpdateSchema } from './user.schema.js';
 import { generateToken } from './utils/generateToken.js';
 import logger from '../../utils/logger.js';
 import bcrypt from 'bcrypt';
+import { AppError } from '../../middlewares/appError.js';
 
 const SALT_ROUNDS = 10;
 

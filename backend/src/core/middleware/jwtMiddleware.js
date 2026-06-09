@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import logger from '../../utils/logger.js';
+import { AppError } from '../../middlewares/appError.js';
 
 export const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
