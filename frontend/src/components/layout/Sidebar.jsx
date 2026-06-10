@@ -2,17 +2,20 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Repeat, Bell, CreditCard, Landmark,
-  Menu, X, BarChart2,
+  Menu, X, BarChart2, Wallet, Handshake, Target,
 } from 'lucide-react';
 import { BrandMark } from '../ui/BrandMark';
 
 const SECTION_ICONS = {
-  '/':             LayoutDashboard,
-  '/subscriptions': Repeat,
-  '/credit-cards':  CreditCard,
-  '/bank-credits':  Landmark,
-  '/reminders':     Bell,
-  '/reports':       BarChart2,
+  '/':               LayoutDashboard,
+  '/subscriptions':  Repeat,
+  '/credit-cards':   CreditCard,
+  '/bank-credits':   Landmark,
+  '/reminders':      Bell,
+  '/reports':        BarChart2,
+  '/income':         Wallet,
+  '/personal-debts': Handshake,
+  '/savings':        Target,
 };
 
 function useActiveIcon() {
@@ -85,6 +88,11 @@ export const Sidebar = () => {
           <NavItem to="/credit-cards" icon={CreditCard} label="Tarjetas" onClick={close} />
 
           <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
+
+          <div className="nav-divider" />
+          <NavItem to="/income"         icon={Wallet}    label="Ingresos"       onClick={close} />
+          <NavItem to="/personal-debts" icon={Handshake} label="Obligaciones"   onClick={close} />
+          <NavItem to="/savings"        icon={Target}    label="Metas de Ahorro" onClick={close} />
 
           <div className="nav-divider" />
           <NavItem to="/reminders" icon={Bell} label="Recordatorios" onClick={close} />

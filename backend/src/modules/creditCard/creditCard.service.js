@@ -416,9 +416,6 @@ return;
             (parseFloat(card.cupoDisponible) + monto).toFixed(2)
         );
         await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
-logger.info(`Abono of ${monto} applied to purchase ${purchaseId} by user ${userId}`);
-return purchase.update({ numeroCuotas: nuevoNumeroCuotas });
-
         return purchase.update({ numeroCuotas: nuevoNumeroCuotas });
     },
 

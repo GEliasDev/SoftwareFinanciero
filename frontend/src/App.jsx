@@ -37,6 +37,22 @@ import { BankCreditEdit } from './pages/BankCreditEdit';
 import { Reminders } from './pages/Reminders';
 import { ReminderNew } from './pages/ReminderNew';
 
+// Ingresos
+import { Income } from './pages/Income';
+import { IncomeForm } from './pages/IncomeForm';
+
+// Obligaciones personales
+import { PersonalDebts } from './pages/PersonalDebts';
+import { PersonalDebtNew } from './pages/PersonalDebtNew';
+import { PersonalDebtDetail } from './pages/PersonalDebtDetail';
+import { PersonalDebtEdit } from './pages/PersonalDebtEdit';
+
+// Metas de ahorro
+import { Savings } from './pages/Savings';
+import { SavingsNew } from './pages/SavingsNew';
+import { SavingsDetail } from './pages/SavingsDetail';
+import { SavingsEdit } from './pages/SavingsEdit';
+
 // Herramientas
 import { Reports } from './pages/Reports';
 import { Profile } from './pages/Profile';
@@ -99,6 +115,23 @@ function App() {
           {/* Recordatorios */}
           <Route path="reminders" element={<Reminders />} />
           <Route path="reminders/new" element={<ReminderNew />} />
+
+          {/* Ingresos */}
+          <Route path="income" element={<Income />} />
+          <Route path="income/new" element={<IncomeForm />} />
+          <Route path="income/:id/edit" element={<IncomeForm />} />
+
+          {/* Obligaciones personales */}
+          <Route path="personal-debts" element={<PersonalDebts />} />
+          <Route path="personal-debts/new" element={<PersonalDebtNew />} />
+          <Route path="personal-debts/:id" element={<PersonalDebtDetail />} />
+          <Route path="personal-debts/:id/edit" element={<PersonalDebtEdit />} />
+
+          {/* Metas de ahorro */}
+          <Route path="savings" element={<Savings />} />
+          <Route path="savings/new" element={<SavingsNew />} />
+          <Route path="savings/:id" element={<SavingsDetail />} />
+          <Route path="savings/:id/edit" element={<SavingsEdit />} />
 
           {/* Herramientas */}
           <Route path="reports" element={<Reports />} />

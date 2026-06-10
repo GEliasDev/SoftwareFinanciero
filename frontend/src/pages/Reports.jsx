@@ -11,8 +11,7 @@ import { StatCard } from '../components/ui/StatCard';
 import { buildSchedule } from '../utils/creditCard';
 import {
   Download, FileText, TrendingUp, Calendar, Shield,
-  Repeat, CreditCard, Landmark, Sliders, Zap, CheckCircle, Info, Percent,
-  ChevronUp, ChevronDown
+  Repeat, CreditCard, Landmark, Sliders,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -81,7 +80,7 @@ const getMonthlyCostInCOP = (s) => {
 
 // ── Componente principal ───────────────────
 export const Reports = () => {
-  const [activeTab, setActiveTab]   = useState('analytics'); // 'analytics' | 'projection' | 'payoff'
+  const [activeTab, setActiveTab]   = useState('analytics'); // 'analytics' | 'projection'
   const [summary, setSummary]       = useState(null);
   const [trend, setTrend]           = useState([]);
   const [distribution, setDist]     = useState([]);
@@ -102,13 +101,6 @@ export const Reports = () => {
     const saved = localStorage.getItem('debti_gastos_fijos');
     return saved !== null ? saved : "1000000";
   });
-  const [abonoExtra, setAbonoExtra] = useState(() => {
-    const saved = localStorage.getItem('debti_abono_extra');
-    return saved !== null ? saved : "500000";
-  });
-  const [desmonteMetodo, setDesmonteMetodo] = useState('avalancha'); // 'avalancha' | 'bolanieve'
-  const [expandedMonthIndex, setExpandedMonthIndex] = useState(null);
-
   useEffect(() => {
     Promise.allSettled([
       AnalyticsService.getSummary(),
@@ -141,12 +133,6 @@ export const Reports = () => {
     setGastosFijos(val);
     localStorage.setItem('debti_gastos_fijos', val);
   };
-  const handleAbonoExtraChange = (e) => {
-    const val = e.target.value;
-    setAbonoExtra(val);
-    localStorage.setItem('debti_abono_extra', val);
-  };
-
   // ── Algoritmo de Proyección Dinámica ──
   const getProjectionData = () => {
     const today = new Date();
@@ -197,159 +183,6 @@ export const Reports = () => {
       });
     }
     return data;
-  };
-
-  // ── Algoritmo de Desmonte de Deudas ──
-  const getActiveDebts = () => {
-    const debts = [];
-
-    // Créditos (activos y en mora)
-    credits.forEach(c => {
-      if ((c.status === 'activo' || c.status === 'en_mora') && parseFloat(c.saldoPendiente) > 0) {
-        const rate = parseFloat(c.tasaMensual || (c.tasaInteres / (c.tipoTasa === 'anual' ? 12 : 1)) || 0);
-        // Ajustar si la tasa está en formato porcentaje o fracción
-        const rateFraction = rate > 0.5 ? rate / 100 : rate;
-        debts.push({
-          id: `credit-${c.id}`,
-          name: c.nombre,
-          entity: c.entidad,
-          type: 'Crédito',
-          balance: parseFloat(c.saldoPendiente),
-          monthlyPayment: parseFloat(c.valorCuota),
-          rate: rateFraction,
-        });
-      }
-    });
-
-    // Tarjetas (compras individuales con saldo amortizable)
-    cards.forEach(card => {
-      const cardRate = parseFloat(card.tasaInteresMensual || 0) / 100;
-      (card.CreditCardPurchases || []).forEach(p => {
-        if (p.status === 'activa' && p.tipo !== 'cuota_manejo') {
-          const totalCuotas = parseInt(p.numeroCuotas);
-          const pagadas = parseInt(p.cuotasPagadas);
-          const restantes = totalCuotas - pagadas;
-          if (restantes > 0) {
-            const capitalPorCuota = parseFloat(p.montoTotal) / totalCuotas;
-            const balance = restantes * capitalPorCuota;
-            debts.push({
-              id: `card-p-${p.id}`,
-              name: `${p.descripcion} (${card.nombre})`,
-              entity: card.entidad,
-              type: 'Tarjeta',
-              balance: balance,
-              monthlyPayment: parseFloat(p.valorCuotaMensual),
-              rate: cardRate,
-            });
-          }
-        }
-      });
-    });
-
-    return debts;
-  };
-
-  const runPayoffSimulation = (activeDebts, extraMonthly, method) => {
-    let debts = activeDebts.map(d => ({ ...d }));
-    let month = 0;
-    const history = [];
-    const maxMonths = 120; // Límite de 10 años
-    let totalInterestPaid = 0;
-    const timeline = [];
-
-
-
-    while (debts.some(d => d.balance > 0.01) && month < maxMonths) {
-      month++;
-
-      let active = debts.filter(d => d.balance > 0.01);
-      if (method === 'avalancha') {
-        // Mayor tasa primero
-        active.sort((a, b) => b.rate - a.rate || b.balance - a.balance);
-      } else {
-        // Menor saldo primero
-        active.sort((a, b) => a.balance - b.balance || b.rate - a.rate);
-      }
-
-      // Step 1: Calcular interés acumulado del mes y pagar mínimos
-      const paymentsThisMonth = {};
-
-      active.forEach(d => {
-        const interest = d.balance * d.rate;
-        totalInterestPaid += interest;
-        d.balance += interest; // acumular interés
-
-        const minPay = Math.min(d.monthlyPayment, d.balance);
-        paymentsThisMonth[d.id] = minPay;
-        d.balance -= minPay;
-
-        if (d.balance <= 0.01) {
-          d.balance = 0;
-          timeline.push({ month, name: d.name, type: d.type, monthlyPayment: d.monthlyPayment });
-        }
-      });
-
-      // Step 2: Sumar cuotas de deudas liquidadas al flujo extra (Efecto Rollover)
-      let freedMin = 0;
-      debts.forEach(d => {
-        if (d.balance <= 0.01) {
-          freedMin += d.monthlyPayment;
-        }
-      });
-
-      let totalExtraAvailable = extraMonthly + freedMin;
-
-      // Inyectar el extra en la deuda prioritaria
-      for (let i = 0; i < active.length; i++) {
-        const d = active[i];
-        if (d.balance <= 0.01) continue;
-
-        const extraToApply = Math.min(totalExtraAvailable, d.balance);
-        paymentsThisMonth[d.id] = (paymentsThisMonth[d.id] || 0) + extraToApply;
-        d.balance -= extraToApply;
-        totalExtraAvailable -= extraToApply;
-
-        if (d.balance <= 0.01) {
-          d.balance = 0;
-          // Si se liquida aquí, agregar al timeline
-          if (!timeline.some(t => t.name === d.name && t.month === month)) {
-            timeline.push({ month, name: d.name, type: d.type, monthlyPayment: d.monthlyPayment });
-          }
-        }
-
-        if (totalExtraAvailable <= 0) break;
-      }
-
-      history.push({
-        monthIndex: month,
-        balances: debts.map(d => ({ id: d.id, name: d.name, balance: d.balance })),
-        payments: paymentsThisMonth,
-      });
-    }
-
-    return {
-      months: month,
-      totalInterest: totalInterestPaid,
-      timeline,
-      history,
-    };
-  };
-
-  // Ejecución de simulaciones
-  const activeDebts = getActiveDebts();
-  const hasDebts = activeDebts.length > 0;
-  
-  const baseline = runPayoffSimulation(activeDebts, 0, 'avalancha');
-  const simulation = runPayoffSimulation(activeDebts, parseFloat(abonoExtra) || 0, desmonteMetodo);
-
-  const mesesAhorrados = Math.max(0, baseline.months - simulation.months);
-  const interesesAhorrados = Math.max(0, baseline.totalInterest - simulation.totalInterest);
-
-  const getPayoffDate = (monthsCount) => {
-    if (monthsCount === 0) return 'Inmediato';
-    const d = new Date();
-    d.setMonth(d.getMonth() + monthsCount);
-    return d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
   };
 
   // ── Exportar Excel ─────────────────────
@@ -405,8 +238,8 @@ export const Reports = () => {
       // Hoja 5: Tendencia mensual
       if (trend.length > 0) {
         const trendSheet = [
-          ['Mes', 'Suscripciones', 'Créditos', 'Total'],
-          ...trend.map(t => [t.month, t.subscriptions, t.bankCredits, t.total]),
+          ['Mes', 'Suscripciones', 'Créditos Bancarios', 'Tarjetas de Crédito', 'Total'],
+          ...trend.map(t => [t.month, t.subscriptions, t.bankCredits, t.creditCards ?? 0, t.total]),
         ];
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(trendSheet), 'Tendencia');
       }
@@ -476,12 +309,6 @@ export const Reports = () => {
           onClick={() => setActiveTab('projection')}
         >
           <Sliders size={14} /> Proyección de Flujo
-        </button>
-        <button
-          className={`tab-nav-item ${activeTab === 'payoff' ? 'active' : ''}`}
-          onClick={() => setActiveTab('payoff')}
-        >
-          <Zap size={14} /> Plan de Desmonte
         </button>
       </div>
 
@@ -557,7 +384,7 @@ export const Reports = () => {
               <div className="card-header" style={{ marginBottom: 14, paddingBottom: 10 }}>
                 <div>
                   <h3 className="card-title">Histórico de Obligaciones</h3>
-                  <p className="card-subtitle">Suscripciones + cuotas de créditos en los últimos 6 meses</p>
+                  <p className="card-subtitle">Suscripciones + créditos + tarjetas en los últimos 6 meses</p>
                 </div>
                 <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
               </div>
@@ -572,6 +399,10 @@ export const Reports = () => {
                       <stop offset="5%"  stopColor="#DC2626" stopOpacity={0.2} />
                       <stop offset="95%" stopColor="#DC2626" stopOpacity={0} />
                     </linearGradient>
+                    <linearGradient id="gCard" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#D97706" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#D97706" stopOpacity={0} />
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
@@ -580,6 +411,7 @@ export const Reports = () => {
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                   <Area type="monotone" dataKey="subscriptions" name="Suscripciones" stroke="#047857" fill="url(#gSub)" strokeWidth={2} />
                   <Area type="monotone" dataKey="bankCredits"   name="Créditos"      stroke="#DC2626" fill="url(#gCred)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="creditCards"   name="Tarjetas"       stroke="#D97706" fill="url(#gCard)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -675,7 +507,8 @@ export const Reports = () => {
                   <YAxis tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={55} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="subscriptions" name="Suscripciones" stackId="a" fill="#047857" radius={[0,0,0,0]} />
-                  <Bar dataKey="bankCredits"   name="Créditos"      stackId="a" fill="#DC2626" radius={[4,4,0,0]} />
+                  <Bar dataKey="bankCredits"   name="Créditos"      stackId="a" fill="#DC2626" radius={[0,0,0,0]} />
+                  <Bar dataKey="creditCards"   name="Tarjetas"       stackId="a" fill="#D97706" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -845,250 +678,6 @@ export const Reports = () => {
         </div>
       )}
 
-      {/* ── TAB 3: PLAN DE DESMONTE (SIMULADOR DE ACELERACIÓN) ── */}
-      {activeTab === 'payoff' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {!hasDebts ? (
-            <div className="card empty-state" style={{ padding: 48 }}>
-              <CheckCircle size={40} style={{ color: 'var(--color-success)' }} />
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>¡Sin deudas activas!</h3>
-              <p>No se encontraron créditos bancarios ni compras a cuotas de tarjeta de crédito pendientes. Estás en una posición excelente.</p>
-            </div>
-          ) : (
-            <>
-              {/* KPIs de Comparación */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                <StatCard
-                  label="Tiempo total de desmonte"
-                  value={`${simulation.months} meses`}
-                  delta={`Liquidación total en: ${getPayoffDate(simulation.months)}`}
-                  icon={Calendar}
-                  tone="brand"
-                />
-                <StatCard
-                  label="Tiempo ahorrado"
-                  value={`${mesesAhorrados} meses`}
-                  delta={mesesAhorrados > 0 ? `Antes duraba: ${baseline.months} meses` : 'Añade abonos para acelerar'}
-                  icon={Zap}
-                  tone={mesesAhorrados > 0 ? 'pos' : 'neutral'}
-                />
-                <StatCard
-                  label="Intereses totales proyectados"
-                  value={fmt(simulation.totalInterest)}
-                  delta={`En base a amortización francesa`}
-                  icon={TrendingUp}
-                  tone="neutral"
-                />
-                <StatCard
-                  label="Plata ahorrada en intereses"
-                  value={fmt(interesesAhorrados)}
-                  delta={interesesAhorrados > 0 ? `Reducción en sobrecostos bancarios` : 'Sin abonos extraordinarios'}
-                  icon={Percent}
-                  tone={interesesAhorrados > 0 ? 'pos' : 'neutral'}
-                />
-              </div>
-
-              {/* Layout del Simulador */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, alignItems: 'start' }}>
-                
-                {/* Panel de Configuración de Acelerador */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div className="card" style={{ padding: 20 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                      <Zap size={16} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Parámetros de Aceleración</h4>
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: 16 }}>
-                      <label className="form-label">Abono Extraordinario Mensual</label>
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          type="number"
-                          className="form-input"
-                          value={abonoExtra}
-                          onChange={handleAbonoExtraChange}
-                          style={{ paddingLeft: 24 }}
-                        />
-                        <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--text-3)', fontWeight: 600 }}>$</span>
-                      </div>
-                      <span className="form-hint">Dinero mensual inyectado para matar deuda</span>
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label" style={{ marginBottom: 8 }}>Estrategia Matemática</label>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            name="payoffMethod"
-                            checked={desmonteMetodo === 'avalancha'}
-                            onChange={() => setDesmonteMetodo('avalancha')}
-                            style={{ accentColor: 'var(--color-primary)' }}
-                          />
-                          <div>
-                            <span style={{ fontWeight: 600 }}>Método Avalancha</span>
-                            <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text-3)' }}>Prioriza deudas de mayor interés (ahorra más plata)</p>
-                          </div>
-                        </label>
-
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            name="payoffMethod"
-                            checked={desmonteMetodo === 'bolanieve'}
-                            onChange={() => setDesmonteMetodo('bolanieve')}
-                            style={{ accentColor: 'var(--color-primary)' }}
-                          />
-                          <div>
-                            <span style={{ fontWeight: 600 }}>Método Bola de Nieve</span>
-                            <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text-3)' }}>Prioriza deudas de menor saldo (psicológico, reduce cuentas)</p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Listado de Pasivos Actuales */}
-                  <div className="card" style={{ padding: 20 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                      <Info size={15} style={{ color: 'var(--text-3)' }} />
-                      <h4 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: 'var(--color-text-secondary)' }}>Tus Pasivos Activos ({activeDebts.length})</h4>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
-                      {activeDebts.map((d, idx) => (
-                        <div key={idx} style={{
-                          padding: '8px 10px', background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--color-border)', fontSize: 12
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                            <span className="truncate" style={{ maxWidth: 140 }}>{d.name}</span>
-                            <span className="tabular">{fmt(d.balance)}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-3)', marginTop: 4 }}>
-                            <span>Cuota: {fmt(d.monthlyPayment)}</span>
-                            <span>Tasa: {(d.rate * 100).toFixed(2)}% MV</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Timeline de Hitos y Plan de Pagos */}
-                <div className="card" style={{ padding: 20 }}>
-                  <div className="card-header" style={{ marginBottom: 16, paddingBottom: 10 }}>
-                    <div>
-                      <h3 className="card-title">Calendario de Liquidación Proyectado</h3>
-                      <p className="card-subtitle">Pasos cronológicos recomendados bajo la estrategia {desmonteMetodo === 'avalancha' ? 'Avalancha' : 'Bola de Nieve'}</p>
-                    </div>
-                  </div>
-
-                  {simulation.timeline.length === 0 ? (
-                    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)' }}>
-                      <p>Modifica los parámetros para visualizar el plan de desmonte.</p>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingLeft: 12, borderLeft: '2px solid var(--color-border)', margin: '10px 0 10px 10px' }}>
-                      {simulation.timeline.map((item, idx) => {
-                        // El presupuesto acumulado liberado es el abonoExtra más la suma de las cuotas de las deudas pagadas hasta este mes
-                        const deudasPagadasHastaEsteMes = simulation.timeline.filter(t => t.month <= item.month);
-                        const totalBudget = (parseFloat(abonoExtra) || 0) + deudasPagadasHastaEsteMes.reduce((sum, d) => sum + d.monthlyPayment, 0);
-                        return (
-                          <div key={idx} style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                            {/* Punto indicador */}
-                            <span style={{
-                              position: 'absolute', left: -19, top: 4, width: 12, height: 12, borderRadius: '50%',
-                              backgroundColor: 'var(--color-success)', border: '2.5px solid var(--color-surface)',
-                              boxShadow: '0 0 0 2px var(--color-success-bg)'
-                            }} />
-
-                            <div style={{ flex: 1, background: 'var(--color-bg)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                                <span className="badge badge-success" style={{ fontSize: 10, fontWeight: 700 }}>
-                                  Mes {item.month} ({getPayoffDate(item.month)})
-                                </span>
-                                <span style={{ fontSize: 12, color: 'var(--color-success)', fontWeight: 700 }}>LIQUIDADA ✓</span>
-                              </div>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--color-text-primary)' }}>{item.name}</p>
-                              <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
-                                Tipo: {item.type} · Cuota liberada: <strong style={{ color: 'var(--color-text-primary)' }}>{fmt(item.monthlyPayment)}</strong>. 
-                                La cuota se suma al presupuesto de desmonte. Nuevo presupuesto acumulado de abono extra: <strong>{fmt(totalBudget)}</strong>.
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="divider" style={{ margin: '20px 0' }} />
-
-                  {/* Detalle de Pagos por Mes */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, margin: '8px 0 4px', color: 'var(--color-text-secondary)' }}>Detalle de Pagos por Mes</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 350, overflowY: 'auto', paddingRight: 4 }}>
-                      {simulation.history.map((h) => {
-                        const isExpanded = expandedMonthIndex === h.monthIndex;
-                        const totalPaid = Object.values(h.payments).reduce((sum, v) => sum + v, 0);
-                        return (
-                          <div key={h.monthIndex} style={{
-                            border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
-                            background: 'var(--color-surface)', overflow: 'hidden'
-                          }}>
-                            {/* Header del mes */}
-                            <button
-                              onClick={() => setExpandedMonthIndex(isExpanded ? null : h.monthIndex)}
-                              style={{
-                                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: '10px 12px', background: 'var(--color-bg)', border: 'none',
-                                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left'
-                              }}
-                            >
-                              <span style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--color-text-primary)' }}>
-                                Mes {h.monthIndex} · {getPayoffDate(h.monthIndex)}
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span className="tabular" style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)' }}>
-                                  {fmt(totalPaid)}
-                                </span>
-                                {isExpanded ? <ChevronUp size={14} style={{ color: 'var(--text-3)' }} /> : <ChevronDown size={14} style={{ color: 'var(--text-3)' }} />}
-                              </div>
-                            </button>
-
-                            {/* Desglose de pagos del mes */}
-                            {isExpanded && (
-                              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--color-border)' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', paddingBottom: 4, borderBottom: '1px dashed var(--color-border)' }}>
-                                  <span>Obligación</span>
-                                  <span style={{ textAlign: 'right' }}>Pago este Mes</span>
-                                  <span style={{ textAlign: 'right' }}>Saldo Restante</span>
-                                </div>
-                                {Object.entries(h.payments).map(([debtId, paymentAmt]) => {
-                                  const debtObj = activeDebts.find(d => d.id === debtId);
-                                  const balanceObj = h.balances.find(b => b.id === debtId);
-                                  if (!debtObj || paymentAmt <= 0) return null;
-                                  return (
-                                    <div key={debtId} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontSize: 12 }}>
-                                      <span className="truncate" style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{debtObj.name}</span>
-                                      <span className="tabular" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-text-primary)' }}>{fmt(paymentAmt)}</span>
-                                      <span className="tabular" style={{ textAlign: 'right', color: 'var(--text-3)' }}>{fmt(balanceObj ? balanceObj.balance : 0)}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 };

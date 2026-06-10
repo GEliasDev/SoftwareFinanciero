@@ -4,6 +4,7 @@ import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
 import { AuthService } from '../services/authService';
+import { AnalyticsService } from '../services/analyticsService';
 import {
   Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus, PieChart as PieIcon,
 } from 'lucide-react';
@@ -22,7 +23,7 @@ export const Dashboard = () => {
   const user = AuthService.getCurrentUser();
   const firstName = user?.primerNombre || user?.name?.split(' ')[0] || 'Usuario';
 
-  const [data, setData] = useState({ subs: [], cards: [], credits: [], subSummary: null });
+  const [data, setData] = useState({ subs: [], cards: [], credits: [], subSummary: null, analyticsSummary: null });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,16 +32,19 @@ export const Dashboard = () => {
       CreditCardService.getAll(),
       BankCreditService.getAll(),
       SubscriptionService.getSummary(),
-    ]).then(([subsRes, cardsRes, creditsRes, summaryRes]) => {
+      AnalyticsService.getSummary(),
+    ]).then(([subsRes, cardsRes, creditsRes, summaryRes, analyticsRes]) => {
       setData({
-        subs:       subsRes.status === 'fulfilled'    ? subsRes.value    : [],
-        cards:      cardsRes.status === 'fulfilled'   ? cardsRes.value   : [],
-        credits:    creditsRes.status === 'fulfilled' ? creditsRes.value : [],
-        subSummary: summaryRes.status === 'fulfilled' ? summaryRes.value : null,
+        subs:             subsRes.status === 'fulfilled'     ? subsRes.value      : [],
+        cards:            cardsRes.status === 'fulfilled'    ? cardsRes.value     : [],
+        credits:          creditsRes.status === 'fulfilled'  ? creditsRes.value   : [],
+        subSummary:       summaryRes.status === 'fulfilled'  ? summaryRes.value   : null,
+        analyticsSummary: analyticsRes.status === 'fulfilled' ? analyticsRes.value : null,
       });
     }).finally(() => setLoading(false));
   }, []);
 
+  const dineroLibre      = data.analyticsSummary?.dineroLibre ?? null;
   const activeSubs       = data.subs.length;
   const activeCreditsArr = data.credits.filter(c => c.status === 'activo');
   const monthlySubCost   = data.subSummary?.totalMonthlyExpense ?? 0;
@@ -104,6 +108,16 @@ export const Dashboard = () => {
               icon={Wallet}
               tone="brand"
             />
+            {dineroLibre !== null && (
+              <StatCard
+                label="Dinero libre"
+                value={fmt(dineroLibre)}
+                delta="Ingresos − obligaciones − metas"
+                icon={Wallet}
+                tone={dineroLibre >= 0 ? 'pos' : 'neg'}
+                onClick={() => navigate('/income')}
+              />
+            )}
             <StatCard
               label="Suscripciones"
               value={fmt(monthlySubCost)}

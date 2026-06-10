@@ -12,6 +12,9 @@ import creditCardRoutes from './modules/creditCard/creditCard.routes.js';
 import subscriptionRoutes from './modules/suscription/subscription.routes.js';
 import reminderRoutes from './modules/reminder/reminder.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
+import incomeRoutes from './modules/income/income.routes.js';
+import personalDebtRoutes from './modules/personalDebt/personalDebt.routes.js';
+import savingsGoalRoutes from './modules/savingsGoal/savingsGoal.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { startReminderJob } from './jobs/reminderJob.js';
 import { startMoraJob } from './jobs/bankCreditMoraJob.js';
@@ -39,6 +42,9 @@ app.use('/api/credit-cards', creditCardRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/income', incomeRoutes);
+app.use('/api/personal-debts', personalDebtRoutes);
+app.use('/api/savings', savingsGoalRoutes);
 
 app.use(errorHandler);
 

@@ -33,7 +33,7 @@ utils/                 — Cálculos puros (sin efectos secundarios)
 El service lanza `throw new AppError('mensaje', statusCode)` para errores esperados; el middleware `errorHandler` en `main.js` los captura y los convierte en JSON.
 
 ### Módulos existentes
-`user | creditCard | bankCredit | suscription | reminder | analytics`
+`user | creditCard | bankCredit | suscription | reminder | analytics | income | personalDebt | savingsGoal`
 
 > El módulo de suscripciones tiene un typo histórico: la carpeta es `suscription` (sin "b"), no `subscription`.
 
@@ -61,6 +61,9 @@ El service lanza `throw new AppError('mensaje', statusCode)` para errores espera
   /schedule                → BankCreditSchedule
 /bank-credits/:id/edit
 /reminders                 → lista | /new
+/income                    → lista | /new | /:id/edit
+/personal-debts            → lista | /new | /:id | /:id/edit
+/savings                   → lista | /new | /:id | /:id/edit
 /reports
 /profile
 ```
@@ -125,6 +128,21 @@ El campo `tipo` distingue el origen del cargo:
 | `cuota_manejo` | cargo mensual por cuota de manejo | **sí** |
 
 Los tipos cupo-neutral (`comision`, `cuota_manejo`) **nunca** deben afectar `cupoDisponible` al crearse, pagarse ni borrarse. Cualquier lógica de cupo debe respetar esta distinción.
+
+## Cálculo "Dinero Libre"
+
+```
+dineroLibre = Σ Income.monto (activos)
+            − Σ obligaciones mensuales:
+                Subscription.montoMensual (activas)
+                + BankCredit.valorCuota + cuotaAdministracion (activos)
+                + CreditCardPurchase.valorCuotaMensual (activas)
+                + PersonalDebt.montoCuota (activos)
+            − Σ SavingsGoal.aporteMensual (activas)
+```
+
+Calculado en `analytics.service.getSummary()` → campo `dineroLibre` en la respuesta.
+Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
 
 ## Gotchas (bugs reales ya encontrados — no repetir)
 - **Sequelize DECIMAL llega como STRING** (`tasaMensual`, `montoTotal`, `saldoPendiente`,
