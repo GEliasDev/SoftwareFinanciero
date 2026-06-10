@@ -1,0 +1,9 @@
+{
+  "appId": "com.debti.app",
+  "appName": "Debti",
+  "webDir": "dist",
+  "server": {
+    "url": "https://debti-web.onrender.com",
+    "cleartext": false
+  }
+}
