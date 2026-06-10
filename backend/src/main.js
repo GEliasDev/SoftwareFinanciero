@@ -21,14 +21,24 @@ import { startMoraJob } from './jobs/bankCreditMoraJob.js';
 
 const app = express();
 
+const DEFAULT_ORIGINS = [
+  'http://localhost:5174',
+  'http://localhost:3000',
+  'capacitor://localhost',  // Capacitor Android/iOS
+  'http://localhost',       // Capacitor Android (WebView)
+];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
+  origin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+    : DEFAULT_ORIGINS,
   credentials: true,
 }));
 app.use(
   rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 min
-    max: 100, // limit each IP
+    windowMs: 15 * 60 * 1000,
+    // En desarrollo React StrictMode dispara efectos dos veces; límite generoso para uso personal
+    max: process.env.NODE_ENV === 'production' ? 300 : 2000,
     standardHeaders: true,
     legacyHeaders: false,
   })

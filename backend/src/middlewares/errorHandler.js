@@ -2,12 +2,13 @@ import { ZodError } from 'zod';
 import { AppError } from './appError.js';
 
 export const errorHandler = (err, req, res, next) => {
-    // Errores de validación de Zod
+    // Errores de validación de Zod (compatible v3 .errors y v4 .issues)
     if (err instanceof ZodError) {
+        const issues = err.issues ?? err.errors ?? [];
         return res.status(400).json({
             status: 'error',
             message: 'Datos inválidos',
-            errors: err.errors.map(e => ({
+            errors: issues.map(e => ({
                 field: e.path.join('.'),
                 message: e.message,
             })),

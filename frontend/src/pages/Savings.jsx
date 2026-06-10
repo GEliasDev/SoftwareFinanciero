@@ -2,19 +2,41 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SavingsGoalService } from '../services/savingsGoalService';
 import { PageHeader } from '../components/ui/PageHeader';
-import { Plus, Target, ChevronRight } from 'lucide-react';
+import { Plus, Target, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { fmt } from '../utils/format';
+import Swal from 'sweetalert2';
 
-const STATUS_BADGE = { activo: 'badge badge-primary', completado: 'badge badge-success', pausado: 'badge badge-neutral' };
+const STATUS_BADGE = {
+  activo:     'badge badge-primary',
+  completado: 'badge badge-success',
+  pausado:    'badge badge-neutral',
+};
 
 export const Savings = () => {
   const navigate = useNavigate();
-  const [goals, setGoals] = useState([]);
+  const [goals, setGoals]     = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = () => {
     SavingsGoalService.getAll().then(setGoals).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
+    const { isConfirmed } = await Swal.fire({
+      title: '¿Eliminar esta meta?',
+      text: 'Se perderá el progreso registrado. Esta acción no se puede deshacer.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: 'var(--neg-600)',
+      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Sí, eliminar',
+    });
+    if (!isConfirmed) return;
+    await SavingsGoalService.delete(id);
+    load();
+  };
 
   return (
     <div className="animate-fade-in">
@@ -46,7 +68,7 @@ export const Savings = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {goals.map(goal => {
-            const pct = parseFloat(goal.montoMeta) > 0
+            const pct      = parseFloat(goal.montoMeta) > 0
               ? Math.min(100, (parseFloat(goal.montoAcumulado) / parseFloat(goal.montoMeta)) * 100)
               : 0;
             const restante = Math.max(0, parseFloat(goal.montoMeta) - parseFloat(goal.montoAcumulado));
@@ -68,9 +90,11 @@ export const Savings = () => {
                       {mesesEst ? ` · ~${mesesEst} meses restantes` : ''}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className={STATUS_BADGE[goal.status] || STATUS_BADGE.activo}>{goal.status}</span>
                     <span className="tabular" style={{ fontWeight: 700, fontSize: 15, color: 'var(--pos-600)' }}>{pct.toFixed(0)}%</span>
+                    <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); navigate(`/savings/${goal.id}/edit`); }} title="Editar"><Pencil size={13} /></button>
+                    <button className="btn btn-ghost btn-sm" onClick={e => handleDelete(goal.id, e)} title="Eliminar" style={{ color: 'var(--neg-600)' }}><Trash2 size={13} /></button>
                     <ChevronRight size={16} style={{ color: 'var(--text-3)' }} />
                   </div>
                 </div>

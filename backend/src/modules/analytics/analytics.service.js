@@ -112,7 +112,9 @@ export const AnalyticsService = {
             (a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0
         );
 
-        const totalIncome = incomes.reduce((a, i) => a + toNum(i.monto), 0);
+        // Solo ingresos fijos en Dinero Libre; 'extra' son esporádicos y no distorsionan el cálculo mensual
+        const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo').reduce((a, i) => a + toNum(i.monto), 0);
+        const totalIncomeExtra = incomes.filter(i => i.tipo === 'extra').reduce((a, i) => a + toNum(i.monto), 0);
         const monthlyPersonalDebts = personalDebts.reduce((a, d) => a + toNum(d.montoCuota), 0);
         const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
         const totalObligaciones = monthlySubscriptions + monthlyBankCredits + monthlyCreditCards + monthlyPersonalDebts;
@@ -164,7 +166,7 @@ export const AnalyticsService = {
         upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
         return {
-            income: { total: totalIncome },
+            income: { total: totalIncome, extra: totalIncomeExtra },
             dineroLibre,
             obligations: {
                 subscriptions: monthlySubscriptions,

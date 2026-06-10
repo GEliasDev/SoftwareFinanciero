@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Repeat, Bell, CreditCard, Landmark,
@@ -8,14 +7,14 @@ import { BrandMark } from '../ui/BrandMark';
 
 const SECTION_ICONS = {
   '/':               LayoutDashboard,
-  '/subscriptions':  Repeat,
-  '/credit-cards':   CreditCard,
-  '/bank-credits':   Landmark,
-  '/reminders':      Bell,
-  '/reports':        BarChart2,
   '/income':         Wallet,
   '/personal-debts': Handshake,
   '/savings':        Target,
+  '/credit-cards':   CreditCard,
+  '/bank-credits':   Landmark,
+  '/subscriptions':  Repeat,
+  '/reminders':      Bell,
+  '/reports':        BarChart2,
 };
 
 function useActiveIcon() {
@@ -37,20 +36,19 @@ const NavItem = ({ to, icon: Icon, label, end, onClick }) => (
   </NavLink>
 );
 
-export const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(false);
+export const Sidebar = ({ isOpen, setIsOpen }) => {
   const close = () => setIsOpen(false);
   const ActiveIcon = useActiveIcon();
 
   return (
     <>
+      {/* Botón hamburguesa — solo en desktop/tablet; en móvil lo reemplaza el BottomNav */}
       <button
-        className="menu-toggle"
+        className={`menu-toggle${isOpen ? ' sidebar-open' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Toggle menu"
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
-        {/* Indicador de sección activa — solo visible cuando el sidebar está cerrado */}
         {!isOpen && (
           <span style={{
             position: 'absolute', bottom: 2, right: 2,
@@ -83,22 +81,18 @@ export const Sidebar = () => {
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" end onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" onClick={close} />
-
-          <NavItem to="/credit-cards" icon={CreditCard} label="Tarjetas" onClick={close} />
-
-          <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
-
-          <div className="nav-divider" />
-          <NavItem to="/income"         icon={Wallet}    label="Ingresos"       onClick={close} />
-          <NavItem to="/personal-debts" icon={Handshake} label="Obligaciones"   onClick={close} />
+          <NavItem to="/income"         icon={Wallet}    label="Ingresos"        onClick={close} />
+          <NavItem to="/personal-debts" icon={Handshake} label="Obligaciones"    onClick={close} />
           <NavItem to="/savings"        icon={Target}    label="Metas de Ahorro" onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/reminders" icon={Bell} label="Recordatorios" onClick={close} />
+          <NavItem to="/credit-cards"  icon={CreditCard} label="Tarjetas"     onClick={close} />
+          <NavItem to="/bank-credits"  icon={Landmark}   label="Créditos"     onClick={close} />
+          <NavItem to="/subscriptions" icon={Repeat}     label="Suscripciones" onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/reports" icon={BarChart2} label="Reportes" onClick={close} />
+          <NavItem to="/reminders" icon={Bell}     label="Recordatorios" onClick={close} />
+          <NavItem to="/reports"   icon={BarChart2} label="Reportes"      onClick={close} />
         </nav>
       </aside>
     </>

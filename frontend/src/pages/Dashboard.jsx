@@ -1,198 +1,284 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SubscriptionService } from '../services/subscriptionService';
-import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
 import { AuthService } from '../services/authService';
 import { AnalyticsService } from '../services/analyticsService';
 import {
-  Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus, PieChart as PieIcon,
+  Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus,
+  PieChart as PieIcon, TrendingUp, TrendingDown, Target, Handshake,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
-import { fmt, daysUntil } from '../utils/format';
-import { buildSchedule } from '../utils/creditCard';
+import { fmt } from '../utils/format';
 
-const DIST_COLORS = { tarjetas: '#047857', creditos: '#10B981', suscripciones: '#6EE7B7' };
-const DIST_ROUTES = { Tarjetas: '/credit-cards', Créditos: '/bank-credits', Suscripciones: '/subscriptions' };
+// ── Constantes de estilo ──────────────────────────────────────────────────────
+
+const DIST_COLORS = {
+  creditCards:   '#3B82F6',
+  bankCredits:   '#DC2626',
+  subscriptions: '#D97706',
+  personalDebts: '#7C3AED',
+  savings:       '#059669',
+};
+
+const UPCOMING_TYPE = {
+  subscription: { Icon: Repeat,    label: 'Suscripción', accent: '#D97706' },
+  bank_credit:  { Icon: Landmark,  label: 'Crédito',     accent: '#DC2626' },
+  credit_card:  { Icon: CreditCard,label: 'Tarjeta',     accent: '#3B82F6' },
+};
+
+const HEALTH_TONE = {
+  'Excelente': { bg: 'var(--pos-50)',  fg: 'var(--pos-600)'  },
+  'Bueno':     { bg: 'var(--pos-50)',  fg: 'var(--pos-700)'  },
+  'Regular':   { bg: 'var(--warn-50)', fg: 'var(--warn-600)' },
+  'Crítico':   { bg: 'var(--neg-50)',  fg: 'var(--neg-600)'  },
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const daysUntil = (dateStr) => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.round((target - today) / 86_400_000);
+};
+
+const dayLabel = (d) =>
+  d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`;
+
+const urgencyColor = (d) =>
+  d === 0 ? 'var(--neg-600)' : d <= 3 ? 'var(--warn-600)' : 'var(--text-3)';
+
+// ── Componente ────────────────────────────────────────────────────────────────
 
 export const Dashboard = () => {
-  const navigate = useNavigate();
-  const user = AuthService.getCurrentUser();
-  const firstName = user?.primerNombre || user?.name?.split(' ')[0] || 'Usuario';
+  const navigate   = useNavigate();
+  const user       = AuthService.getCurrentUser();
+  const firstName  = user?.primerNombre || user?.name?.split(' ')[0] || 'Usuario';
 
-  const [data, setData] = useState({ subs: [], cards: [], credits: [], subSummary: null, analyticsSummary: null });
-  const [loading, setLoading] = useState(true);
+  const [summary,  setSummary]  = useState(null);
+  const [credits,  setCredits]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     Promise.allSettled([
-      SubscriptionService.getAll(),
-      CreditCardService.getAll(),
-      BankCreditService.getAll(),
-      SubscriptionService.getSummary(),
       AnalyticsService.getSummary(),
-    ]).then(([subsRes, cardsRes, creditsRes, summaryRes, analyticsRes]) => {
-      setData({
-        subs:             subsRes.status === 'fulfilled'     ? subsRes.value      : [],
-        cards:            cardsRes.status === 'fulfilled'    ? cardsRes.value     : [],
-        credits:          creditsRes.status === 'fulfilled'  ? creditsRes.value   : [],
-        subSummary:       summaryRes.status === 'fulfilled'  ? summaryRes.value   : null,
-        analyticsSummary: analyticsRes.status === 'fulfilled' ? analyticsRes.value : null,
-      });
+      BankCreditService.getAll(),
+    ]).then(([sRes, cRes]) => {
+      if (sRes.status === 'fulfilled') setSummary(sRes.value);
+      if (cRes.status === 'fulfilled') setCredits(cRes.value);
     }).finally(() => setLoading(false));
   }, []);
 
-  const dineroLibre      = data.analyticsSummary?.dineroLibre ?? null;
-  const activeSubs       = data.subs.length;
-  const activeCreditsArr = data.credits.filter(c => c.status === 'activo');
-  const monthlySubCost   = data.subSummary?.totalMonthlyExpense ?? 0;
-  const monthlyCredit    = activeCreditsArr.reduce((s, c) => s + parseFloat(c.valorCuota ?? 0), 0);
-  const totalDebt        = data.credits.reduce((acc, c) => acc + (c.saldoPendiente ?? 0), 0);
-  const upcomingRenewals = data.subSummary?.upcomingRenewals ?? [];
-
-  // Obligación de tarjetas: ciclo activo = primer slot con cuotas pendientes (misma lógica que CreditCards)
-  const _cardStats = data.cards.map(c => {
-    const schedule = buildSchedule(c.CreditCardPurchases || [], c);
-    const activeSlot = schedule.find(sl => sl.lines.some(l => !l.wasPaid));
-    if (!activeSlot) return { cardOblMes: 0, dPago: null };
-    const cardOblMes = activeSlot.lines.filter(l => !l.wasPaid).reduce((a, l) => a + l.valorCuota, 0);
-    const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
-    const payDate = new Date(activeSlot.date.getFullYear(), activeSlot.date.getMonth() + payMonthOffset, Number(c.fechaPago));
-    return { cardOblMes, dPago: daysUntil(payDate) };
-  });
-
-  const cardObligation = _cardStats.reduce((s, cs) => s + cs.cardOblMes, 0);
-
-  // Próximo pago: fecha de vencimiento del ciclo activo de cada tarjeta
-  const nextPaymentDays = (() => {
-    const dias = _cardStats.filter(cs => cs.cardOblMes > 0 && cs.dPago !== null).map(cs => cs.dPago);
-    return dias.length > 0 ? Math.min(...dias) : null;
-  })();
-
-  const compromisoMensual = monthlySubCost + cardObligation + monthlyCredit;
-  const urgente = nextPaymentDays !== null && nextPaymentDays !== undefined && nextPaymentDays <= 3 && cardObligation > 0;
+  // ── Valores derivados ──────────────────────────────────────────────────────
+  const obl          = summary?.obligations ?? {};
+  const dineroLibre  = summary?.dineroLibre ?? null;
+  const totalIncome  = summary?.income?.total ?? 0;
+  const totalObl     = obl.total ?? 0;
+  const savings      = obl.savings ?? 0;
+  const health       = summary?.health;
+  const healthTone   = health ? (HEALTH_TONE[health.label] ?? HEALTH_TONE['Regular']) : null;
 
   const dist = [
-    { name: 'Tarjetas',      value: cardObligation, color: DIST_COLORS.tarjetas },
-    { name: 'Créditos',      value: monthlyCredit,  color: DIST_COLORS.creditos },
-    { name: 'Suscripciones', value: monthlySubCost, color: DIST_COLORS.suscripciones },
+    { name: 'Tarjetas de crédito', value: obl.creditCards   ?? 0, color: DIST_COLORS.creditCards   },
+    { name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits   },
+    { name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions },
+    { name: 'Obligaciones',        value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts },
+    { name: 'Metas de ahorro',     value: obl.savings       ?? 0, color: DIST_COLORS.savings       },
   ].filter(d => d.value > 0);
 
+  const totalDist    = dist.reduce((a, d) => a + d.value, 0);
+  const upcoming     = (summary?.upcoming ?? []).slice(0, 8);
+  const activeCredits = credits.filter(c => c.status === 'activo');
+  const totalDebt    = summary?.debt?.total ?? 0;
+
   const hoy = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
-  const cardPagoTexto = nextPaymentDays === 0 ? 'Pago hoy'
-    : nextPaymentDays === 1 ? 'Pago mañana'
-    : nextPaymentDays > 0 ? `Pago en ${nextPaymentDays} días`
-    : `${data.cards.length} tarjeta${data.cards.length !== 1 ? 's' : ''}`;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="animate-fade-in">
       <PageHeader
         title={`Hola, ${firstName}`}
-        subtitle={`${hoy.charAt(0).toUpperCase()}${hoy.slice(1)} · Resumen de tus finanzas`}
+        subtitle={`${hoy.charAt(0).toUpperCase()}${hoy.slice(1)} · Resumen financiero`}
       />
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
-          {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 96 }} />)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="skeleton" style={{ height: 152, borderRadius: 'var(--radius-xl)' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 88, borderRadius: 'var(--radius-lg)' }} />)}
+          </div>
+          <div className="split-grid">
+            {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 220, borderRadius: 'var(--radius-lg)' }} />)}
+          </div>
         </div>
       ) : (
         <>
-          {/* KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 16 }}>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              HERO — Dinero Libre
+          ═══════════════════════════════════════════════════════════════ */}
+          {dineroLibre !== null && (
+            <div
+              className="card"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/income')}
+              onKeyDown={e => e.key === 'Enter' && navigate('/income')}
+              style={{
+                padding: '1.5rem 1.75rem',
+                marginBottom: 16,
+                cursor: 'pointer',
+                borderLeft: `4px solid ${dineroLibre >= 0 ? 'var(--pos-600)' : 'var(--neg-600)'}`,
+                transition: 'box-shadow 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = ''}
+            >
+              {/* Fila superior: label + badge salud financiera */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.625rem' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
+                  Dinero libre este mes
+                </p>
+                {health && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '3px 10px',
+                    borderRadius: 20, letterSpacing: '0.02em',
+                    background: healthTone.bg, color: healthTone.fg,
+                  }}>
+                    Salud {health.label} · {health.score}/100
+                  </span>
+                )}
+              </div>
+
+              {/* Número principal */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: '1.25rem' }}>
+                <span
+                  className="tabular dashboard-hero-amount"
+                  style={{
+                    fontWeight: 800, lineHeight: 1,
+                    letterSpacing: '-0.025em',
+                    color: dineroLibre >= 0 ? 'var(--pos-600)' : 'var(--neg-600)',
+                  }}
+                >
+                  {fmt(Math.abs(dineroLibre))}
+                </span>
+                {dineroLibre < 0 && (
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--neg-600)' }}>déficit</span>
+                )}
+              </div>
+
+              {/* Fórmula desglosada */}
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem 1.75rem' }}>
+                  {[
+                    { label: 'Ingresos',       value: totalIncome, Icon: TrendingUp,   color: 'var(--pos-600)',  sign: null },
+                    { label: 'Compromisos',    value: totalObl,    Icon: TrendingDown,  color: 'var(--warn-600)', sign: '−' },
+                    { label: 'Metas ahorro',   value: savings,     Icon: Target,        color: 'var(--brand-600)',sign: '−' },
+                  ].map(({ label, value, Icon, color, sign }) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      {sign && (
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)', marginRight: 2 }}>{sign}</span>
+                      )}
+                      <Icon size={12} style={{ color }} />
+                      <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500 }}>{label}</span>
+                      <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                        {fmt(value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════
+              KPI ROW — Ingresos / Compromisos / Metas / Deuda
+          ═══════════════════════════════════════════════════════════════ */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
             <StatCard
-              label="Compromiso mensual"
-              value={fmt(compromisoMensual)}
-              delta="Suscripciones + tarjetas + créditos"
+              label="Ingresos mensuales"
+              value={fmt(totalIncome)}
+              delta="Fuentes activas de ingreso"
               icon={Wallet}
-              tone="brand"
+              tone="pos"
+              onClick={() => navigate('/income')}
             />
-            {dineroLibre !== null && (
+            <StatCard
+              label="Compromisos mensuales"
+              value={fmt(totalObl)}
+              delta="Tarjetas + créditos + suscripciones + deudas"
+              icon={TrendingDown}
+              tone="warn"
+              onClick={() => navigate('/personal-debts')}
+            />
+            <StatCard
+              label="Ahorro mensual"
+              value={fmt(savings)}
+              delta="Aporte a metas activas"
+              icon={Target}
+              tone="brand"
+              onClick={() => navigate('/savings')}
+            />
+            {totalDebt > 0 && (
               <StatCard
-                label="Dinero libre"
-                value={fmt(dineroLibre)}
-                delta="Ingresos − obligaciones − metas"
-                icon={Wallet}
-                tone={dineroLibre >= 0 ? 'pos' : 'neg'}
-                onClick={() => navigate('/income')}
+                label="Deuda total"
+                value={fmt(totalDebt)}
+                delta="Créditos + tarjetas"
+                icon={Landmark}
+                tone="neg"
+                onClick={() => navigate('/bank-credits')}
               />
             )}
-            <StatCard
-              label="Suscripciones"
-              value={fmt(monthlySubCost)}
-              delta={`${activeSubs} activa${activeSubs !== 1 ? 's' : ''}`}
-              icon={Repeat}
-              tone="neutral"
-              onClick={() => navigate('/subscriptions')}
-            />
-            <StatCard
-              label="Obligación tarjetas"
-              value={cardObligation > 0 ? fmt(cardObligation) : `${data.cards.length}`}
-              delta={cardPagoTexto}
-              icon={CreditCard}
-              tone={urgente ? 'neg' : 'neutral'}
-              onClick={() => navigate('/credit-cards')}
-            />
-            <StatCard
-              label="Deuda en créditos"
-              value={fmt(totalDebt)}
-              delta={`${activeCreditsArr.length} crédito${activeCreditsArr.length !== 1 ? 's' : ''} activo${activeCreditsArr.length !== 1 ? 's' : ''}`}
-              icon={Landmark}
-              tone="neg"
-              onClick={() => navigate('/bank-credits')}
-            />
           </div>
 
-          {/* Distribución + Próximos vencimientos */}
+          {/* ═══════════════════════════════════════════════════════════════
+              DISTRIBUCIÓN + PRÓXIMOS PAGOS
+          ═══════════════════════════════════════════════════════════════ */}
           <div className="split-grid" style={{ marginBottom: 16 }}>
-            <SectionCard title="Distribución del compromiso mensual" subtitle="A dónde va tu dinero cada mes" icon={PieIcon}>
+
+            {/* Distribución — 5 categorías */}
+            <SectionCard
+              title="¿A dónde va tu dinero?"
+              subtitle="Compromisos + metas este mes"
+              icon={PieIcon}
+            >
               {dist.length > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-                  <div style={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
+                  {/* Donut */}
+                  <div style={{ position: 'relative', width: 152, height: 152, flexShrink: 0 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={dist} cx="50%" cy="50%"
-                          innerRadius={54} outerRadius={78} paddingAngle={2}
-                          dataKey="value" stroke="none"
-                          style={{ cursor: 'pointer' }}
-                          onClick={(entry) => entry?.name && navigate(DIST_ROUTES[entry.name] ?? '/')}
+                          innerRadius={50} outerRadius={72}
+                          paddingAngle={2} dataKey="value" stroke="none"
                         >
                           {dist.map((d, i) => <Cell key={i} fill={d.color} />)}
                         </Pie>
                         <Tooltip
                           formatter={(v, name) => [fmt(v), name]}
-                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }}
+                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</span>
-                      <span className="tabular" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{fmt(compromisoMensual)}</span>
+                      <span style={{ fontSize: 9, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</span>
+                      <span className="tabular" style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{fmt(totalDist)}</span>
                     </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Leyenda */}
+                  <div style={{ flex: 1, minWidth: 140, display: 'flex', flexDirection: 'column', gap: 7 }}>
                     {dist.map(d => {
-                      const pct = compromisoMensual > 0 ? (d.value / compromisoMensual) * 100 : 0;
-                      const route = DIST_ROUTES[d.name];
+                      const pct = totalDist > 0 ? (d.value / totalDist) * 100 : 0;
                       return (
-                        <div
-                          key={d.name}
-                          onClick={() => route && navigate(route)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            cursor: 'pointer', padding: '6px 8px', margin: '-6px -8px',
-                            borderRadius: 'var(--radius-md)',
-                            transition: 'background 0.15s',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <span style={{ width: 10, height: 10, borderRadius: 3, background: d.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, color: 'var(--text-2)', flex: 1 }}>{d.name}</span>
-                          <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>{pct.toFixed(0)}%</span>
-                          <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', minWidth: 92, textAlign: 'right' }}>{fmt(d.value)}</span>
+                        <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1, lineHeight: 1.3 }}>{d.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, minWidth: 28 }}>{pct.toFixed(0)}%</span>
+                          <span className="tabular" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 90, textAlign: 'right' }}>{fmt(d.value)}</span>
                         </div>
                       );
                     })}
@@ -200,59 +286,92 @@ export const Dashboard = () => {
                 </div>
               ) : (
                 <div className="empty-state" style={{ padding: '24px 0' }}>
-                  <p>Aún no tienes compromisos mensuales registrados.</p>
+                  <p>Sin compromisos registrados aún.</p>
                 </div>
               )}
             </SectionCard>
 
+            {/* Próximos pagos — todos los tipos, 30 días */}
             <SectionCard
-              title="Próximos vencimientos"
-              subtitle="Suscripciones en los próximos 7 días"
+              title="Próximos pagos"
+              subtitle="Vencimientos en los próximos 30 días"
               icon={Bell}
-              action={<button className="btn btn-ghost btn-sm" onClick={() => navigate('/subscriptions')}>Ver todo <ArrowRight size={12} /></button>}
             >
-              {upcomingRenewals.length > 0 ? (
+              {upcoming.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {upcomingRenewals.slice(0, 5).map((sub, i) => (
-                    <div key={sub._id || sub.id || i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0',
-                      borderBottom: i < Math.min(upcomingRenewals.length, 5) - 1 ? '1px solid var(--color-border)' : 'none',
-                    }}>
-                      <div style={{ minWidth: 0 }}>
-                        <p className="truncate" style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13, margin: 0 }}>{sub.nombre || sub.name}</p>
-                        <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Día {sub.diaCobro ?? new Date(sub.nextRenewalDate).getDate()}</p>
+                  {upcoming.map((item, i) => {
+                    const d    = daysUntil(item.date);
+                    const type = UPCOMING_TYPE[item.type] ?? UPCOMING_TYPE.subscription;
+                    const { Icon, accent } = type;
+                    return (
+                      <div key={i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 0',
+                        borderBottom: i < upcoming.length - 1 ? '1px solid var(--color-border)' : 'none',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <span style={{
+                            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                            background: 'var(--surface-2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Icon size={13} style={{ color: accent }} />
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <p className="truncate" style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13, margin: 0 }}>{item.name}</p>
+                            <p style={{ fontSize: 11, margin: 0, fontWeight: d <= 3 ? 600 : 400, color: urgencyColor(d) }}>
+                              {dayLabel(d)}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: item.amount > 0 ? 'var(--text)' : 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: 12 }}>
+                          {item.amount > 0 ? fmt(item.amount) : '—'}
+                        </span>
                       </div>
-                      <span className="tabular" style={{ fontWeight: 700, color: 'var(--warn-600)', fontSize: 13, whiteSpace: 'nowrap', marginLeft: 12 }}>
-                        {fmt(sub.monto ?? sub.cost, sub.moneda)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="empty-state" style={{ padding: '24px 0' }}>
-                  <p>Sin vencimientos en los próximos 7 días</p>
+                  <p>Sin pagos en los próximos 30 días</p>
                 </div>
               )}
             </SectionCard>
           </div>
 
-          {/* Créditos activos + Accesos rápidos */}
+          {/* ═══════════════════════════════════════════════════════════════
+              CRÉDITOS ACTIVOS + ACCESOS RÁPIDOS
+          ═══════════════════════════════════════════════════════════════ */}
           <div className="split-grid">
+
+            {/* Créditos — barras de progreso */}
             <SectionCard
-              title="Créditos activos"
-              subtitle="Seguimiento de pagos"
+              title="Créditos bancarios"
+              subtitle="Progreso de pago"
               icon={Landmark}
-              action={<button className="btn btn-ghost btn-sm" onClick={() => navigate('/bank-credits')}>Ver todo <ArrowRight size={12} /></button>}
+              action={
+                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/bank-credits')}>
+                  Ver todo <ArrowRight size={12} />
+                </button>
+              }
             >
-              {activeCreditsArr.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {activeCreditsArr.slice(0, 4).map(credit => {
-                    const pct = credit.numeroCuotas ? (credit.cuotasPagadas / credit.numeroCuotas) * 100 : 0;
+              {activeCredits.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {activeCredits.slice(0, 4).map(c => {
+                    const pct = c.numeroCuotas ? (c.cuotasPagadas / c.numeroCuotas) * 100 : 0;
                     return (
-                      <div key={credit.id} role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => navigate(`/bank-credits/${credit.id}`)} onKeyDown={e => e.key === 'Enter' && navigate(`/bank-credits/${credit.id}`)} aria-label={`Ver detalle de ${credit.nombre}`}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <span className="truncate" style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{credit.nombre}</span>
-                          <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: 8 }}>{credit.cuotasPagadas}/{credit.numeroCuotas}</span>
+                      <div
+                        key={c.id} role="button" tabIndex={0}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => navigate(`/bank-credits/${c.id}`)}
+                        onKeyDown={e => e.key === 'Enter' && navigate(`/bank-credits/${c.id}`)}
+                        aria-label={`Ver detalle de ${c.nombre}`}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                          <span className="truncate" style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{c.nombre}</span>
+                          <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                            {c.cuotasPagadas}/{c.numeroCuotas}
+                          </span>
                         </div>
                         <div
                           className="progress-track"
@@ -260,13 +379,13 @@ export const Dashboard = () => {
                           aria-valuenow={Math.round(pct)}
                           aria-valuemin={0}
                           aria-valuemax={100}
-                          aria-label={`Progreso: ${credit.cuotasPagadas} de ${credit.numeroCuotas} cuotas pagadas`}
+                          aria-label={`${c.cuotasPagadas} de ${c.numeroCuotas} cuotas pagadas`}
                         >
                           <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                          <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)' }}>{fmt(credit.valorCuota)}/mes</span>
-                          <span style={{ fontSize: 12, color: 'var(--pos-600)', fontWeight: 700 }}>{pct.toFixed(0)}%</span>
+                          <span className="tabular" style={{ fontSize: 11, color: 'var(--text-3)' }}>{fmt(c.valorCuota)}/mes</span>
+                          <span style={{ fontSize: 11, color: 'var(--pos-600)', fontWeight: 700 }}>{pct.toFixed(0)}%</span>
                         </div>
                       </div>
                     );
@@ -274,26 +393,32 @@ export const Dashboard = () => {
                 </div>
               ) : (
                 <div className="empty-state" style={{ padding: '24px 0' }}>
-                  <p>Sin créditos activos</p>
+                  <button className="btn btn-primary btn-sm" onClick={() => navigate('/bank-credits/new')}>
+                    <Plus size={13} /> Registrar crédito
+                  </button>
                 </div>
               )}
             </SectionCard>
 
-            <SectionCard title="Accesos rápidos" subtitle="Registra un movimiento" icon={Plus}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {/* Accesos rápidos — 6 acciones en grilla 3×2 */}
+            <SectionCard title="Registrar rápido" subtitle="Nuevo movimiento en un clic" icon={Plus}>
+              <div className="quick-actions-grid">
                 {[
-                  { icon: Repeat,     label: 'Suscripción', path: '/subscriptions/new' },
-                  { icon: CreditCard, label: 'Tarjeta',     path: '/credit-cards/new' },
-                  { icon: Landmark,   label: 'Crédito',     path: '/bank-credits/new' },
-                  { icon: Bell,       label: 'Recordatorio', path: '/reminders/new' },
-                ].map(({ icon: Icon, label, path }) => (
+                  { Icon: Wallet,     label: 'Ingreso',     path: '/income/new' },
+                  { Icon: Handshake,  label: 'Obligación',  path: '/personal-debts/new' },
+                  { Icon: Target,     label: 'Meta',        path: '/savings/new' },
+                  { Icon: Repeat,     label: 'Suscripción', path: '/subscriptions/new' },
+                  { Icon: CreditCard, label: 'Tarjeta',     path: '/credit-cards/new' },
+                  { Icon: Landmark,   label: 'Crédito',     path: '/bank-credits/new' },
+                ].map(({ Icon, label, path }) => (
                   <button key={path} className="quick-action-btn" onClick={() => navigate(path)}>
-                    <Icon size={18} />
+                    <Icon size={16} />
                     {label}
                   </button>
                 ))}
               </div>
             </SectionCard>
+
           </div>
         </>
       )}

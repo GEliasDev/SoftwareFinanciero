@@ -9,6 +9,7 @@ Income.init(
         id:       { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         nombre:   { type: DataTypes.STRING,  allowNull: false },
         monto:    { type: DataTypes.DECIMAL(15, 2), allowNull: false },
+        tipo:     { type: DataTypes.ENUM('fijo', 'extra'), allowNull: false, defaultValue: 'fijo' },
         diaCobro: { type: DataTypes.INTEGER, allowNull: false },
         status:   { type: DataTypes.ENUM('activo', 'inactivo'), allowNull: false, defaultValue: 'activo' },
         userId:   { type: DataTypes.INTEGER, allowNull: false },

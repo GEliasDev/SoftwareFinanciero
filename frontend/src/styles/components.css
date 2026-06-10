@@ -899,6 +899,28 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
   color: var(--color-primary);
 }
 
+/* ── Quick actions grid (Dashboard) ── */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .quick-actions-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Dashboard hero amount ── */
+.dashboard-hero-amount { font-size: 2.4rem; }
+
+@media (max-width: 480px) {
+  .dashboard-hero-amount { font-size: 1.75rem; }
+}
+
+@media (max-width: 360px) {
+  .dashboard-hero-amount { font-size: 1.4rem; }
+}
+
 /* ══════════════════════════════════════════════
    CardPurchases — barra de acciones y filtros
 ══════════════════════════════════════════════ */

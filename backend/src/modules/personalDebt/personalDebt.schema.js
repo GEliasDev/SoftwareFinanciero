@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
 export const personalDebtCreateSchema = z.object({
+    tipo:          z.enum(['deuda', 'gasto']).default('deuda'),
     nombre:        z.string().min(1).max(100),
     descripcion:   z.string().optional(),
-    prestamista:   z.string().min(1).max(100),
-    montoTotal:    z.number().positive(),
+    prestamista:   z.string().min(1).max(100).optional(),
+    montoTotal:    z.number().positive().optional(),
     montoCuota:    z.number().positive(),
     diaPago:       z.number().int().min(1).max(31),
     cuotasPagadas: z.number().int().min(0).optional().default(0),
@@ -16,7 +17,7 @@ export const personalDebtUpdateSchema = z.object({
     prestamista: z.string().min(1).max(100).optional(),
     montoCuota:  z.number().positive().optional(),
     diaPago:     z.number().int().min(1).max(31).optional(),
-    status:      z.enum(['activo', 'pagado']).optional(),
+    status:      z.enum(['activo', 'pagado', 'inactivo']).optional(),
 });
 
 export const abonoSchema = z.object({
