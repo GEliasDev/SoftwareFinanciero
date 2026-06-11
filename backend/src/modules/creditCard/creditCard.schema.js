@@ -14,6 +14,7 @@ export const creditCardCreateSchema = z.object({
     ]).optional().default('blue'),
     comisionAvance: z.number().nonnegative({ message: 'La comisión no puede ser negativa' }).optional().default(0),
     cuotaManejo: z.number().nonnegative({ message: 'La cuota de manejo no puede ser negativa' }).optional().default(0),
+    pagoMinimo: z.number().nonnegative().optional().nullable(),
 });
 
 export const abonoSchema = z.object({
@@ -35,6 +36,7 @@ export const creditCardUpdateSchema = z.object({
     cupoTotal: z.number().positive({ message: 'El cupo total debe ser mayor a 0' }).max(1000000, { message: 'El cupo total no debe exceder 1,000,000' }).optional(),
     comisionAvance: z.number().nonnegative().optional(),
     cuotaManejo: z.number().nonnegative().optional(),
+    pagoMinimo: z.number().nonnegative().optional().nullable(),
 });
 
 const CATEGORIAS = ['comida', 'transporte', 'salud', 'entretenimiento', 'hogar', 'tecnologia', 'ropa', 'educacion', 'viajes', 'otros'];

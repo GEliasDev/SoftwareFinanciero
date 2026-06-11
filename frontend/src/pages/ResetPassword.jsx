@@ -59,8 +59,8 @@ export const ResetPassword = () => {
     <div className="auth-container">
       <div className="auth-single-panel">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BrandMark size={32} />
-          <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>Debti</span>
+          <BrandMark size={44} />
+          <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>Debti</span>
         </div>
 
         {!done ? (

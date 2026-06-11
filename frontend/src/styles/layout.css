@@ -930,3 +930,8 @@ textarea.auth-input { height: auto !important; }
   h1, h2, h3 { color: #0F172A !important; }
   .tabular { font-variant-numeric: tabular-nums; }
 }
+
+/* ── Dark mode: logo panel izquierdo → blanco ── */
+[data-theme="dark"] .auth-brand-logo img {
+  filter: brightness(0) invert(1);
+}

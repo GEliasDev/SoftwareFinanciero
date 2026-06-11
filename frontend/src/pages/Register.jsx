@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, ShieldCheck, LineChart, Bell, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { UserService } from '../services/userService';
-import { BrandMark } from '../components/ui/BrandMark';
+import logo from '../assets/logo.png';
+import icono from '../assets/icono.png';
 
 const FEATURES = [
   { icon: ShieldCheck, text: 'Datos seguros — solo tú los ves' },
@@ -65,6 +66,7 @@ export const Register = () => {
     try {
       const { confirmPassword, ...payload } = form;
       await UserService.create(payload);
+      localStorage.setItem('debti-onboarding', '1');
       navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'Error al crear la cuenta. Verifica los datos.');
@@ -100,8 +102,7 @@ export const Register = () => {
         <div className="auth-panel-brand">
           <div className="auth-panel-brand-inner">
             <div className="auth-brand-logo">
-              <BrandMark size={36} shadow={false} />
-              <span>Debti</span>
+              <img src={logo} alt="Debti" style={{ height: 68, width: 'auto' }} />
             </div>
             <div>
               <h2 className="auth-panel-headline">Crea tu cuenta y empieza a ordenar tus finanzas</h2>
@@ -128,8 +129,7 @@ export const Register = () => {
 
             <div className="auth-form-header">
               <div className="auth-logo">
-                <BrandMark size={28} />
-                <span className="auth-logo-text">Debti</span>
+                <img src={logo} alt="Debti" style={{ height: 52, width: 'auto' }} />
               </div>
               <h2>Crear cuenta</h2>
               <p>Completa el formulario para comenzar</p>

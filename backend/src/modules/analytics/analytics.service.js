@@ -112,9 +112,14 @@ export const AnalyticsService = {
             (a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0
         );
 
-        // Solo ingresos fijos en Dinero Libre; 'extra' son esporádicos y no distorsionan el cálculo mensual
-        const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo').reduce((a, i) => a + toNum(i.monto), 0);
-        const totalIncomeExtra = incomes.filter(i => i.tipo === 'extra').reduce((a, i) => a + toNum(i.monto), 0);
+        // Mensual (fijo): siempre cuenta. Extra: solo cuenta si fue registrado en el mes en curso.
+        const now = new Date();
+        const isExtraThisMonth = (i) => {
+            const d = new Date(i.createdAt);
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        };
+        const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo' || isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
+        const totalIncomeExtra = incomes.filter(i => i.tipo === 'extra' && isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
         const monthlyPersonalDebts = personalDebts.reduce((a, d) => a + toNum(d.montoCuota), 0);
         const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
         const totalObligaciones = monthlySubscriptions + monthlyBankCredits + monthlyCreditCards + monthlyPersonalDebts;
@@ -258,6 +263,135 @@ export const AnalyticsService = {
         }
 
         return result;
+    },
+
+    getRecommendations: async (userId) => {
+        const [subscriptions, bankCredits, creditCards, incomes, personalDebts, savingsGoals] = await Promise.all([
+            Subscription.findAll({ where: { userId } }),
+            BankCredit.findAll({ where: { userId } }),
+            CreditCard.findAll({
+                where: { userId },
+                include: [{ model: CreditCardPurchase, as: 'CreditCardPurchases', where: { status: 'activa' }, required: false }],
+            }),
+            Income.findAll({ where: { userId, status: 'activo' } }),
+            PersonalDebt.findAll({ where: { userId, status: 'activo' } }),
+            SavingsGoal.findAll({ where: { userId, status: 'activo' } }),
+        ]);
+
+        const recs = [];
+
+        const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo').reduce((a, i) => a + toNum(i.monto), 0);
+        const activeSubs = subscriptions.filter(s => s.status === 'activa');
+        const activeCredits = bankCredits.filter(c => c.status === 'activo');
+        const creditsInMora = bankCredits.filter(c => c.status === 'en_mora' || c.status === 'atrasado');
+        const totalCupo = creditCards.reduce((a, c) => a + toNum(c.cupoTotal), 0);
+        const totalUsed = creditCards.reduce((a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0);
+        const utilization = totalCupo > 0 ? (totalUsed / totalCupo) * 100 : 0;
+        const monthlyObl = activeCredits.reduce((a, c) => a + toNum(c.valorCuota) + toNum(c.cuotaAdministracion), 0)
+            + activeSubs.reduce((a, s) => a + toNum(s.montoMensual), 0)
+            + creditCards.flatMap(c => c.CreditCardPurchases || []).reduce((a, p) => a + toNum(p.valorCuotaMensual), 0)
+            + personalDebts.filter(d => d.status === 'activo').reduce((a, d) => a + toNum(d.montoCuota), 0);
+        const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
+        const dineroLibre = totalIncome - monthlyObl - monthlySavings;
+        const oblRatio = totalIncome > 0 ? (monthlyObl / totalIncome) * 100 : 0;
+        const subsTotal = activeSubs.reduce((a, s) => a + toNum(s.montoMensual), 0);
+
+        if (!totalIncome) {
+            recs.push({ type: 'info', title: 'Registra tus ingresos', description: 'Sin ingresos registrados no podemos calcular tu dinero libre ni darte consejos personalizados.', action: '/income/new' });
+        }
+
+        if (creditsInMora.length > 0) {
+            recs.push({ type: 'danger', title: `${creditsInMora.length} crédito(s) en mora`, description: `Tienes ${creditsInMora.length} crédito(s) con pagos atrasados. Regulariza tu situación cuanto antes para evitar intereses de mora y daño a tu historial.`, action: '/bank-credits' });
+        }
+
+        if (utilization > 80) {
+            recs.push({ type: 'danger', title: 'Cupo de tarjetas al límite', description: `Estás usando el ${Math.round(utilization)}% de tu cupo total. Se recomienda mantenerlo por debajo del 30% para no afectar tu perfil crediticio.`, action: '/credit-cards' });
+        } else if (utilization > 50) {
+            recs.push({ type: 'warning', title: 'Utilización de cupo elevada', description: `Usas el ${Math.round(utilization)}% de tu cupo disponible. Intenta reducirlo por debajo del 50% para mejorar tu salud financiera.`, action: '/credit-cards' });
+        }
+
+        if (dineroLibre < 0 && totalIncome > 0) {
+            recs.push({ type: 'danger', title: 'Gastos mayores que ingresos', description: `Tus obligaciones superan tus ingresos en ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.abs(dineroLibre))} al mes. Revisa qué puedes reducir.`, action: '/reports' });
+        } else if (oblRatio > 40 && totalIncome > 0) {
+            recs.push({ type: 'warning', title: 'Obligaciones por encima del 40%', description: `Tus compromisos mensuales representan el ${Math.round(oblRatio)}% de tus ingresos. La regla general es no superar el 40%. Considera renegociar o reducir deudas.`, action: '/reports' });
+        }
+
+        if (savingsGoals.length === 0 && totalIncome > 0) {
+            recs.push({ type: 'info', title: 'Crea tu primera meta de ahorro', description: 'No tienes metas de ahorro activas. Empieza con un fondo de emergencia equivalente a 3 meses de gastos.', action: '/savings/new' });
+        } else if (savingsGoals.length > 0 && monthlySavings / totalIncome < 0.1 && totalIncome > 0) {
+            recs.push({ type: 'info', title: 'Aumenta tu tasa de ahorro', description: `Destinas el ${Math.round((monthlySavings / totalIncome) * 100)}% de tus ingresos al ahorro. Se recomienda al menos el 10-20%.`, action: '/savings' });
+        }
+
+        if (activeSubs.length > 7) {
+            recs.push({ type: 'warning', title: `${activeSubs.length} suscripciones activas`, description: `Tienes ${activeSubs.length} suscripciones que suman ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(subsTotal)}/mes. Revisa cuáles realmente usas y cancela las que no.`, action: '/subscriptions' });
+        }
+
+        if (recs.length === 0) {
+            recs.push({ type: 'success', title: '¡Finanzas en orden!', description: 'No encontramos áreas de riesgo en tu situación actual. Sigue así y considera diversificar tus inversiones para hacer crecer tu patrimonio.', action: null });
+        }
+
+        return recs;
+    },
+
+    getDebtFreedom: async (userId) => {
+        const [bankCredits, creditCards] = await Promise.all([
+            BankCredit.findAll({ where: { userId } }),
+            CreditCard.findAll({
+                where: { userId },
+                include: [{ model: CreditCardPurchase, as: 'CreditCardPurchases', where: { status: 'activa' }, required: false }],
+            }),
+        ]);
+
+        const activeCredits = bankCredits.filter(c => c.status === 'activo' || c.status === 'en_mora' || c.status === 'atrasado');
+
+        // Bank credits: use actual remaining cuotas
+        const creditItems = activeCredits.map(c => {
+            const remaining = Number(c.numeroCuotas) - Number(c.cuotasPagadas);
+            const monthlyPayment = toNum(c.valorCuota) + toNum(c.cuotaAdministracion);
+            return { nombre: c.nombre, type: 'bank_credit', saldo: toNum(c.saldoPendiente), monthlyPayment, monthsLeft: remaining };
+        });
+
+        // Credit cards: use actual remaining installments per purchase, same logic as bank credits
+        const cardItems = creditCards.map(c => {
+            const purchases = (c.CreditCardPurchases || []).filter(p =>
+                p.status === 'activa' && p.tipo !== 'comision' && p.tipo !== 'cuota_manejo'
+            );
+            if (purchases.length === 0) return null;
+            const monthlyPayment = purchases.reduce((a, p) => a + toNum(p.valorCuotaMensual), 0);
+            if (monthlyPayment <= 0) return null;
+            // Max remaining installments across all active purchases
+            const monthsLeft = Math.max(...purchases.map(p => Math.max(0, Number(p.numeroCuotas) - Number(p.cuotasPagadas))));
+            const saldo = purchases.reduce((a, p) => {
+                const remaining = Math.max(0, Number(p.numeroCuotas) - Number(p.cuotasPagadas));
+                return a + toNum(p.valorCuotaMensual) * remaining;
+            }, 0);
+            return { nombre: c.nombre, type: 'credit_card', saldo, monthlyPayment, monthsLeft };
+        }).filter(Boolean);
+
+        const allItems = [...creditItems, ...cardItems];
+        if (allItems.length === 0) return { hasDebts: false, totalDebt: 0, monthlyPayments: 0, estimatedMonths: 0, estimatedDate: null, breakdown: [] };
+
+        const totalDebt = allItems.reduce((a, i) => a + i.saldo, 0);
+        const monthlyPayments = allItems.reduce((a, i) => a + i.monthlyPayment, 0);
+        const maxMonths = Math.max(...allItems.map(i => i.monthsLeft || 0));
+
+        const estimatedDate = new Date();
+        estimatedDate.setMonth(estimatedDate.getMonth() + maxMonths);
+
+        return {
+            hasDebts: true,
+            totalDebt: Math.round(totalDebt),
+            monthlyPayments: Math.round(monthlyPayments),
+            estimatedMonths: maxMonths,
+            estimatedDate: estimatedDate.toISOString().slice(0, 7),
+            breakdown: allItems.map(i => ({
+                nombre: i.nombre,
+                type: i.type,
+                saldo: Math.round(i.saldo),
+                monthlyPayment: Math.round(i.monthlyPayment),
+                monthsLeft: i.monthsLeft,
+            })),
+        };
     },
 
     getDistribution: async (userId) => {

@@ -15,9 +15,16 @@ import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import incomeRoutes from './modules/income/income.routes.js';
 import personalDebtRoutes from './modules/personalDebt/personalDebt.routes.js';
 import savingsGoalRoutes from './modules/savingsGoal/savingsGoal.routes.js';
+import searchRoutes from './modules/search/search.routes.js';
+import activityLogRoutes from './modules/activityLog/activityLog.routes.js';
+import pushSubscriptionRoutes from './modules/pushSubscription/pushSubscription.routes.js';
+import budgetRoutes from './modules/budget/budget.routes.js';
+import './modules/budget/budget.model.js';
+import './modules/personalDebt/personalDebtAbono.model.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { startReminderJob } from './jobs/reminderJob.js';
 import { startMoraJob } from './jobs/bankCreditMoraJob.js';
+import { startWeeklyDigestJob } from './jobs/weeklyDigestJob.js';
 
 const app = express();
 
@@ -55,6 +62,10 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/income', incomeRoutes);
 app.use('/api/personal-debts', personalDebtRoutes);
 app.use('/api/savings', savingsGoalRoutes);
+app.use('/api/search',       searchRoutes);
+app.use('/api/activity-log', activityLogRoutes);
+app.use('/api/push',        pushSubscriptionRoutes);
+app.use('/api/budget',      budgetRoutes);
 
 app.use(errorHandler);
 
@@ -65,6 +76,7 @@ const PORT = process.env.PORT || 3001;
         await sequelize.sync({ alter: true });
         startReminderJob();
         startMoraJob();
+        startWeeklyDigestJob();
         app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${PORT}`));
     } catch (error) {
         console.error('Error al iniciar el servidor:', error);

@@ -1,20 +1,22 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Repeat, Bell, CreditCard, Landmark,
-  Menu, X, BarChart2, Wallet, Handshake, Target,
+  Menu, X, BarChart2, Wallet, Handshake, Target, PieChart, Activity,
 } from 'lucide-react';
-import { BrandMark } from '../ui/BrandMark';
+import logo from '../../assets/logo.png';
 
 const SECTION_ICONS = {
   '/':               LayoutDashboard,
   '/income':         Wallet,
   '/personal-debts': Handshake,
   '/savings':        Target,
+  '/budget':         PieChart,
   '/credit-cards':   CreditCard,
   '/bank-credits':   Landmark,
   '/subscriptions':  Repeat,
   '/reminders':      Bell,
   '/reports':        BarChart2,
+  '/activity':       Activity,
 };
 
 function useActiveIcon() {
@@ -72,8 +74,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <NavLink to="/" className="sidebar-logo" onClick={close}>
-            <BrandMark size={28} />
-            <span className="sidebar-logo-name">Debti</span>
+            <img src={logo} alt="Debti" style={{ height: 52, width: 'auto' }} />
           </NavLink>
         </div>
 
@@ -84,6 +85,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
           <NavItem to="/income"         icon={Wallet}    label="Ingresos"        onClick={close} />
           <NavItem to="/personal-debts" icon={Handshake} label="Obligaciones"    onClick={close} />
           <NavItem to="/savings"        icon={Target}    label="Metas de Ahorro" onClick={close} />
+          <NavItem to="/budget"         icon={PieChart}  label="Presupuesto"     onClick={close} />
 
           <div className="nav-divider" />
           <NavItem to="/credit-cards"  icon={CreditCard} label="Tarjetas"     onClick={close} />
@@ -91,8 +93,9 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
           <NavItem to="/subscriptions" icon={Repeat}     label="Suscripciones" onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/reminders" icon={Bell}     label="Recordatorios" onClick={close} />
-          <NavItem to="/reports"   icon={BarChart2} label="Reportes"      onClick={close} />
+          <NavItem to="/reminders" icon={Bell}     label="Recordatorios"  onClick={close} />
+          <NavItem to="/reports"   icon={BarChart2} label="Reportes"       onClick={close} />
+          <NavItem to="/activity"  icon={Activity}  label="Actividad"      onClick={close} />
         </nav>
       </aside>
     </>

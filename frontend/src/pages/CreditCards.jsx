@@ -236,7 +236,7 @@ export const CreditCards = () => {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon"><CardIcon size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin tarjetas</p>
+            <p className="empty-state-title">Sin tarjetas</p>
             <p>Registra tus tarjetas de crédito para monitorear el cupo y las compras.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/credit-cards/new')}>
               <Plus size={14} /> Agregar tarjeta
@@ -247,7 +247,7 @@ export const CreditCards = () => {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon"><CardIcon size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin tarjetas con deuda activa</p>
+            <p className="empty-state-title">Sin tarjetas con deuda activa</p>
             <p>Todas tus tarjetas están al día.</p>
             <button className="btn btn-secondary" style={{ marginTop: '0.75rem' }} onClick={() => setFilterDeuda(false)}>
               Ver todas

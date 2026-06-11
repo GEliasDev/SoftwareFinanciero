@@ -8,11 +8,14 @@ import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
 import { PersonalDebtService } from '../services/personalDebtService';
+import { IncomeService } from '../services/incomeService';
+import { SavingsGoalService } from '../services/savingsGoalService';
 import { StatCard } from '../components/ui/StatCard';
 import { buildSchedule } from '../utils/creditCard';
 import {
   Download, FileText, TrendingUp, Calendar, Shield,
   Repeat, CreditCard, Landmark, Sliders, Wallet, Zap, Handshake, TrendingDown,
+  ArrowUpRight, ArrowDownRight, Minus,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -174,11 +177,13 @@ export const Reports = () => {
   const handleExportExcel = async () => {
     setExporting(true);
     try {
-      const [subsData, cardsData, creditsData, debtsData] = await Promise.all([
+      const [subsData, cardsData, creditsData, debtsData, incomesData, savingsData] = await Promise.all([
         SubscriptionService.getAll(),
         CreditCardService.getAll(),
         BankCreditService.getAll(),
         PersonalDebtService.getAll(),
+        IncomeService.getAll(),
+        SavingsGoalService.getAll(),
       ]);
 
       const wb = XLSX.utils.book_new();
@@ -232,6 +237,23 @@ export const Reports = () => {
           return [d.nombre, d.tipo, d.prestamista ?? '—', montoTotal, saldo, pct, d.montoCuota, d.diaPago, d.status];
         }),
       ]), 'Obligaciones Pers.');
+
+      // Ingresos
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+        ['Nombre', 'Tipo', 'Monto', 'Frecuencia', 'Fuente', 'Fecha', 'Estado'],
+        ...incomesData.map(i => [i.nombre, i.tipo ?? 'fijo', i.monto, i.frecuencia ?? 'mensual', i.fuente ?? '—', i.fecha ?? '—', i.status]),
+      ]), 'Ingresos');
+
+      // Metas de ahorro
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+        ['Nombre', 'Meta', 'Ahorrado', '% Completado', 'Aporte Mensual', 'Fecha Límite', 'Estado'],
+        ...savingsData.map(g => {
+          const meta    = parseFloat(g.montoMeta ?? 0);
+          const ahorrado = parseFloat(g.montoAhorrado ?? 0);
+          const pct = meta > 0 ? `${Math.round((ahorrado / meta) * 100)}%` : '—';
+          return [g.nombre, meta, ahorrado, pct, g.aporteMensual, g.fechaLimite ?? '—', g.status];
+        }),
+      ]), 'Metas de Ahorro');
 
       // Tendencia
       if (trend.length > 0) {
@@ -298,6 +320,9 @@ export const Reports = () => {
         </button>
         <button className={`tab-nav-item ${activeTab === 'projection' ? 'active' : ''}`} onClick={() => setActiveTab('projection')}>
           <Sliders size={14} /> Proyección de Flujo
+        </button>
+        <button className={`tab-nav-item ${activeTab === 'mom' ? 'active' : ''}`} onClick={() => setActiveTab('mom')}>
+          <TrendingUp size={14} /> Comparación MoM
         </button>
       </div>
 
@@ -687,6 +712,128 @@ export const Reports = () => {
           </div>
         </div>
       )}
+
+      {/* ══ TAB 3: MoM ══ */}
+      {activeTab === 'mom' && (() => {
+        if (trend.length < 2) return (
+          <div className="card">
+            <div className="empty-state">
+              <div className="empty-state-icon"><TrendingUp size={26} /></div>
+              <p className="empty-state-title">No hay datos suficientes</p>
+              <p>Se necesitan al menos 2 meses registrados para la comparación.</p>
+            </div>
+          </div>
+        );
+
+        const cur  = trend[trend.length - 1];
+        const prev = trend[trend.length - 2];
+
+        const cats = [
+          { key: 'subscriptions', label: 'Suscripciones', color: '#047857' },
+          { key: 'bankCredits',   label: 'Créditos',       color: '#DC2626' },
+          { key: 'creditCards',   label: 'Tarjetas',        color: '#D97706' },
+          { key: 'total',         label: 'Total',           color: 'var(--brand-600)', bold: true },
+        ];
+
+        const delta = (c, p) => {
+          if (!p || p === 0) return null;
+          return ((c - p) / p) * 100;
+        };
+
+        const barData = [
+          { name: 'Suscripciones', prev: prev.subscriptions, cur: cur.subscriptions },
+          { name: 'Créditos',       prev: prev.bankCredits,   cur: cur.bankCredits   },
+          { name: 'Tarjetas',        prev: prev.creditCards,   cur: cur.creditCards   },
+          { name: 'Total',           prev: prev.total,         cur: cur.total         },
+        ];
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              {cats.map(({ key, label, color, bold }) => {
+                const c = parseFloat(cur[key] ?? 0);
+                const p = parseFloat(prev[key] ?? 0);
+                const d = delta(c, p);
+                const up   = d !== null && d > 0;
+                const down = d !== null && d < 0;
+                return (
+                  <div key={key} className="card" style={{ padding: '1rem', borderTop: `3px solid ${color}` }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 0.375rem' }}>{label}</p>
+                    <p className="tabular" style={{ fontSize: bold ? '1.15rem' : '1rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 0.25rem' }}>{fmt(c)}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {d === null ? <Minus size={11} style={{ color: 'var(--text-3)' }} />
+                        : up ? <ArrowUpRight size={11} style={{ color: 'var(--neg-600)' }} />
+                        : down ? <ArrowDownRight size={11} style={{ color: 'var(--pos-600)' }} />
+                        : <Minus size={11} style={{ color: 'var(--text-3)' }} />}
+                      <span style={{ fontSize: 11, fontWeight: 600, color: d === null ? 'var(--text-3)' : up ? 'var(--neg-600)' : down ? 'var(--pos-600)' : 'var(--text-3)' }}>
+                        {d === null ? 'Sin datos' : `${d > 0 ? '+' : ''}${d.toFixed(1)}% vs ${prev.month}`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="card" style={{ padding: '20px 24px' }}>
+              <div className="card-header" style={{ marginBottom: 14, paddingBottom: 10 }}>
+                <div>
+                  <h3 className="card-title">Comparación {prev.month} vs {cur.month}</h3>
+                  <p className="card-subtitle">Obligaciones por categoría — mes anterior vs actual</p>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={barData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
+                  <YAxis tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={55} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="prev" name={prev.month} fill="var(--surface-2)" stroke="var(--border)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cur"  name={cur.month}  fill="var(--brand-600)"  radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="card" style={{ padding: '16px 20px' }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Detalle de cambios</h3>
+              <div className="responsive-table table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Categoría</th>
+                      <th style={{ textAlign: 'right' }}>{prev.month}</th>
+                      <th style={{ textAlign: 'right' }}>{cur.month}</th>
+                      <th style={{ textAlign: 'right' }}>Δ Absoluto</th>
+                      <th style={{ textAlign: 'right' }}>Δ %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cats.map(({ key, label, bold }) => {
+                      const c = parseFloat(cur[key] ?? 0);
+                      const p = parseFloat(prev[key] ?? 0);
+                      const abs = c - p;
+                      const d = delta(c, p);
+                      return (
+                        <tr key={key}>
+                          <td style={{ fontWeight: bold ? 700 : 400 }}>{label}</td>
+                          <td className="tabular" style={{ textAlign: 'right' }}>{fmt(p)}</td>
+                          <td className="tabular" style={{ textAlign: 'right', fontWeight: bold ? 700 : 400 }}>{fmt(c)}</td>
+                          <td className="tabular" style={{ textAlign: 'right', color: abs > 0 ? 'var(--neg-600)' : abs < 0 ? 'var(--pos-600)' : 'var(--text-3)', fontWeight: 600 }}>
+                            {abs > 0 ? '+' : ''}{fmt(abs)}
+                          </td>
+                          <td className="tabular" style={{ textAlign: 'right', color: d === null ? 'var(--text-3)' : d > 0 ? 'var(--neg-600)' : d < 0 ? 'var(--pos-600)' : 'var(--text-3)', fontWeight: 600 }}>
+                            {d === null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(1)}%`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

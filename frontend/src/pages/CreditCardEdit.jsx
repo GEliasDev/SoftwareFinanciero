@@ -23,7 +23,7 @@ export const CreditCardEdit = () => {
   const [data, setData] = useState({
     nombre: '', entidad: '', cupoTotal: '', tasaInteresMensual: '',
     fechaCorte: '', fechaPago: '', status: 'activa', ultimos4: '',
-    comisionAvance: '', cuotaManejo: '', color: 'blue',
+    comisionAvance: '', cuotaManejo: '', pagoMinimo: '', color: 'blue',
   });
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export const CreditCardEdit = () => {
         tasaInteresMensual: card.tasaInteresMensual, fechaCorte: card.fechaCorte, fechaPago: card.fechaPago,
         status: card.status, ultimos4: card.ultimos4 ?? '',
         comisionAvance: card.comisionAvance ?? '', cuotaManejo: card.cuotaManejo ?? '',
-        color: card.color ?? 'blue',
+        pagoMinimo: card.pagoMinimo ?? '', color: card.color ?? 'blue',
       }))
       .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la tarjeta.' }))
       .finally(() => setLoading(false));
@@ -76,6 +76,7 @@ export const CreditCardEdit = () => {
         fechaCorte: Number(data.fechaCorte), fechaPago: Number(data.fechaPago),
         comisionAvance: Number(data.comisionAvance) || 0,
         cuotaManejo: Number(data.cuotaManejo) || 0,
+        pagoMinimo: data.pagoMinimo ? Number(data.pagoMinimo) : null,
         status: data.status, ultimos4: data.ultimos4 || null, color: data.color,
       });
       Swal.fire({ icon: 'success', title: '¡Actualizado!', timer: 1500, showConfirmButton: false });
@@ -239,6 +240,9 @@ export const CreditCardEdit = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
                   {field('comisionAvance', 'Comisión por avance (COP)', 'Déjalo en 0 si la tarjeta no cobra avances', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 9900' })}
                   {field('cuotaManejo', 'Cuota de manejo (COP)', 'Cargo fijo que se agrega en cada corte. 0 si no aplica', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 30000' })}
+                </div>
+                <div style={{ marginTop: '0.75rem' }}>
+                  {field('pagoMinimo', 'Pago mínimo mensual (COP)', 'Mínimo que exige el banco para no caer en mora. Opcional.', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 150000' })}
                 </div>
               </div>
             )}

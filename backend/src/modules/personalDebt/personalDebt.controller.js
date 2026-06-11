@@ -9,7 +9,12 @@ export const PersonalDebtController = {
     registerAbono: async (req, res, next) => {
         try {
             const debt = await PersonalDebtService.registerAbono(req.params.id, req.body, req.user.id);
-            res.json({ message: 'Abono registrado', saldoPendiente: debt.saldoPendiente, cuotasPagadas: debt.cuotasPagadas, status: debt.status });
+            res.json({ message: 'Abono registrado', saldoPendiente: debt.saldoPendiente, status: debt.status });
+        } catch (e) { next(e); }
+    },
+    getAbonos: async (req, res, next) => {
+        try {
+            res.json(await PersonalDebtService.getAbonos(req.params.id, req.user.id));
         } catch (e) { next(e); }
     },
 };

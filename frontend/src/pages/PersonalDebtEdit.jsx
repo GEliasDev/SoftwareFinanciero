@@ -8,35 +8,33 @@ import Swal from 'sweetalert2';
 export const PersonalDebtEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [saving, setSaving]   = useState(false);
-  const [touched, setTouched] = useState({});
-  const [tipo, setTipo]       = useState('deuda');
+  const [saving, setSaving]     = useState(false);
+  const [touched, setTouched]   = useState({});
   const [debtName, setDebtName] = useState('');
-  const [form, setForm] = useState({ nombre: '', descripcion: '', prestamista: '', montoCuota: '', diaPago: '', status: 'activo' });
+  const [form, setForm] = useState({
+    tipo: 'deuda', nombre: '', descripcion: '', prestamista: '', montoCuota: '', status: 'activo',
+  });
 
   useEffect(() => {
     PersonalDebtService.getById(id).then(d => {
-      setTipo(d.tipo || 'deuda');
       setDebtName(d.nombre);
       setForm({
+        tipo:        d.tipo || 'deuda',
         nombre:      d.nombre,
         descripcion: d.descripcion || '',
         prestamista: d.prestamista || '',
-        montoCuota:  String(d.montoCuota),
-        diaPago:     String(d.diaPago),
+        montoCuota:  d.montoCuota != null ? String(d.montoCuota) : '',
         status:      d.status,
       });
     });
   }, [id]);
 
-  const isDeuda = tipo === 'deuda';
+  const isDeuda = form.tipo === 'deuda';
 
   const errors = {};
-  if (!form.nombre.trim())                    errors.nombre      = 'Ingresa un nombre';
-  if (isDeuda && !form.prestamista.trim())    errors.prestamista = 'Indica a quién le debes';
-  if (!(Number(form.montoCuota) > 0))         errors.montoCuota  = 'Debe ser mayor a 0';
-  const dia = Number(form.diaPago);
-  if (!(dia >= 1 && dia <= 31))               errors.diaPago     = 'Día entre 1 y 31';
+  if (!form.nombre.trim())                           errors.nombre      = 'Ingresa un nombre';
+  if (isDeuda && !form.prestamista.trim())           errors.prestamista = 'Indica a quién le debes';
+  if (!isDeuda && !(Number(form.montoCuota) > 0))   errors.montoCuota  = 'Debe ser mayor a 0';
 
   const showErr = (f) => touched[f] && errors[f];
   const mark    = (f) => setTouched(t => ({ ...t, [f]: true }));
@@ -66,9 +64,7 @@ export const PersonalDebtEdit = () => {
       await PersonalDebtService.update(id, {
         nombre:      form.nombre,
         descripcion: form.descripcion || undefined,
-        ...(isDeuda ? { prestamista: form.prestamista } : {}),
-        montoCuota:  Number(form.montoCuota),
-        diaPago:     Number(form.diaPago),
+        ...(isDeuda  ? { prestamista: form.prestamista } : { montoCuota: Number(form.montoCuota) }),
         status:      form.status,
       });
       navigate(`/personal-debts/${id}`);
@@ -96,7 +92,7 @@ export const PersonalDebtEdit = () => {
       {isDeuda && (
         <div className="info-box primary" style={{ marginBottom: '1.25rem' }}>
           <Info size={14} />
-          <span>El monto total y las cuotas pagadas no se modifican aquí — usa <strong>Registrar abono</strong> desde el detalle.</span>
+          <span>El monto total no se modifica aquí — registra abonos desde el detalle para actualizar el saldo.</span>
         </div>
       )}
 
@@ -105,7 +101,7 @@ export const PersonalDebtEdit = () => {
           {isDeuda ? 'Datos de la deuda' : 'Datos del gasto'}
         </h3>
         <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>
-          {isDeuda ? 'Nombre, acreedor y cuota mensual' : 'Nombre, monto y día de pago'}
+          {isDeuda ? 'Nombre y acreedor' : 'Nombre y monto mensual'}
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -115,10 +111,9 @@ export const PersonalDebtEdit = () => {
             {field('descripcion', 'Descripción', 'Opcional', { placeholder: 'Notas adicionales' })}
 
             <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.75rem' }}>Pago y estado</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                {field('montoCuota', isDeuda ? 'Cuota mensual (COP) *' : 'Monto mensual (COP) *', null, { type: 'number', min: '1' })}
-                {field('diaPago', 'Día de pago *', '1–31', { type: 'number', min: '1', max: '31' })}
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.75rem' }}>Estado</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: isDeuda ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+                {!isDeuda && field('montoCuota', 'Monto mensual (COP) *', null, { type: 'number', min: '1' })}
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Estado</label>
                   <select className="form-input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>

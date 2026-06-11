@@ -1,4 +1,5 @@
 import { PersonalDebt } from './personalDebt.model.js';
+import { PersonalDebtAbono } from './personalDebtAbono.model.js';
 import { personalDebtCreateSchema, personalDebtUpdateSchema, abonoSchema } from './personalDebt.schema.js';
 import { AppError } from '../../middlewares/appError.js';
 
@@ -40,11 +41,11 @@ export const PersonalDebtService = {
             descripcion:    parsed.descripcion ?? null,
             prestamista:    parsed.prestamista,
             montoTotal:     parsed.montoTotal,
-            saldoPendiente: parsed.montoTotal,   // saldo = total inicial
+            saldoPendiente: parsed.montoTotal,
             numeroCuotas:   null,
-            montoCuota:     parsed.montoCuota,
+            montoCuota:     null,
             cuotasPagadas:  0,
-            diaPago:        parsed.diaPago,
+            diaPago:        1,
             userId:         data.userId,
         });
     },
@@ -60,20 +61,41 @@ export const PersonalDebtService = {
         const debt = await PersonalDebt.findByPk(id);
         if (!debt) throw new AppError('Obligación no encontrada', 404);
         if (debt.userId !== userId) throw new AppError('No autorizado', 403);
+        await PersonalDebtAbono.destroy({ where: { personalDebtId: id } });
         await debt.destroy();
     },
 
-    // El abono reduce directamente el saldo pendiente (sistema porcentual, sin cuotas fijas)
     registerAbono: async (id, data, userId) => {
-        const { monto } = abonoSchema.parse(data);
+        const { monto, fecha } = abonoSchema.parse(data);
         const debt = await PersonalDebt.findByPk(id);
         if (!debt) throw new AppError('Obligación no encontrada', 404);
         if (debt.userId !== userId) throw new AppError('No autorizado', 403);
         if (debt.tipo === 'gasto') throw new AppError('Los gastos mensuales no admiten abonos', 400);
         if (debt.status === 'pagado') throw new AppError('Esta obligación ya está pagada', 400);
 
-        const nuevoSaldo  = Math.max(0, parseFloat(debt.saldoPendiente) - monto);
-        const nuevoStatus = nuevoSaldo <= 0 ? 'pagado' : 'activo';
-        return debt.update({ saldoPendiente: nuevoSaldo, status: nuevoStatus });
+        const saldoAntes  = parseFloat(debt.saldoPendiente);
+        const saldoDespues = Math.max(0, saldoAntes - monto);
+        const nuevoStatus  = saldoDespues <= 0 ? 'pagado' : 'activo';
+
+        await PersonalDebtAbono.create({
+            personalDebtId: debt.id,
+            userId,
+            monto,
+            saldoAntes,
+            saldoDespues,
+            fecha: fecha ?? new Date().toISOString().slice(0, 10),
+        });
+
+        return debt.update({ saldoPendiente: saldoDespues, status: nuevoStatus });
+    },
+
+    getAbonos: async (id, userId) => {
+        const debt = await PersonalDebt.findByPk(id);
+        if (!debt) throw new AppError('Obligación no encontrada', 404);
+        if (debt.userId !== userId) throw new AppError('No autorizado', 403);
+        return PersonalDebtAbono.findAll({
+            where: { personalDebtId: id },
+            order: [['createdAt', 'DESC']],
+        });
     },
 };

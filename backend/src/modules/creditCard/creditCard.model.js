@@ -60,6 +60,11 @@ CreditCard.init(
             allowNull: true,
             defaultValue: 0,
         },
+        pagoMinimo: {
+            type: DataTypes.DECIMAL(15, 2),
+            allowNull: true,
+            defaultValue: null,
+        },
         status: {
             type: DataTypes.ENUM('activa', 'bloqueada', 'cancelada'),
             allowNull: false,

@@ -53,9 +53,14 @@ import { SavingsNew } from './pages/SavingsNew';
 import { SavingsDetail } from './pages/SavingsDetail';
 import { SavingsEdit } from './pages/SavingsEdit';
 
+// Presupuesto
+import { Budget } from './pages/Budget';
+
 // Herramientas
 import { Reports } from './pages/Reports';
+import { ActivityLog } from './pages/ActivityLog';
 import { Profile } from './pages/Profile';
+import { Onboarding } from './pages/Onboarding';
 
 import { AuthService } from './services/authService';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -78,6 +83,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
         {/* Protegidas — bajo MainLayout */}
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
@@ -133,8 +139,12 @@ function App() {
           <Route path="savings/:id" element={<SavingsDetail />} />
           <Route path="savings/:id/edit" element={<SavingsEdit />} />
 
+          {/* Presupuesto */}
+          <Route path="budget" element={<Budget />} />
+
           {/* Herramientas */}
           <Route path="reports" element={<Reports />} />
+          <Route path="activity" element={<ActivityLog />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

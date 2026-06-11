@@ -12,32 +12,47 @@ const STATUS_BADGE = {
   inactivo: 'badge badge-neutral',
 };
 
-const IncomeRow = ({ inc, onEdit, onDelete }) => (
-  <div style={{
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '14px 20px',
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      {inc.tipo === 'extra'
-        ? <Zap size={14} style={{ color: 'var(--warn-600)', flexShrink: 0 }} />
-        : <Wallet size={14} style={{ color: 'var(--pos-600)', flexShrink: 0 }} />
-      }
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{inc.nombre}</span>
-        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-          Día {inc.diaCobro} · <span className={STATUS_BADGE[inc.status] || STATUS_BADGE.activo}>{inc.status}</span>
+const isThisMonth = (createdAt) => {
+  const d = new Date(createdAt);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+};
+
+const IncomeRow = ({ inc, onEdit, onDelete }) => {
+  const esExtra = inc.tipo === 'extra';
+  const cuentaEsteMes = esExtra && isThisMonth(inc.createdAt);
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '14px 20px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {esExtra
+          ? <Zap size={14} style={{ color: cuentaEsteMes ? 'var(--warn-600)' : 'var(--text-3)', flexShrink: 0 }} />
+          : <Wallet size={14} style={{ color: 'var(--pos-600)', flexShrink: 0 }} />
+        }
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: esExtra && !cuentaEsteMes ? 'var(--text-3)' : 'var(--text)' }}>{inc.nombre}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            {esExtra
+              ? cuentaEsteMes
+                ? <span style={{ color: 'var(--warn-600)', fontWeight: 600 }}>Cuenta este mes</span>
+                : <span>Ya no cuenta en Dinero Libre</span>
+              : <>Día {inc.diaCobro} · <span className={STATUS_BADGE[inc.status] || STATUS_BADGE.activo}>{inc.status}</span></>
+            }
+          </span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className="tabular" style={{ fontWeight: 700, fontSize: 15, color: esExtra ? (cuentaEsteMes ? 'var(--warn-600)' : 'var(--text-3)') : 'var(--pos-600)' }}>
+          {fmt(inc.monto)}
         </span>
+        <button className="btn btn-ghost btn-sm" onClick={() => onEdit(inc.id)} title="Editar"><Pencil size={14} /></button>
+        <button className="btn btn-ghost btn-sm" onClick={() => onDelete(inc.id)} title="Eliminar" style={{ color: 'var(--neg-600)' }}><Trash2 size={14} /></button>
       </div>
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span className="tabular" style={{ fontWeight: 700, fontSize: 15, color: inc.tipo === 'extra' ? 'var(--warn-600)' : 'var(--pos-600)' }}>
-        {fmt(inc.monto)}
-      </span>
-      <button className="btn btn-ghost btn-sm" onClick={() => onEdit(inc.id)} title="Editar"><Pencil size={14} /></button>
-      <button className="btn btn-ghost btn-sm" onClick={() => onDelete(inc.id)} title="Eliminar" style={{ color: 'var(--neg-600)' }}><Trash2 size={14} /></button>
-    </div>
-  </div>
-);
+  );
+};
 
 export const Income = () => {
   const navigate = useNavigate();
@@ -74,7 +89,7 @@ export const Income = () => {
     <div className="animate-fade-in">
       <PageHeader
         title="Ingresos"
-        subtitle="Fuentes fijas y entradas esporádicas"
+        subtitle="Ingresos mensuales fijos y extras puntuales"
         actions={
           <button className="btn btn-primary" onClick={() => navigate('/income/new')}>
             <Plus size={15} /> Agregar ingreso
@@ -85,17 +100,17 @@ export const Income = () => {
       {!loading && incomes.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
           <StatCard
-            label="Total fijo mensual"
+            label="Total mensual"
             value={fmt(totalFijo)}
-            delta={`${fijos.length} fuente(s) activa(s) — cuenta en Dinero Libre`}
+            delta={`${fijos.length} fuente(s) · siempre en Dinero Libre`}
             icon={Wallet}
             tone="pos"
           />
           {extras.length > 0 && (
             <StatCard
-              label="Ingresos extra activos"
+              label="Extras este mes"
               value={fmt(totalExtra)}
-              delta={`${extras.length} entrada(s) esporádica(s)`}
+              delta={`${extras.length} ingreso(s) puntual(es) · solo cuenta este mes`}
               icon={Zap}
               tone="warn"
             />
@@ -111,7 +126,7 @@ export const Income = () => {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon"><Wallet size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin ingresos registrados</p>
+            <p className="empty-state-title">Sin ingresos registrados</p>
             <p>Agrega tu salario u otras fuentes para calcular tu dinero libre mensual.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/income/new')}>
               <Plus size={14} /> Agregar ingreso
@@ -126,7 +141,7 @@ export const Income = () => {
             <>
               {extras.length > 0 && (
                 <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
-                  Ingresos fijos
+                  Mensuales
                 </p>
               )}
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -143,7 +158,7 @@ export const Income = () => {
           {incomes.filter(i => i.tipo === 'extra').length > 0 && (
             <>
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: extras.length > 0 ? '0.25rem 0 0' : 0 }}>
-                Ingresos extra / esporádicos
+                Extras
               </p>
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 {incomes.filter(i => i.tipo === 'extra').map((inc, idx, arr) => (
@@ -153,7 +168,7 @@ export const Income = () => {
                 ))}
               </div>
               <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '-8px 0 0', fontStyle: 'italic' }}>
-                Los ingresos extra no se incluyen en el cálculo de Dinero Libre mensual.
+                Los ingresos extra cuentan en el Dinero Libre solo el mes en que los registraste. El siguiente mes desaparecen solos del cálculo.
               </p>
             </>
           )}

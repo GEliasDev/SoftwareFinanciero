@@ -58,6 +58,11 @@ User.init(
             type: DataTypes.DATE,
             allowNull: true,
         },
+        emailDigest: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
     },
     { sequelize, modelName: 'User', tableName: 'users' }
 );

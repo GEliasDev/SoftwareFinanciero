@@ -66,7 +66,7 @@ export const BankCredits = () => {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon"><Landmark size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin créditos</p>
+            <p className="empty-state-title">Sin créditos</p>
             <p>Registra tus créditos bancarios para hacer seguimiento de cuotas y saldos.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/bank-credits/new')}>
               <Plus size={14} /> Agregar crédito

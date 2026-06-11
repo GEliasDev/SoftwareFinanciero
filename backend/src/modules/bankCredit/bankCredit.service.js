@@ -2,6 +2,7 @@ import { BankCredit } from './bankCredit.model.js';
 import { bankCreditCreateSchema, bankCreditUpdateSchema } from './bankCredit.schema.js';
 import { bankCreditCalculation } from './utils/bankCreditCalculation.js';
 import { AppError } from '../../middlewares/appError.js';
+import { ActivityLogService } from '../activityLog/activityLog.service.js';
 
 export const BankCreditService = {
     createBankCredit: async (data) => {
@@ -28,13 +29,15 @@ export const BankCreditService = {
             saldoPendiente = parseFloat(saldo.toFixed(2));
         }
 
-        return BankCredit.create({
+        const credit = await BankCredit.create({
             ...parsed,
             ...calculos,
             saldoPendiente,
             status: 'activo',
             userId: data.userId,
         });
+        ActivityLogService.log(data.userId, 'created', 'bank_credit', credit.nombre, { monto: parsed.montoTotal });
+        return credit;
     },
 
     getAllBankCredits: async (userId) => {
@@ -114,11 +117,13 @@ export const BankCreditService = {
             nuevoStatus = credit.status;
         }
 
-        return credit.update({
+        const updated = await credit.update({
             cuotasPagadas: nuevasCuotasPagadas,
             saldoPendiente: nuevoSaldo,
             status: nuevoStatus,
         });
+        ActivityLogService.log(userId, nuevoStatus === 'pagado' ? 'paid' : 'payment', 'bank_credit', credit.nombre, { cuota: nuevasCuotasPagadas, total: credit.numeroCuotas });
+        return updated;
     },
 
     undoPayment: async (id, userId) => {

@@ -10,14 +10,14 @@ const TIPO_OPTIONS = [
   {
     value: 'fijo',
     icon:  Wallet,
-    label: 'Ingreso fijo',
-    desc:  'Salario u otra fuente mensual recurrente',
+    label: 'Mensual',
+    desc:  'Ingreso que llega todos los meses: salario, honorarios fijos, arriendo que recibes. Siempre cuenta en tu Dinero Libre.',
   },
   {
     value: 'extra',
     icon:  Zap,
-    label: 'Ingreso extra',
-    desc:  'Trabajo independiente, regalo, venta ocasional…',
+    label: 'Extra',
+    desc:  'Ingreso que no se repite: bono, trabajo puntual, venta. Cuenta en tu Dinero Libre solo este mes y desaparece solo el próximo.',
   },
 ];
 
@@ -159,8 +159,8 @@ export const IncomeForm = () => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.75)', borderTop: '1px solid rgba(255,255,255,0.18)', paddingTop: '0.6rem' }}>
               {form.tipo === 'extra'
-                ? <span>Ingreso esporádico · No afecta el cálculo mensual</span>
-                : <span>Llega el día {preview.diaCobro} de cada mes</span>
+                ? <span>Solo cuenta este mes · El próximo mes ya no aparece en Dinero Libre</span>
+                : <span>Llega el día {preview.diaCobro} de cada mes · Siempre cuenta</span>
               }
             </div>
           </div>
@@ -186,11 +186,11 @@ export const IncomeForm = () => {
         {/* Formulario */}
         <div className="card" style={{ padding: '1.75rem' }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>
-            {isEdit ? 'Datos del ingreso' : form.tipo === 'extra' ? 'Datos del ingreso extra' : 'Datos de la fuente'}
+            {isEdit ? 'Datos del ingreso' : form.tipo === 'extra' ? 'Datos del ingreso extra' : 'Datos del ingreso mensual'}
           </h3>
           <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>
             {form.tipo === 'extra'
-              ? '¿Cuánto recibiste y qué día fue registrado?'
+              ? '¿Cuánto recibiste? Solo contará en el Dinero Libre de este mes.'
               : isEdit ? '¿Qué quieres cambiar?' : '¿Cómo se llama, cuánto llega y qué día?'
             }
           </p>

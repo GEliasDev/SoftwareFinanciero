@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
-import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { ActivityLogService } from '../services/activityLogService';
+import { PushService } from '../services/pushService';
+import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Activity, CreditCard, Landmark, Repeat, Wallet, Handshake, Target, PlusCircle, Pencil, XCircle, Bell, BellOff, Mail, MailX } from 'lucide-react';
 
 const Alert = ({ type, message, onClose }) => (
   <div className={`info-box ${type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -37,6 +39,13 @@ export const Profile = () => {
     confirmPassword: '',
   });
 
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushAlert, setPushAlert] = useState(null);
+  const [emailDigest, setEmailDigest] = useState(false);
+  const [emailDigestLoading, setEmailDigestLoading] = useState(false);
+  const [emailDigestAlert, setEmailDigestAlert] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -47,7 +56,58 @@ export const Profile = () => {
   const [showConfirm, setShowConfirm]   = useState(false);
 
   useEffect(() => {
+    if (!PushService.isSupported()) return;
+    PushService.getSubscription().then(s => setPushEnabled(!!s)).catch(() => {});
+  }, []);
+
+  const togglePush = async () => {
+    setPushLoading(true);
+    setPushAlert(null);
+    try {
+      if (pushEnabled) {
+        await PushService.unsubscribe();
+        setPushEnabled(false);
+        setPushAlert({ type: 'success', message: 'Notificaciones desactivadas.' });
+      } else {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          setPushAlert({ type: 'error', message: 'Permiso denegado. Habilita las notificaciones en la configuración del navegador.' });
+          return;
+        }
+        await PushService.subscribe();
+        setPushEnabled(true);
+        setPushAlert({ type: 'success', message: 'Notificaciones activadas. Te avisaremos antes de cada pago.' });
+      }
+    } catch {
+      setPushAlert({ type: 'error', message: 'Error al configurar notificaciones. Intenta de nuevo.' });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const toggleEmailDigest = async () => {
+    setEmailDigestLoading(true);
+    setEmailDigestAlert(null);
+    try {
+      const next = !emailDigest;
+      await UserService.update(userId, { emailDigest: next });
+      setEmailDigest(next);
+      setEmailDigestAlert({
+        type: 'success',
+        message: next
+          ? 'Resumen semanal activado. Te llegará cada lunes a las 8 a.m.'
+          : 'Resumen semanal desactivado.',
+      });
+    } catch {
+      setEmailDigestAlert({ type: 'error', message: 'No se pudo actualizar la preferencia.' });
+    } finally {
+      setEmailDigestLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (!userId) return;
+    ActivityLogService.getRecent(20).then(setActivityLogs).catch(() => {});
     UserService.getById(userId)
       .then(data => {
         setProfile({
@@ -60,6 +120,7 @@ export const Profile = () => {
           pais: data.pais || '',
           ciudad: data.ciudad || '',
         });
+        setEmailDigest(!!data.emailDigest);
       })
       .catch(() => setProfileAlert({ type: 'error', message: 'No se pudo cargar tu perfil.' }))
       .finally(() => setLoadingProfile(false));
@@ -329,6 +390,107 @@ export const Profile = () => {
           </form>
         </div>
       </div>
+      {/* ── Actividad reciente ── */}
+      {activityLogs.length > 0 && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <Activity size={18} style={{ color: 'var(--brand-600)' }} />
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Actividad reciente</h2>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {activityLogs.map((log, i) => {
+              const IconMap = { income: Wallet, bank_credit: Landmark, subscription: Repeat, credit_card: CreditCard, personal_debt: Handshake, savings_goal: Target };
+              const EntityIcon = IconMap[log.entityType] ?? Activity;
+              const actionLabel = { created: 'Registró', updated: 'Actualizó', deleted: 'Eliminó', paid: 'Pagó completamente', payment: 'Pagó cuota de' }[log.action] ?? log.action;
+              const dateStr = new Date(log.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+              return (
+                <div key={log.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '8px 0',
+                  borderBottom: i < activityLogs.length - 1 ? '1px solid var(--border)' : 'none',
+                }}>
+                  <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <EntityIcon size={14} style={{ color: 'var(--brand-600)' }} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', margin: 0 }} className="truncate">
+                      <span style={{ color: 'var(--text-2)', fontWeight: 400 }}>{actionLabel} </span>{log.entityName}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{dateStr}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Notificaciones push */}
+      {PushService.isSupported() && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <Bell size={18} style={{ color: 'var(--brand-600)' }} />
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Notificaciones push</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+            Recibe alertas en tu dispositivo antes de que venzan tus pagos y recordatorios.
+          </p>
+          {pushAlert && (
+            <Alert type={pushAlert.type} message={pushAlert.message} onClose={() => setPushAlert(null)} />
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {pushEnabled
+                ? <Bell size={20} style={{ color: 'var(--pos-600)' }} />
+                : <BellOff size={20} style={{ color: 'var(--text-3)' }} />}
+              <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
+                {pushEnabled ? 'Notificaciones activas' : 'Notificaciones inactivas'}
+              </span>
+            </div>
+            <button
+              className={`btn ${pushEnabled ? 'btn-secondary' : 'btn-primary'}`}
+              onClick={togglePush}
+              disabled={pushLoading}
+              style={{ minWidth: 140 }}
+            >
+              {pushLoading ? 'Procesando...' : pushEnabled ? 'Desactivar' : 'Activar notificaciones'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Resumen semanal por email */}
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <Mail size={18} style={{ color: 'var(--brand-600)' }} />
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Resumen semanal por email</h2>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          Recibe cada lunes un correo con tu dinero libre, obligaciones del mes y próximos pagos.
+        </p>
+        {emailDigestAlert && (
+          <Alert type={emailDigestAlert.type} message={emailDigestAlert.message} onClose={() => setEmailDigestAlert(null)} />
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {emailDigest
+              ? <Mail size={20} style={{ color: 'var(--pos-600)' }} />
+              : <MailX size={20} style={{ color: 'var(--text-3)' }} />}
+            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
+              {emailDigest ? 'Resumen activado' : 'Resumen desactivado'}
+            </span>
+          </div>
+          <button
+            className={`btn ${emailDigest ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={toggleEmailDigest}
+            disabled={emailDigestLoading}
+            style={{ minWidth: 140 }}
+          >
+            {emailDigestLoading ? 'Guardando...' : emailDigest ? 'Desactivar' : 'Activar resumen'}
+          </button>
+        </div>
+      </div>
+
       {/* Zona de peligro */}
       <div className="card" style={{ marginTop: '1.5rem', border: '1px solid rgba(220,38,38,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>

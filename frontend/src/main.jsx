@@ -12,3 +12,10 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// Remove splash once React has painted
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    document.getElementById('splash')?.classList.add('hidden');
+  });
+});

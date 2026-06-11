@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCircle, LogOut, CalendarClock, Sun, Moon } from 'lucide-react';
+import { UserCircle, LogOut, CalendarClock, Sun, Moon, Search } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { CreditCardService } from '../../services/creditCardService';
+import { GlobalSearch } from '../ui/GlobalSearch';
 
 const getStoredTheme = () => localStorage.getItem('debti-theme') || 'light';
 const applyTheme = (theme) => {
@@ -31,10 +32,22 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const user = AuthService.getCurrentUser();
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [overview, setOverview] = useState(null);
-  const [theme, setTheme] = useState(getStoredTheme);
+  const [menuOpen,    setMenuOpen]    = useState(false);
+  const [overview,    setOverview]    = useState(null);
+  const [theme,       setTheme]       = useState(getStoredTheme);
+  const [searchOpen,  setSearchOpen]  = useState(false);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    const down = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(o => !o);
+      }
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
 
   useEffect(() => { applyTheme(theme); }, [theme]);
 
@@ -70,10 +83,29 @@ export const Navbar = () => {
   };
 
   return (
+    <>
+    {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
     <header className="navbar">
       <span className="navbar-title">{getPageLabel(location.pathname)}</span>
 
       <div className="navbar-right">
+        {/* Search button */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          aria-label="Buscar (Ctrl+K)"
+          style={{
+            background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+            height: 32, display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 10px', cursor: 'pointer', color: 'var(--text-3)',
+            fontSize: 12, transition: 'color 0.15s, border-color 0.15s', flexShrink: 0,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-strong)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+        >
+          <Search size={13} />
+          <span className="search-shortcut-label">Ctrl+K</span>
+        </button>
+
         <button
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -121,5 +153,6 @@ export const Navbar = () => {
         </div>
       </div>
     </header>
+    </>
   );
 };

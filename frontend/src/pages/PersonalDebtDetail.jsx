@@ -4,7 +4,7 @@ import { PersonalDebtService } from '../services/personalDebtService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
-import { TrendingDown, Wallet, Percent, Pencil, Plus, Repeat, ArrowLeft, Trash2, AlertCircle, Check, X } from 'lucide-react';
+import { TrendingDown, Wallet, Percent, Pencil, Plus, Repeat, ArrowLeft, Trash2, AlertCircle, Check, X, History } from 'lucide-react';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
 
@@ -31,7 +31,7 @@ const AbonoPanel = ({ debt, onSaved, onClose }) => {
     if (hasError || montoNum <= 0) return;
     setSaving(true);
     try {
-      await PersonalDebtService.registerAbono(debt.id, { monto: montoNum });
+      await PersonalDebtService.registerAbono(debt.id, montoNum);
       onSaved();
       Swal.fire({ icon: 'success', title: 'Abono registrado', timer: 1400, showConfirmButton: false });
     } catch (err) {
@@ -41,7 +41,6 @@ const AbonoPanel = ({ debt, onSaved, onClose }) => {
 
   return (
     <div className="card" style={{ padding: '1.5rem', marginBottom: 16, borderLeft: '4px solid var(--brand-600)' }}>
-      {/* Cabecera */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Registrar abono</h3>
@@ -56,7 +55,6 @@ const AbonoPanel = ({ debt, onSaved, onClose }) => {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Input */}
         <div className="form-group" style={{ margin: '0 0 1rem' }}>
           <label className="form-label">Monto del abono (COP) *</label>
           <input
@@ -71,7 +69,6 @@ const AbonoPanel = ({ debt, onSaved, onClose }) => {
           {hasError && <p className="form-error"><AlertCircle size={11} /> {errorMsg}</p>}
         </div>
 
-        {/* Preview live */}
         {montoNum > 0 && montoNum <= saldoActual && (
           <div style={{
             background: 'var(--surface-2)', borderRadius: 'var(--radius-md)',
@@ -97,7 +94,6 @@ const AbonoPanel = ({ debt, onSaved, onClose }) => {
           </div>
         )}
 
-        {/* Acciones */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -115,10 +111,14 @@ export const PersonalDebtDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [debt, setDebt]       = useState(null);
+  const [abonos, setAbonos]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAbono, setShowAbono] = useState(false);
 
-  const load = () => PersonalDebtService.getById(id).then(setDebt).catch(console.error).finally(() => setLoading(false));
+  const load = () => {
+    PersonalDebtService.getById(id).then(setDebt).catch(console.error).finally(() => setLoading(false));
+    PersonalDebtService.getAbonos(id).then(setAbonos).catch(() => {});
+  };
   useEffect(() => { load(); }, [id]);
 
   const handleDelete = async () => {
@@ -139,7 +139,7 @@ export const PersonalDebtDetail = () => {
   if (loading) return <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-md)', margin: 24 }} />;
   if (!debt) return null;
 
-  const isDeuda   = debt.tipo === 'deuda';
+  const isDeuda    = debt.tipo === 'deuda';
   const montoTotal = parseFloat(debt.montoTotal ?? 0);
   const saldoActual = parseFloat(debt.saldoPendiente ?? 0);
   const pagado      = montoTotal > 0 ? Math.min(100, ((montoTotal - saldoActual) / montoTotal) * 100) : 0;
@@ -171,7 +171,6 @@ export const PersonalDebtDetail = () => {
         }
       />
 
-      {/* Panel de abono inline */}
       {showAbono && isDeuda && (
         <AbonoPanel
           debt={debt}
@@ -184,7 +183,6 @@ export const PersonalDebtDetail = () => {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 }}>
             <StatCard label="Saldo pendiente"  value={fmt(saldoActual)} delta={`de ${fmt(montoTotal)} original`} icon={TrendingDown} tone="neg" />
-            <StatCard label="Cuota mensual"    value={fmt(debt.montoCuota)} delta={`Día ${debt.diaPago} de cada mes`} icon={Wallet} tone="neutral" />
             <StatCard label="Avance"           value={`${pagado.toFixed(0)}%`} delta={`${fmt(montoTotal - saldoActual)} abonado`} icon={Percent} tone="pos" />
           </div>
           <SectionCard title="Detalle">
@@ -196,10 +194,10 @@ export const PersonalDebtDetail = () => {
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
               {[
-                { label: 'A quién',        value: debt.prestamista },
-                { label: 'Monto original', value: fmt(montoTotal) },
+                { label: 'A quién',         value: debt.prestamista },
+                { label: 'Monto original',  value: fmt(montoTotal) },
                 { label: 'Saldo pendiente', value: fmt(saldoActual) },
-                { label: 'Estado',         value: debt.status },
+                { label: 'Estado',          value: debt.status },
                 ...(debt.descripcion ? [{ label: 'Descripción', value: debt.descripcion }] : []),
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -209,17 +207,49 @@ export const PersonalDebtDetail = () => {
               ))}
             </div>
           </SectionCard>
+          {abonos.length > 0 && (
+            <SectionCard title="Historial de abonos" icon={History} style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {abonos.map((a, i) => {
+                  const fecha = new Date(a.fecha + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+                  return (
+                    <div key={a.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 0',
+                      borderBottom: i < abonos.length - 1 ? '1px solid var(--border)' : 'none',
+                    }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                        background: 'color-mix(in srgb, var(--pos-600) 10%, var(--surface))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Check size={14} style={{ color: 'var(--pos-600)' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p className="tabular" style={{ fontSize: 14, fontWeight: 700, color: 'var(--pos-600)', margin: '0 0 1px' }}>
+                          &minus; {fmt(parseFloat(a.monto))}
+                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>
+                          Saldo: {fmt(parseFloat(a.saldoAntes))} &rarr; {fmt(parseFloat(a.saldoDespues))}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{fecha}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          )}
         </>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <StatCard label="Monto mensual"  value={fmt(debt.montoCuota)}                                delta={`Día ${debt.diaPago} de cada mes`} icon={Wallet}  tone="warn" />
+            <StatCard label="Monto mensual"  value={fmt(debt.montoCuota)}                                delta="Mensual recurrente" icon={Wallet}  tone="warn" />
             <StatCard label="Anual estimado" value={fmt(parseFloat(String(debt.montoCuota)) * 12)}       delta="12 meses"                          icon={Repeat}  tone="neutral" />
           </div>
           <SectionCard title="Detalle">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
               {[
-                { label: 'Día de pago',   value: `Día ${debt.diaPago} de cada mes` },
                 { label: 'Monto mensual', value: fmt(debt.montoCuota) },
                 { label: 'Estado',        value: debt.status },
                 ...(debt.descripcion ? [{ label: 'Descripción', value: debt.descripcion }] : []),

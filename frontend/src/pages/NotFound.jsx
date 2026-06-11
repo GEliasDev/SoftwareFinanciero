@@ -11,7 +11,7 @@ export const NotFound = () => {
       background: 'var(--bg)', padding: '2rem', textAlign: 'center',
     }}>
       <div style={{ marginBottom: '1.5rem' }}>
-        <BrandMark size={48} />
+        <BrandMark size={72} />
       </div>
 
       <p style={{ fontSize: 72, fontWeight: 800, color: 'var(--brand-600)', lineHeight: 1, marginBottom: '0.5rem', fontVariantNumeric: 'tabular-nums' }}>

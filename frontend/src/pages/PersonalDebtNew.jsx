@@ -10,8 +10,8 @@ const TIPO_OPTIONS = [
   {
     value: 'deuda',
     icon:  Handshake,
-    label: 'Deuda en cuotas',
-    desc:  'Préstamo a pagar en pagos fijos hasta saldar',
+    label: 'Deuda personal',
+    desc:  'Préstamo informal — abonás lo que podás hasta saldar',
   },
   {
     value: 'gasto',
@@ -27,18 +27,18 @@ export const PersonalDebtNew = () => {
   const [touched, setTouched] = useState({});
   const [form, setForm] = useState({
     tipo: 'deuda', nombre: '', descripcion: '', prestamista: '',
-    montoTotal: '', montoCuota: '', diaPago: '1',
+    montoTotal: '', montoCuota: '',
   });
 
-  const isDeuda = form.tipo === 'deuda';
+  const isDeuda    = form.tipo === 'deuda';
+  const montoTotal = Number(form.montoTotal) || 0;
+  const montoCuota = Number(form.montoCuota) || 0;
 
   const errors = {};
-  if (!form.nombre.trim())                            errors.nombre      = 'Ingresa un nombre';
-  if (isDeuda && !form.prestamista.trim())            errors.prestamista = 'Indica a quién le debes';
-  if (isDeuda && !(Number(form.montoTotal) > 0))      errors.montoTotal  = 'Debe ser mayor a 0';
-  if (!(Number(form.montoCuota) > 0))                 errors.montoCuota  = 'Debe ser mayor a 0';
-  const dia = Number(form.diaPago);
-  if (!(dia >= 1 && dia <= 31))                       errors.diaPago     = 'Día entre 1 y 31';
+  if (!form.nombre.trim())                         errors.nombre      = 'Ingresa un nombre';
+  if (isDeuda && !form.prestamista.trim())         errors.prestamista = 'Indica a quién le debes';
+  if (isDeuda && !(montoTotal > 0))                errors.montoTotal  = 'Debe ser mayor a 0';
+  if (!isDeuda && !(montoCuota > 0))               errors.montoCuota  = 'Debe ser mayor a 0';
 
   const showErr = (f) => touched[f] && errors[f];
   const mark    = (f) => setTouched(t => ({ ...t, [f]: true }));
@@ -61,7 +61,7 @@ export const PersonalDebtNew = () => {
 
   const changeTipo = (tipo) => {
     setTouched({});
-    setForm(f => ({ tipo, nombre: f.nombre, descripcion: f.descripcion, prestamista: '', montoTotal: '', montoCuota: f.montoCuota, diaPago: f.diaPago }));
+    setForm(f => ({ tipo, nombre: f.nombre, descripcion: f.descripcion, prestamista: '', montoTotal: '', montoCuota: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -70,28 +70,21 @@ export const PersonalDebtNew = () => {
     if (Object.keys(errors).length > 0) return;
     setSaving(true);
     try {
-      await PersonalDebtService.create({
-        tipo:        form.tipo,
-        nombre:      form.nombre,
-        descripcion: form.descripcion || undefined,
-        ...(isDeuda ? { prestamista: form.prestamista, montoTotal: Number(form.montoTotal) } : {}),
-        montoCuota:  Number(form.montoCuota),
-        diaPago:     Number(form.diaPago),
-      });
+      await PersonalDebtService.create(isDeuda
+        ? { tipo: 'deuda', nombre: form.nombre, descripcion: form.descripcion || undefined, prestamista: form.prestamista, montoTotal }
+        : { tipo: 'gasto', nombre: form.nombre, descripcion: form.descripcion || undefined, montoCuota }
+      );
       navigate('/personal-debts');
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'No se pudo guardar', confirmButtonColor: 'var(--brand-600)' });
     } finally { setSaving(false); }
   };
 
-  const montoTotal = Number(form.montoTotal) || 0;
-  const montoCuota = Number(form.montoCuota) || 0;
-
   return (
     <div className="animate-fade-in">
       <PageHeader
         title="Nueva obligación"
-        subtitle="Deuda en cuotas o gasto mensual recurrente"
+        subtitle="Deuda personal o gasto mensual recurrente"
         back={
           <button onClick={() => navigate('/personal-debts')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
             <ArrowLeft size={16} />
@@ -138,49 +131,32 @@ export const PersonalDebtNew = () => {
               {isDeuda ? <Handshake size={18} style={{ color: 'rgba(255,255,255,0.85)' }} /> : <Repeat size={18} style={{ color: 'rgba(255,255,255,0.85)' }} />}
               <div style={{ fontWeight: 700, fontSize: 14 }}>{form.nombre || (isDeuda ? 'Nombre de la deuda' : 'Nombre del gasto')}</div>
             </div>
+
             {isDeuda ? (
               <>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: '0.75rem' }}>
                   {form.prestamista ? `Con: ${form.prestamista}` : 'Acreedor por definir'}
                 </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Saldo total</div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Monto total</div>
                   <div className="tabular" style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{montoTotal ? fmt(montoTotal) : '—'}</div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.75)', borderTop: '1px solid rgba(255,255,255,0.18)', paddingTop: '0.6rem' }}>
-                  <span>Cuota: {montoCuota ? fmt(montoCuota) : '—'}/mes</span>
-                  <span>Día {form.diaPago || '—'}</span>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', borderTop: '1px solid rgba(255,255,255,0.18)', paddingTop: '0.6rem', marginTop: '0.75rem' }}>
+                  Abonás cuando podás · saldo siempre visible
                 </div>
               </>
             ) : (
               <>
-                <div style={{ marginBottom: '0.75rem' }}>
+                <div>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Monto mensual</div>
                   <div className="tabular" style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{montoCuota ? fmt(montoCuota) : '—'}</div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.75)', borderTop: '1px solid rgba(255,255,255,0.18)', paddingTop: '0.6rem' }}>
-                  <span>Recurrente · Día {form.diaPago || '—'} de cada mes</span>
-                  {montoCuota > 0 && <span>{fmt(montoCuota * 12)}/año</span>}
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', borderTop: '1px solid rgba(255,255,255,0.18)', paddingTop: '0.6rem', marginTop: '0.75rem' }}>
+                  {montoCuota > 0 ? `${fmt(montoCuota * 12)}/año` : 'Recurrente · todos los meses'}
                 </div>
               </>
             )}
           </div>
-
-          {isDeuda && montoTotal > 0 && montoCuota > 0 && (
-            <div className="card" style={{ padding: '1rem', marginTop: '1rem' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 0.625rem' }}>Resumen</p>
-              {[
-                { label: 'Monto total',   value: fmt(montoTotal) },
-                { label: 'Cuota mensual', value: fmt(montoCuota) },
-                { label: 'Día de pago',   value: `Día ${form.diaPago || '—'}` },
-              ].map(r => (
-                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '0.3rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                  <span style={{ color: 'var(--text-3)' }}>{r.label}</span>
-                  <span className="tabular" style={{ fontWeight: 600, color: 'var(--text)' }}>{r.value}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Formulario */}
@@ -189,36 +165,26 @@ export const PersonalDebtNew = () => {
             {isDeuda ? 'Datos de la deuda' : 'Datos del gasto'}
           </h3>
           <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>
-            {isDeuda ? '¿Con quién, cuánto debes y en cuántas cuotas?' : '¿Cuánto pagas y cuándo?'}
+            {isDeuda ? '¿Con quién y cuánto debes?' : '¿Cuánto pagas cada mes?'}
           </p>
 
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {field('nombre', isDeuda ? 'Nombre de la obligación *' : 'Nombre del gasto *', null, { placeholder: isDeuda ? 'Ej: Préstamo Juan' : 'Ej: Gasolina moto' })}
+              {field('nombre', isDeuda ? 'Nombre de la obligación *' : 'Nombre del gasto *', null,
+                { placeholder: isDeuda ? 'Ej: Préstamo Juan' : 'Ej: Gasolina moto' })}
 
               {isDeuda && (
                 <>
                   {field('prestamista', 'A quién le debes *', null, { placeholder: 'Ej: Juan García' })}
+                  {field('montoTotal', 'Monto total (COP) *', null, { type: 'number', min: '1', placeholder: '1 000 000' })}
                   {field('descripcion', 'Descripción', 'Opcional', { placeholder: 'Notas adicionales' })}
-                  <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.125rem' }}>Montos y plazos</h3>
-                    <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 0.75rem' }}>Con estos datos se calcula el saldo y las cuotas estimadas.</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      {field('montoTotal', 'Monto total (COP) *', null, { type: 'number', min: '1', placeholder: '1 000 000' })}
-                      {field('montoCuota', 'Cuota mensual (COP) *', null, { type: 'number', min: '1', placeholder: '200 000' })}
-                    </div>
-                    {field('diaPago', 'Día de pago *', 'Día del mes (1–31)', { type: 'number', min: '1', max: '31', placeholder: '5' })}
-                  </div>
                 </>
               )}
 
               {!isDeuda && (
                 <>
+                  {field('montoCuota', 'Monto mensual (COP) *', null, { type: 'number', min: '1', placeholder: '150 000' })}
                   {field('descripcion', 'Descripción', 'Opcional — para qué es este gasto', { placeholder: 'Ej: Aporte comida casa' })}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                    {field('montoCuota', 'Monto mensual (COP) *', null, { type: 'number', min: '1', placeholder: '150 000' })}
-                    {field('diaPago', 'Día de pago *', 'Día del mes (1–31)', { type: 'number', min: '1', max: '31', placeholder: '5' })}
-                  </div>
                 </>
               )}
             </div>

@@ -21,4 +21,5 @@ export const userUpdateSchema = z.object({
     telefono: z.string().min(10).max(10).optional(),
     pais: z.string().optional(),
     ciudad: z.string().optional(),
+    emailDigest: z.boolean().optional(),
 });

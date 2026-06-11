@@ -21,9 +21,27 @@ export const AnalyticsController = {
         }
     },
 
+    getRecommendations: async (req, res, next) => {
+        try {
+            const result = await AnalyticsService.getRecommendations(req.user.id);
+            res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    },
+
     getDistribution: async (req, res, next) => {
         try {
             const result = await AnalyticsService.getDistribution(req.user.id);
+            res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getDebtFreedom: async (req, res, next) => {
+        try {
+            const result = await AnalyticsService.getDebtFreedom(req.user.id);
             res.json(result);
         } catch (err) {
             next(err);

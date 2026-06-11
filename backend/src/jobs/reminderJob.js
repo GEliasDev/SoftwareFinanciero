@@ -1,11 +1,8 @@
 import cron from 'node-cron';
 import { ReminderService } from '../modules/reminder/reminder.service.js';
+import { PushSubscriptionService } from '../modules/pushSubscription/pushSubscription.service.js';
 import { generateCuotaManejoCharges } from './cuotaManejoJob.js';
 
-/**
- * Cron job que se ejecuta todos los días a las 8:00 AM
- * Busca recordatorios pendientes y los envía vía Web Push
- */
 export const startReminderJob = () => {
     cron.schedule('0 8 * * *', async () => {
         console.log(`[ReminderJob] Ejecutando — ${new Date().toISOString()}`);
@@ -16,15 +13,14 @@ export const startReminderJob = () => {
 
             for (const reminder of pending) {
                 try {
-                    // Web Push se conectará aquí cuando el frontend esté listo
-                    // Por ahora solo logueamos el recordatorio
-                    console.log(`[ReminderJob] Recordatorio listo para enviar:`, {
-                        usuario: reminder.userId,
-                        deuda: reminder.nombre,
-                        fechaPago: reminder.proximaFechaPago,
-                    });
-
-                    // Reprogramar para el siguiente mes
+                    if (process.env.VAPID_PUBLIC_KEY) {
+                        await PushSubscriptionService.sendToUser(
+                            reminder.userId,
+                            `Pago próximo: ${reminder.nombre}`,
+                            `Vence el ${new Date(reminder.proximaFechaPago).toLocaleDateString('es-CO')}`,
+                            '/reminders',
+                        );
+                    }
                     await ReminderService.markAsSentAndReschedule(reminder.id);
                 } catch (err) {
                     console.error(`[ReminderJob] Error en recordatorio ${reminder.id}:`, err.message);

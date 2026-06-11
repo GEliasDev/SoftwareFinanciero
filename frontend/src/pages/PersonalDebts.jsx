@@ -139,7 +139,7 @@ export const PersonalDebts = () => {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon"><Handshake size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin obligaciones</p>
+            <p className="empty-state-title">Sin obligaciones</p>
             <p>Registra deudas en cuotas o gastos mensuales recurrentes.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/personal-debts/new')}>
               <Plus size={14} /> Nueva obligación

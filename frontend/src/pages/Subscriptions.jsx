@@ -81,7 +81,7 @@ export const Subscriptions = () => {
         ) : subscriptions.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon"><Repeat size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin suscripciones</p>
+            <p className="empty-state-title">Sin suscripciones</p>
             <p>Registra tus servicios recurrentes para hacer seguimiento de tu gasto.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/subscriptions/new')}>
               <Plus size={14} /> Agregar suscripción

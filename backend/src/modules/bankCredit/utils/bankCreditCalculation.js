@@ -29,9 +29,14 @@ export function bankCreditCalculation({
             : tasaInteres / 100;
 
     // Cuota fija sin cargos adicionales
-    // C = P × [i(1+i)^n] / [(1+i)^n - 1]
-    const factor = Math.pow(1 + tasaMensual, numeroCuotas);
-    const valorCuotaBase = montoTotal * (tasaMensual * factor) / (factor - 1);
+    // C = P × [i(1+i)^n] / [(1+i)^n - 1]; caso tasa=0: cuota simple P/n
+    let valorCuotaBase;
+    if (tasaMensual === 0) {
+        valorCuotaBase = montoTotal / numeroCuotas;
+    } else {
+        const factor = Math.pow(1 + tasaMensual, numeroCuotas);
+        valorCuotaBase = montoTotal * (tasaMensual * factor) / (factor - 1);
+    }
     const valorCuota = valorCuotaBase + cuotaAdministracion + seguro;
 
     const totalAPagar = valorCuota * numeroCuotas;

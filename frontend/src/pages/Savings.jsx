@@ -58,7 +58,7 @@ export const Savings = () => {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon"><Target size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin metas de ahorro</p>
+            <p className="empty-state-title">Sin metas de ahorro</p>
             <p>Define una meta para darle dirección a tu dinero libre mensual.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/savings/new')}>
               <Plus size={14} /> Nueva meta

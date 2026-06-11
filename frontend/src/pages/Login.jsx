@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, TrendingUp, CreditCard, Bell, Landmark, AlertCircle, ArrowRight } from 'lucide-react';
 import { AuthService } from '../services/authService';
-import { BrandMark } from '../components/ui/BrandMark';
+import logo from '../assets/logo.png';
+import icono from '../assets/icono.png';
 
 const FEATURES = [
   { icon: TrendingUp, text: 'Seguimiento de deudas y saldos en tiempo real' },
@@ -31,7 +32,8 @@ export const Login = () => {
     setError('');
     try {
       await AuthService.login(email, password);
-      navigate('/');
+      const needsOnboarding = localStorage.getItem('debti-onboarding') === '1';
+      navigate(needsOnboarding ? '/onboarding' : '/');
     } catch (err) {
       setError(err.response?.data?.message || 'Correo o contraseña incorrectos.');
     } finally {
@@ -47,8 +49,7 @@ export const Login = () => {
         <div className="auth-panel-brand">
           <div className="auth-panel-brand-inner">
             <div className="auth-brand-logo">
-              <BrandMark size={36} shadow={false} />
-              <span>Debti</span>
+              <img src={logo} alt="Debti" style={{ height: 68, width: 'auto' }} />
             </div>
             <div>
               <h2 className="auth-panel-headline">Tus finanzas, bajo control total</h2>
@@ -78,8 +79,7 @@ export const Login = () => {
 
             <div className="auth-form-header">
               <div className="auth-logo">
-                <BrandMark size={28} />
-                <span className="auth-logo-text">Debti</span>
+                <img src={logo} alt="Debti" style={{ height: 52, width: 'auto' }} />
               </div>
               <h2>Iniciar sesión</h2>
               <p>Bienvenido de vuelta a tu panel financiero</p>

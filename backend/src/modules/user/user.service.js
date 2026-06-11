@@ -11,7 +11,7 @@ const SALT_ROUNDS = 10;
 const USER_PUBLIC_ATTRIBUTES = [
     'id', 'primerNombre', 'segundoNombre',
     'primerApellido', 'segundoApellido',
-    'email', 'telefono', 'pais', 'ciudad',
+    'email', 'telefono', 'pais', 'ciudad', 'emailDigest',
 ];
 
 export const UserService = {

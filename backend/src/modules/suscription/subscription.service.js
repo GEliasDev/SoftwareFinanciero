@@ -2,6 +2,7 @@ import { Subscription } from './subscription.model.js';
 import { subscriptionCreateSchema, subscriptionUpdateSchema } from './subscription.schema.js';
 import { calcularMontoMensual, calcularTotalAnual } from './utils/subscriptionCalculation.js';
 import { AppError } from '../../middlewares/appError.js';
+import { ActivityLogService } from '../activityLog/activityLog.service.js';
 
 export const SubscriptionService = {
     createSubscription: async (data) => {
@@ -11,11 +12,13 @@ export const SubscriptionService = {
             frecuencia: parsed.frecuencia,
         });
 
-        return Subscription.create({
+        const sub = await Subscription.create({
             ...parsed,
             montoMensual,
             userId: data.userId,
         });
+        ActivityLogService.log(data.userId, 'created', 'subscription', sub.nombre, { monto: montoMensual });
+        return sub;
     },
 
     getAllSubscriptions: async (userId) => {
@@ -47,6 +50,7 @@ export const SubscriptionService = {
         if (!isAdmin && subscription.userId !== userId) {
             throw new AppError('Acceso no autorizado a suscripción', 403);
         }
+        ActivityLogService.log(userId, 'deleted', 'subscription', subscription.nombre);
         return subscription.destroy();
     },
 

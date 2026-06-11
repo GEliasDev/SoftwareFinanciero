@@ -96,7 +96,7 @@ export const Reminders = () => {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon"><Bell size={24} /></div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.2rem' }}>Sin recordatorios</p>
+            <p className="empty-state-title">Sin recordatorios</p>
             <p>Configura alertas para no olvidar ningún pago importante.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/reminders/new')}>
               <Plus size={14} /> Crear recordatorio
