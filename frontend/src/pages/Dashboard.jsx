@@ -7,7 +7,7 @@ import {
   Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus,
   PieChart as PieIcon, TrendingUp, TrendingDown, Target, Handshake,
 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -246,9 +246,9 @@ export const Dashboard = () => {
               icon={PieIcon}
             >
               {dist.length > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                <div className="dist-layout">
                   {/* Donut */}
-                  <div style={{ position: 'relative', width: 152, height: 152, flexShrink: 0 }}>
+                  <div className="dist-donut">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -258,10 +258,6 @@ export const Dashboard = () => {
                         >
                           {dist.map((d, i) => <Cell key={i} fill={d.color} />)}
                         </Pie>
-                        <Tooltip
-                          formatter={(v, name) => [fmt(v), name]}
-                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)' }}
-                        />
                       </PieChart>
                     </ResponsiveContainer>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
@@ -270,15 +266,15 @@ export const Dashboard = () => {
                     </div>
                   </div>
                   {/* Leyenda */}
-                  <div style={{ flex: 1, minWidth: 140, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  <div className="dist-legend">
                     {dist.map(d => {
                       const pct = totalDist > 0 ? (d.value / totalDist) * 100 : 0;
                       return (
-                        <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div key={d.name} className="dist-legend-row">
                           <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1, lineHeight: 1.3 }}>{d.name}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, minWidth: 28 }}>{pct.toFixed(0)}%</span>
-                          <span className="tabular" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 90, textAlign: 'right' }}>{fmt(d.value)}</span>
+                          <span className="dist-legend-name">{d.name}</span>
+                          <span className="dist-legend-pct">{pct.toFixed(0)}%</span>
+                          <span className="tabular dist-legend-amount">{fmt(d.value)}</span>
                         </div>
                       );
                     })}
