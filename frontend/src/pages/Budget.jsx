@@ -3,15 +3,16 @@ import { PlusCircle, Trash2, ChevronLeft, ChevronRight, ShoppingCart, X, AlertTr
 import Swal from 'sweetalert2';
 import { BudgetService } from '../services/budgetService';
 import { PageHeader } from '../components/ui/PageHeader';
-import { fmt } from '../utils/format';
+import { fmt, fmtDate, monthKey, addMonths, monthLabel, capFirst, localISODate } from '../utils/format';
 
 const CATEGORY_COLORS = ['#5B4DF1','#059669','#DC2626','#D97706','#3B82F6','#7C3AED','#0891B2','#BE185D','#65A30D','#EA580C'];
 const PRESET_CATEGORIES = ['Mercado','Transporte','Restaurantes','Entretenimiento','Salud','Educación','Ropa','Servicios del hogar','Viajes','Tecnología'];
 
-const currentMes = () => new Date().toISOString().slice(0, 7);
-const prevMes = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); };
-const nextMes = (m) => { const d = new Date(m + '-01'); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 7); };
-const mesLabel = (m) => new Date(m + '-01').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+// Aritmética de meses en hora LOCAL (toISOString corría el mes/día en UTC-5).
+const currentMes = () => monthKey();
+const prevMes = (m) => addMonths(m, -1);
+const nextMes = (m) => addMonths(m, 1);
+const mesLabel = (m) => capFirst(monthLabel(m));
 
 export const Budget = () => {
   const [mes, setMes] = useState(currentMes());
@@ -20,7 +21,7 @@ export const Budget = () => {
   const [showAddCat, setShowAddCat] = useState(false);
   const [showAddExp, setShowAddExp] = useState(null); // categoria name
   const [catForm, setCatForm] = useState({ categoria: '', limite: '', color: CATEGORY_COLORS[0] });
-  const [expForm, setExpForm] = useState({ monto: '', descripcion: '', fecha: new Date().toISOString().slice(0, 10) });
+  const [expForm, setExpForm] = useState({ monto: '', descripcion: '', fecha: localISODate() });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,7 +63,7 @@ export const Budget = () => {
     e.preventDefault();
     try {
       await BudgetService.addExpense({ mes, categoria: showAddExp, monto: Number(expForm.monto), descripcion: expForm.descripcion, fecha: expForm.fecha });
-      setExpForm({ monto: '', descripcion: '', fecha: new Date().toISOString().slice(0, 10) });
+      setExpForm({ monto: '', descripcion: '', fecha: localISODate() });
       setShowAddExp(null);
       load();
     } catch (err) {
@@ -75,6 +76,24 @@ export const Budget = () => {
     load();
   };
 
+  // Copia las categorías (y sus límites) del mes anterior al mes visible.
+  const handleCopyPrevMonth = async () => {
+    const prev = prevMes(mes);
+    try {
+      const prevData = await BudgetService.getMonth(prev);
+      if (!prevData?.categories?.length) {
+        Swal.fire({ icon: 'info', title: 'Nada que copiar', text: `No hay categorías en ${mesLabel(prev)}.` });
+        return;
+      }
+      for (const c of prevData.categories) {
+        await BudgetService.upsertCategory({ mes, categoria: c.categoria, limite: parseFloat(c.limite), color: c.color || undefined });
+      }
+      load();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'No se pudieron copiar las categorías.' });
+    }
+  };
+
   return (
     <div>
       <PageHeader title="Presupuesto" subtitle="Controla tus gastos por categoría cada mes" />
@@ -84,7 +103,7 @@ export const Budget = () => {
         <button className="btn btn-ghost btn-sm" onClick={() => setMes(prevMes(mes))} style={{ padding: '6px 10px' }}>
           <ChevronLeft size={16} />
         </button>
-        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', textTransform: 'capitalize' }}>{mesLabel(mes)}</span>
+        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>{mesLabel(mes)}</span>
         <button className="btn btn-ghost btn-sm" onClick={() => setMes(nextMes(mes))} style={{ padding: '6px 10px' }} disabled={mes >= currentMes()}>
           <ChevronRight size={16} />
         </button>
@@ -131,9 +150,14 @@ export const Budget = () => {
             <div className="empty-state-icon"><ShoppingCart size={26} /></div>
             <p className="empty-state-title">Sin categorías para {mesLabel(mes)}</p>
             <p>Crea categorías con un límite de gasto y registra tus compras del mes.</p>
-            <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => setShowAddCat(true)}>
-              <PlusCircle size={14} /> Agregar categoría
-            </button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+              <button className="btn btn-primary" onClick={() => setShowAddCat(true)}>
+                <PlusCircle size={14} /> Agregar categoría
+              </button>
+              <button className="btn btn-secondary" onClick={handleCopyPrevMonth}>
+                Copiar categorías de {mesLabel(prevMes(mes))}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -160,10 +184,10 @@ export const Budget = () => {
                   <span className="tabular" style={{ fontSize: 13, color: overBudget ? 'var(--neg-600)' : 'var(--text-2)', fontWeight: 600 }}>
                     {fmt(cat.gastado)} <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>/ {fmt(cat.limite)}</span>
                   </span>
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => setShowAddExp(cat.categoria)} title="Agregar gasto">
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => setShowAddExp(cat.categoria)} title="Agregar gasto" aria-label={`Agregar gasto en ${cat.categoria}`}>
                     <PlusCircle size={14} />
                   </button>
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', color: 'var(--neg-600)' }} onClick={() => handleDeleteCategory(cat.id, cat.categoria)}>
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', color: 'var(--neg-600)' }} onClick={() => handleDeleteCategory(cat.id, cat.categoria)} title="Eliminar categoría" aria-label={`Eliminar categoría ${cat.categoria}`}>
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -184,9 +208,9 @@ export const Budget = () => {
                     {catExpenses.map(exp => (
                       <div key={exp.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1 }}>{exp.descripcion || 'Gasto'}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{exp.fecha}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{fmtDate(exp.fecha)}</span>
                         <span className="tabular" style={{ fontSize: 12, fontWeight: 600, color: 'var(--neg-600)' }}>{fmt(exp.monto)}</span>
-                        <button onClick={() => handleDeleteExpense(exp.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--text-3)' }}>
+                        <button className="btn btn-ghost btn-sm" aria-label="Eliminar gasto" onClick={() => handleDeleteExpense(exp.id)} style={{ padding: '4px 8px', color: 'var(--text-3)' }}>
                           <X size={12} />
                         </button>
                       </div>
@@ -247,7 +271,7 @@ export const Budget = () => {
               <label className="form-label">Color</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {CATEGORY_COLORS.map(c => (
-                  <button key={c} type="button"
+                  <button key={c} type="button" className="color-swatch" aria-label={`Color ${c}`}
                     onClick={() => setCatForm(p => ({ ...p, color: c }))}
                     style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: catForm.color === c ? '3px solid var(--text)' : '2px solid transparent', cursor: 'pointer' }}
                   />

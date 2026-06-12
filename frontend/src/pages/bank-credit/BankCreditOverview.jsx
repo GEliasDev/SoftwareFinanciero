@@ -1,5 +1,5 @@
 import { useOutletContext } from 'react-router-dom';
-import { TrendingDown, Wallet, Percent, Receipt, Info, Tag, Hash, Shield } from 'lucide-react';
+import { TrendingDown, Wallet, Percent, Receipt, Info } from 'lucide-react';
 import { StatCard } from '../../components/ui/StatCard';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { fmt, fmtDateLong } from '../../utils/format';
@@ -48,7 +48,8 @@ export const BankCreditOverview = () => {
           {credit?.numeroReferencia && <InfoRow label="N.° referencia" value={credit.numeroReferencia} />}
           <InfoRow label="Tipo de tasa" value={credit?.tipoTasa === 'mensual' ? 'Mensual (M.V.)' : 'Anual (E.A.)'} />
           <InfoRow label="Tasa de interés" value={`${credit?.tasaInteres}%`} />
-          <InfoRow label="Tasa mensual" value={`${parseFloat(credit?.tasaMensual ?? 0).toFixed(4)}%`} />
+          {/* tasaMensual se persiste como fracción (0.0162 = 1,62%) */}
+          <InfoRow label="Tasa mensual" value={`${(parseFloat(credit?.tasaMensual ?? 0) * 100).toFixed(2)}%`} />
           <InfoRow label="Monto original" value={fmt(credit?.montoTotal)} money />
           <InfoRow label="Total a pagar" value={fmt(credit?.totalAPagar)} money />
           {admin > 0 && <InfoRow label="Cuota administración" value={fmt(admin)} money />}

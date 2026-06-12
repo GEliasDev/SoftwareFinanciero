@@ -12,7 +12,9 @@ import { nextOccurrence } from './format';
 export const buildLoanSchedule = (credit) => {
   if (!credit) return { rows: [], remaining: [] };
 
-  const i      = (parseFloat(credit.tasaMensual) || 0) / 100;
+  // El backend persiste tasaMensual como FRACCIÓN (tasaInteres/100): 1,62% llega como 0.0162.
+  // No volver a dividir entre 100 (bug histórico: interés ~100× menor en el plan de pagos).
+  const i      = parseFloat(credit.tasaMensual) || 0;
   const seguro = parseFloat(credit.seguro) || 0;
   const admin  = parseFloat(credit.cuotaAdministracion) || 0;
   const n      = Number(credit.numeroCuotas) || 0;

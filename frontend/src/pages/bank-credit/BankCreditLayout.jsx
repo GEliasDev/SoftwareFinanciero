@@ -119,7 +119,8 @@ export const BankCreditLayout = () => {
             <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '2px 0 0' }}>{credit?.entidad}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        {/* flexWrap: en 375px caben máx. 2 botones por fila; sin wrap "Eliminar" quedaba cortado */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99, textTransform: 'uppercase' }}>{st.label}</span>
           {credit?.cuotasPagadas > 0 && credit?.status !== 'pagado' && (
             <button className="btn btn-secondary" onClick={handleUndo} disabled={undoing} title="Deshacer último pago">

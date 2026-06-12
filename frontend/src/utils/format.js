@@ -28,6 +28,25 @@ export const monthLabel = (m) => {
     .toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
 };
 
+// "junio de 2026" -> "Junio de 2026" (sin text-transform: capitalize, que capitaliza el "de")
+export const capFirst = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/* ── Fechas LOCALES (nunca toISOString: en UTC-5 cambia de día después de las 7 p. m.) ── */
+
+// Date -> "YYYY-MM-DD" en hora local
+export const localISODate = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Date -> "YYYY-MM" en hora local
+export const monthKey = (d = new Date()) => localISODate(d).slice(0, 7);
+
+// "YYYY-MM" ± n meses -> "YYYY-MM" (aritmética local, sin parseo UTC)
+export const addMonths = (mKey, delta) => {
+  const [y, mo] = mKey.split('-').map(Number);
+  const d = new Date(y, mo - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
 // Fecha desde un Date o string ISO ("2026-05-30T…") -> "30 may 2026"
 export const fmtDateLong = (x) => {
   if (!x) return '—';

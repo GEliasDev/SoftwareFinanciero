@@ -33,13 +33,18 @@ utils/                 — Cálculos puros (sin efectos secundarios)
 El service lanza `throw new AppError('mensaje', statusCode)` para errores esperados; el middleware `errorHandler` en `main.js` los captura y los convierte en JSON.
 
 ### Módulos existentes
-`user | creditCard | bankCredit | suscription | reminder | analytics | income | personalDebt | savingsGoal`
+`user | creditCard | bankCredit | suscription | reminder | analytics | income | personalDebt | savingsGoal | budget | activityLog | search | pushSubscription`
 
 > El módulo de suscripciones tiene un typo histórico: la carpeta es `suscription` (sin "b"), no `subscription`.
+
+Utilidades transversales en `backend/src/utils/`: `emailService.js`, `logger.js` (winston),
+`currency.js` (`toCOP(monto, moneda)` — tasas aproximadas, configurables vía env `TRM_USD`/`TRM_EUR`).
 
 ### Cron jobs (`backend/src/jobs/`)
 - `reminderJob.js` — se inicia en `main.js` al arrancar el servidor.
 - `cuotaManejoJob.js` — genera cargos `cuota_manejo` idempotentemente al llegar la fecha de corte de cada tarjeta activa.
+- `bankCreditMoraJob.js` — marca créditos en mora.
+- `weeklyDigestJob.js` — resumen semanal por email (opt-in con `User.emailDigest`).
 
 ### Rutas frontend completas (App.jsx)
 ```
@@ -59,19 +64,28 @@ El service lanza `throw new AppError('mensaje', statusCode)` para errores espera
 /bank-credits/:id          → BankCreditLayout (tabs anidados)
   index                    → BankCreditOverview
   /schedule                → BankCreditSchedule
+  /analysis                → BankCreditAnalysis
 /bank-credits/:id/edit
 /reminders                 → lista | /new
 /income                    → lista | /new | /:id/edit
 /personal-debts            → lista | /new | /:id | /:id/edit
 /savings                   → lista | /new | /:id | /:id/edit
+/budget                    → Presupuesto mensual por categorías
 /reports
+/activity                  → ActivityLog
 /profile
+/onboarding                → tras registro
+/login /register /forgot-password /reset-password (públicas)
 ```
+
+Otras piezas de frontend: `GlobalSearch` (Ctrl+K, módulo `search` del backend),
+dark mode (`data-theme` en `<html>`, persistido en `localStorage['debti-theme']`),
+PWA con service worker (`sw.js` + workbox), notificaciones push (`pushService.js`).
 
 ## Comandos
 - Todo junto: `npm run dev` (raíz) — levanta backend y frontend.
-- Frontend: `cd frontend && npm run dev` (Vite, normalmente :5174) · `npm run build` · `npm run lint`.
-- Backend: `cd backend && npm run dev` (nodemon).
+- Frontend: `cd frontend && npm run dev` (Vite, :5174) · `npm run build` · `npm run lint` · `npm test` (vitest).
+- Backend: `cd backend && npm run dev` (nodemon, :3001).
 
 ## Verificación visual (importante)
 No hay navegador integrado, pero **Playwright global + Chromium están instalados**.
@@ -102,7 +116,16 @@ motor antes de decidir:
   `SectionCard`, `Money`, `BrandMark`. Por módulo:
   `components/credit-cards/`, `components/bank-credits/`, `components/subscriptions/`.
 - **Formato** centralizado en `frontend/src/utils/format.js` (`fmt`, `fmtDateLong`,
-  `nextOccurrence`, `daysUntil`, `urgencyStyle`, ...). No duplicar.
+  `nextOccurrence`, `daysUntil`, `urgencyStyle`, `localISODate`, `monthKey`,
+  `addMonths`, `capFirst`, ...). No duplicar.
+- **Estados vacíos**: usar las clases CSS `.empty-state`, `.empty-state-icon`,
+  `.empty-state-title` dentro de un `.card` (patrón canónico en las 10 listas;
+  el componente `EmptyState.jsx` se eliminó por duplicado/muerto).
+- **Grilla de KPIs**: clase `.kpi-grid` (auto-fit en desktop, 2 columnas en
+  tablet/móvil). No usar grids inline para filas de StatCards.
+- **Swatches de color**: clase `.color-swatch` (extiende el área táctil a 44px+).
+- **A11y**: hay skip-link en `MainLayout` (`#main-content`) y anillo `:focus-visible`
+  global; las gráficas clave llevan `role="img"` + `aria-label` con resumen.
 
 ## Convenciones de UI (acordadas con el usuario)
 - **Ancho completo**: las páginas usan todo el ancho tras el sidebar (sin `max-width`
@@ -147,8 +170,20 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
 ## Gotchas (bugs reales ya encontrados — no repetir)
 - **Sequelize DECIMAL llega como STRING** (`tasaMensual`, `montoTotal`, `saldoPendiente`,
   `valorCuota`, etc.). SIEMPRE `parseFloat(x)` antes de `.toFixed()` u operaciones.
+- **`BankCredit.tasaMensual` se persiste como FRACCIÓN, no porcentaje**: 1,62% M.V.
+  se guarda como `0.0162` (el backend hace `tasaInteres/100`). En cambio
+  `CreditCard.tasaInteresMensual` SÍ es porcentaje (`2.18`). No volver a dividir entre
+  100 la del crédito (bug histórico: el plan de pagos mostraba interés ~100× menor).
+- **Nunca `toISOString()` para fechas/meses "de hoy"**: en Colombia (UTC-5) después de
+  las ~7 p. m. devuelve el día/mes siguiente, y `new Date('YYYY-MM-DD')` parsea en UTC
+  (corría el mes en Presupuesto). Usar `localISODate()`, `monthKey()`, `addMonths()`
+  y `fmtDate()` de `frontend/src/utils/format.js`.
+- **Suscripciones pueden ser USD/EUR**: convertir con `toCOP()` (`backend/src/utils/currency.js`)
+  antes de sumarlas con valores COP en analytics.
 - **Los `<select>` devuelven STRING.** El backend valida con Zod `z.number()` (sin
   coerción): convertir con `Number()` antes de enviar IDs/numéricos.
+- `text-transform: capitalize` capitaliza preposiciones ("Junio De 2026"); usar
+  `capFirst(monthLabel(m))` de format.js para etiquetas de mes.
 - Patrón `useEffect(() => { load(); }, [id])` dispara el lint `set-state-in-effect`
   en varias páginas; es pre-existente y no bloquea el build.
 - `git` advierte `LF will be replaced by CRLF` (Windows) — inofensivo.
@@ -163,3 +198,6 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
 
 ## Documentos
 - Spec de rediseño: `docs/superpowers/specs/2026-05-30-solventa-redesign-design.md` (histórico, cuando se llamaba Solventa).
+- Auditoría completa (bugs, UI, responsive, brechas de producto): `docs/auditoria-2026-06-11.md`.
+  Las secciones A–D ya fueron corregidas; la sección E (movimientos unificados,
+  patrimonio neto, import CSV, 2FA…) sigue pendiente como roadmap.

@@ -101,7 +101,7 @@ export const Dashboard = () => {
     { name: 'Tarjetas de crédito', value: obl.creditCards   ?? 0, color: DIST_COLORS.creditCards   },
     { name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits   },
     { name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions },
-    { name: 'Obligaciones',        value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts },
+    { name: 'Deudas personales',   value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts },
     { name: 'Metas de ahorro',     value: obl.savings       ?? 0, color: DIST_COLORS.savings       },
   ].filter(d => d.value > 0);
 
@@ -124,7 +124,7 @@ export const Dashboard = () => {
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="skeleton" style={{ height: 152, borderRadius: 'var(--radius-xl)' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+          <div className="kpi-grid">
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 88, borderRadius: 'var(--radius-lg)' }} />)}
           </div>
           <div className="split-grid">
@@ -214,7 +214,7 @@ export const Dashboard = () => {
           {/* ═══════════════════════════════════════════════════════════════
               KPI ROW — Ingresos / Compromisos / Metas / Deuda
           ═══════════════════════════════════════════════════════════════ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
+          <div className="kpi-grid" style={{ marginBottom: 16 }}>
             <StatCard
               label="Ingresos mensuales"
               value={fmt(totalIncome)}
@@ -243,7 +243,7 @@ export const Dashboard = () => {
               <StatCard
                 label="Deuda total"
                 value={fmt(totalDebt)}
-                delta="Créditos + tarjetas"
+                delta="Créditos + tarjetas + deudas personales"
                 icon={Landmark}
                 tone="neg"
                 onClick={() => navigate('/bank-credits')}
@@ -265,7 +265,11 @@ export const Dashboard = () => {
               {dist.length > 0 ? (
                 <div className="dist-layout">
                   {/* Donut */}
-                  <div className="dist-donut">
+                  <div
+                    className="dist-donut"
+                    role="img"
+                    aria-label={`Distribución de ${fmt(totalDist)} mensuales: ${dist.map(d => `${d.name} ${fmt(d.value)}`).join(', ')}`}
+                  >
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -477,7 +481,11 @@ export const Dashboard = () => {
                       const pct = freedom.estimatedMonths > 0 ? Math.min(100, (item.monthsLeft / freedom.estimatedMonths) * 100) : 0;
                       return (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          {item.type === 'bank_credit' ? <Landmark size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} /> : <CreditCard size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}
+                          {item.type === 'bank_credit'
+                            ? <Landmark size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+                            : item.type === 'personal_debt'
+                              ? <Handshake size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+                              : <CreditCard size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}
                           <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{item.nombre}</span>
                           <div style={{ width: 80, height: 6, borderRadius: 99, background: 'var(--surface-2)', flexShrink: 0, overflow: 'hidden' }}>
                             <div style={{ width: `${pct}%`, height: '100%', background: 'var(--brand-600)', borderRadius: 99 }} />
@@ -558,7 +566,7 @@ export const Dashboard = () => {
               <div className="quick-actions-grid">
                 {[
                   { Icon: Wallet,     label: 'Ingreso',     path: '/income/new' },
-                  { Icon: Handshake,  label: 'Obligación',  path: '/personal-debts/new' },
+                  { Icon: Handshake,  label: 'Deuda',       path: '/personal-debts/new' },
                   { Icon: Target,     label: 'Meta',        path: '/savings/new' },
                   { Icon: Repeat,     label: 'Suscripción', path: '/subscriptions/new' },
                   { Icon: CreditCard, label: 'Tarjeta',     path: '/credit-cards/new' },

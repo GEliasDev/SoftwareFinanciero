@@ -166,7 +166,7 @@ export const CreditCardNew = () => {
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Color de la tarjeta</p>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {CARD_COLORS.map(c => (
-                <button key={c.key} type="button" title={c.label} onClick={() => setFormData(prev => ({ ...prev, color: c.key }))}
+                <button key={c.key} type="button" className="color-swatch" title={c.label} aria-label={`Color ${c.label}`} onClick={() => setFormData(prev => ({ ...prev, color: c.key }))}
                   style={{ width: 30, height: 30, borderRadius: '50%', background: c.gradient, border: formData.color === c.key ? '2px solid var(--text)' : '2px solid transparent', boxShadow: formData.color === c.key ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer', padding: 0, outline: 'none', transform: formData.color === c.key ? 'scale(1.18)' : 'scale(1)', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }} />
               ))}
               <div style={{ width: 1, height: 22, background: 'var(--color-border)', margin: '0 2px' }} />

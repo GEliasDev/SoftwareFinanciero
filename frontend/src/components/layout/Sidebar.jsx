@@ -4,19 +4,20 @@ import {
   Menu, X, BarChart2, Wallet, Handshake, Target, PieChart, Activity,
 } from 'lucide-react';
 import logo from '../../assets/logo.png';
+import icono from '../../assets/icono.png';
 
 const SECTION_ICONS = {
-  '/':               LayoutDashboard,
-  '/income':         Wallet,
+  '/': LayoutDashboard,
+  '/income': Wallet,
   '/personal-debts': Handshake,
-  '/savings':        Target,
-  '/budget':         PieChart,
-  '/credit-cards':   CreditCard,
-  '/bank-credits':   Landmark,
-  '/subscriptions':  Repeat,
-  '/reminders':      Bell,
-  '/reports':        BarChart2,
-  '/activity':       Activity,
+  '/savings': Target,
+  '/budget': PieChart,
+  '/credit-cards': CreditCard,
+  '/bank-credits': Landmark,
+  '/subscriptions': Repeat,
+  '/reminders': Bell,
+  '/reports': BarChart2,
+  '/activity': Activity,
 };
 
 function useActiveIcon() {
@@ -74,7 +75,9 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <NavLink to="/" className="sidebar-logo" onClick={close}>
-            <img src={logo} alt="Debti" style={{ height: 52, width: 'auto' }} />
+            {/* Wordmark completo; en el rail de tablet (64px) se muestra solo el isotipo */}
+            <img src={logo} alt="Debti" className="sidebar-logo-full" />
+            <img src={icono} alt="Debti" className="sidebar-logo-icon" />
           </NavLink>
         </div>
 
@@ -82,20 +85,20 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" end onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/income"         icon={Wallet}    label="Ingresos"        onClick={close} />
-          <NavItem to="/personal-debts" icon={Handshake} label="Obligaciones"    onClick={close} />
-          <NavItem to="/savings"        icon={Target}    label="Metas de Ahorro" onClick={close} />
-          <NavItem to="/budget"         icon={PieChart}  label="Presupuesto"     onClick={close} />
+          <NavItem to="/income" icon={Wallet} label="Ingresos" onClick={close} />
+          <NavItem to="/personal-debts" icon={Handshake} label="Deudas Personales" onClick={close} />
+          <NavItem to="/savings" icon={Target} label="Metas de Ahorro" onClick={close} />
+          <NavItem to="/budget" icon={PieChart} label="Presupuesto" onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/credit-cards"  icon={CreditCard} label="Tarjetas"     onClick={close} />
-          <NavItem to="/bank-credits"  icon={Landmark}   label="Créditos"     onClick={close} />
-          <NavItem to="/subscriptions" icon={Repeat}     label="Suscripciones" onClick={close} />
+          <NavItem to="/credit-cards" icon={CreditCard} label="Tarjetas" onClick={close} />
+          <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
+          <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/reminders" icon={Bell}     label="Recordatorios"  onClick={close} />
-          <NavItem to="/reports"   icon={BarChart2} label="Reportes"       onClick={close} />
-          <NavItem to="/activity"  icon={Activity}  label="Actividad"      onClick={close} />
+          <NavItem to="/reminders" icon={Bell} label="Recordatorios" onClick={close} />
+          <NavItem to="/reports" icon={BarChart2} label="Reportes" onClick={close} />
+          <NavItem to="/activity" icon={Activity} label="Actividad" onClick={close} />
         </nav>
       </aside>
     </>

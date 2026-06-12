@@ -719,6 +719,47 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
   background: var(--brand-100); color: var(--brand-700);
 }
 
+/* En móvil las pestañas hacen scroll horizontal: ocultar scrollbar y añadir
+   un degradado pegado al borde derecho como affordance de "hay más pestañas". */
+@media (max-width: 768px) {
+  .tab-nav { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tab-nav::-webkit-scrollbar { display: none; }
+  .tab-nav::after {
+    content: '';
+    flex: 0 0 28px;
+    margin-left: -28px;
+    position: sticky;
+    right: 0;
+    align-self: stretch;
+    background: linear-gradient(to right, transparent, var(--bg));
+    pointer-events: none;
+  }
+}
+
+/* ── Tabla de amortización: compactar en móvil para que las 6 columnas quepan
+   sin scroll lateral; en <480px se oculta la columna "Fecha" (estimada, la
+   próxima fecha real ya se muestra arriba en la tarjeta). ── */
+@media (max-width: 640px) {
+  .amortization-table table { font-size: 11px !important; }
+  .amortization-table th,
+  .amortization-table td { padding: 6px 5px !important; }
+}
+@media (max-width: 480px) {
+  .amortization-table thead th:nth-child(2),
+  .amortization-table tbody td:nth-child(2) { display: none; }
+}
+
+/* ── Swatches de color (formularios) ──
+   El círculo visible mide 28-30px; ::after extiende el área táctil a ~46px
+   sin alterar el diseño (touch target mínimo recomendado: 44px). */
+.color-swatch { position: relative; }
+.color-swatch::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; }
+
+/* En pantallas táctiles los botones compactos crecen al mínimo táctil */
+@media (pointer: coarse) {
+  .btn-sm { min-height: 40px; }
+}
+
 /* ── Empty state ── */
 .empty-state {
   display: flex;

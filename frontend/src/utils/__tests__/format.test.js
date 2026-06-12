@@ -135,3 +135,31 @@ describe('nextOccurrence', () => {
     expect(result.getDate()).toBe(15);
   });
 });
+
+/* ── Helpers de fecha local (auditoría 2026-06-11: bug UTC en Budget) ── */
+import { localISODate, monthKey, addMonths, capFirst } from '../format';
+
+describe('localISODate / monthKey', () => {
+  it('usa la fecha local, no UTC (una noche de 11 de junio sigue siendo 11)', () => {
+    const night = new Date(2026, 5, 11, 21, 30); // 9:30 p. m. local (UTC: ya es 12 jun)
+    expect(localISODate(night)).toBe('2026-06-11');
+    expect(monthKey(night)).toBe('2026-06');
+  });
+  it('rellena con ceros', () => {
+    expect(localISODate(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+});
+
+describe('addMonths', () => {
+  it('retrocede y avanza meses cruzando el año', () => {
+    expect(addMonths('2026-01', -1)).toBe('2025-12');
+    expect(addMonths('2025-12', 1)).toBe('2026-01');
+    expect(addMonths('2026-06', -1)).toBe('2026-05');
+  });
+});
+
+describe('capFirst', () => {
+  it('capitaliza solo la primera letra', () => {
+    expect(capFirst('junio de 2026')).toBe('Junio de 2026');
+  });
+});

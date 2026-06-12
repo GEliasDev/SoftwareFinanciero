@@ -8,14 +8,14 @@ import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
 
 const STATUS_BADGE = {
-  activo:   'badge badge-warning',
-  pagado:   'badge badge-success',
+  activo: 'badge badge-warning',
+  pagado: 'badge badge-success',
   inactivo: 'badge badge-neutral',
 };
 
 export const PersonalDebts = () => {
   const navigate = useNavigate();
-  const [debts, setDebts]     = useState([]);
+  const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
@@ -23,9 +23,9 @@ export const PersonalDebts = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const activas  = debts.filter(d => d.status === 'activo');
-  const deudas   = activas.filter(d => d.tipo === 'deuda' || !d.tipo);
-  const gastos   = activas.filter(d => d.tipo === 'gasto');
+  const activas = debts.filter(d => d.status === 'activo');
+  const deudas = activas.filter(d => d.tipo === 'deuda' || !d.tipo);
+  const gastos = activas.filter(d => d.tipo === 'gasto');
   const totalSaldo = deudas.reduce((a, d) => a + parseFloat(d.saldoPendiente ?? 0), 0);
   const totalCuota = activas.reduce((a, d) => a + parseFloat(d.montoCuota ?? 0), 0);
 
@@ -46,7 +46,7 @@ export const PersonalDebts = () => {
   };
 
   const DeudaCard = ({ debt }) => {
-    const montoTotal  = parseFloat(debt.montoTotal ?? 0);
+    const montoTotal = parseFloat(debt.montoTotal ?? 0);
     const saldoActual = parseFloat(debt.saldoPendiente ?? 0);
     const pct = montoTotal > 0 ? Math.min(100, ((montoTotal - saldoActual) / montoTotal) * 100) : 0;
     return (
@@ -112,22 +112,22 @@ export const PersonalDebts = () => {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Obligaciones"
-        subtitle="Deudas en cuotas y gastos mensuales recurrentes"
+        title="Deudas"
+        subtitle="Deudas personales y gastos mensuales recurrentes"
         actions={
           <button className="btn btn-primary" onClick={() => navigate('/personal-debts/new')}>
-            <Plus size={15} /> Nueva obligación
+            <Plus size={15} /> Nueva deuda
           </button>
         }
       />
 
       {!loading && debts.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
-          <StatCard label="Comprometido mensual" value={fmt(totalCuota)}  delta="Todas las obligaciones activas" icon={Handshake} tone="warn" />
+          <StatCard label="Comprometido mensual" value={fmt(totalCuota)} delta="Todos los gastos fijos mensuales activas" icon={Handshake} tone="warn" />
           {deudas.length > 0 && (
             <StatCard label="Saldo en deudas" value={fmt(totalSaldo)} delta="Por pagar en cuotas" icon={TrendingDown} tone="neg" />
           )}
-          <StatCard label="Obligaciones activas" value={`${activas.length}`} delta={`de ${debts.length} total`} icon={Handshake} tone="brand" />
+          <StatCard label="Activas" value={`${activas.length}`} delta={`de ${debts.length} total`} icon={Handshake} tone="brand" />
         </div>
       )}
 
@@ -140,7 +140,7 @@ export const PersonalDebts = () => {
           <div className="empty-state">
             <div className="empty-state-icon"><Handshake size={24} /></div>
             <p className="empty-state-title">Sin obligaciones</p>
-            <p>Registra deudas en cuotas o gastos mensuales recurrentes.</p>
+            <p>Registra deudas personales o gastos mensuales recurrentes.</p>
             <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/personal-debts/new')}>
               <Plus size={14} /> Nueva obligación
             </button>
@@ -150,7 +150,7 @@ export const PersonalDebts = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {hasMixed && deudas.length > 0 && (
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
-              Deudas en cuotas
+              Deudas
             </p>
           )}
           {(debts.filter(d => d.tipo === 'deuda' || !d.tipo)).map(debt => <DeudaCard key={debt.id} debt={debt} />)}

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const creditCardCreateSchema = z.object({
     nombre: z.string().min(1).max(100, { message: 'El nombre debe tener como máximo 100 caracteres' }),
     entidad: z.string().min(1).max(100, { message: 'La entidad debe tener como máximo 100 caracteres' }),
-    cupoTotal: z.number().positive({ message: 'El cupo total debe ser mayor a 0' }).max(1000000, { message: 'El cupo total no debe exceder 1,000,000' }),
+    cupoTotal: z.number().positive({ message: 'El cupo total debe ser mayor a 0' }).max(10_000_000_000, { message: 'El cupo total no debe exceder $10.000 millones' }),
     tasaInteresMensual: z.number().positive({ message: 'La tasa de interés debe ser mayor a 0' }).max(100, { message: 'La tasa de interés no debe superar el 100%' }),
     fechaCorte: z.number().int().min(1).max(31, { message: 'El día de corte debe estar entre 1 y 31' }),
     fechaPago: z.number().int().min(1).max(31, { message: 'El día de pago debe estar entre 1 y 31' }),
@@ -33,7 +33,7 @@ export const creditCardUpdateSchema = z.object({
         z.enum(['blue', 'purple', 'green', 'red', 'slate', 'gold', 'rose', 'teal']),
         z.string().regex(/^#[0-9a-fA-F]{6}$/, { message: 'Color inválido' })
     ]).optional(),
-    cupoTotal: z.number().positive({ message: 'El cupo total debe ser mayor a 0' }).max(1000000, { message: 'El cupo total no debe exceder 1,000,000' }).optional(),
+    cupoTotal: z.number().positive({ message: 'El cupo total debe ser mayor a 0' }).max(10_000_000_000, { message: 'El cupo total no debe exceder $10.000 millones' }).optional(),
     comisionAvance: z.number().nonnegative().optional(),
     cuotaManejo: z.number().nonnegative().optional(),
     pagoMinimo: z.number().nonnegative().optional().nullable(),

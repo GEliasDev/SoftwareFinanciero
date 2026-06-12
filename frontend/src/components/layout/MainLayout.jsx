@@ -16,10 +16,11 @@ export const MainLayout = () => {
 
   return (
     <div className="app-container">
+      <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       <div className="main-wrapper">
         <Navbar />
-        <main className="main-content">
+        <main id="main-content" className="main-content" tabIndex={-1}>
           <Outlet />
         </main>
       </div>

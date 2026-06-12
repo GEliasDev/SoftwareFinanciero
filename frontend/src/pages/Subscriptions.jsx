@@ -10,11 +10,11 @@ import { fmt, nextOccurrence, daysUntil } from '../utils/format';
 
 const FREQ_BADGE = {
   mensual: { label: 'Mensual', cls: 'badge badge-primary' },
-  anual:   { label: 'Anual',   cls: 'badge badge-warning' },
+  anual: { label: 'Anual', cls: 'badge badge-warning' },
 };
 
 const monthlyEquiv = (s) => (s.frecuencia === 'anual' ? (s.monto ?? 0) / 12 : (s.monto ?? 0));
-const annualEquiv  = (s) => (s.frecuencia === 'anual' ? (s.monto ?? 0) : (s.monto ?? 0) * 12);
+const annualEquiv = (s) => (s.frecuencia === 'anual' ? (s.monto ?? 0) : (s.monto ?? 0) * 12);
 
 export const Subscriptions = () => {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export const Subscriptions = () => {
   }, []);
 
   const totalMensual = subscriptions.reduce((acc, s) => acc + monthlyEquiv(s), 0);
-  const totalAnual   = totalMensual * 12;
+  const totalAnual = totalMensual * 12;
 
   const proximo = useMemo(() => {
     if (subscriptions.length === 0) return null;
@@ -73,7 +73,7 @@ export const Subscriptions = () => {
         </>
       )}
 
-      <SectionCard title="Tus suscripciones" icon={Repeat} style={{ padding: 0 }} bodyStyle={{ padding: 0 }}>
+      <SectionCard>
         {loading ? (
           <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 20, borderRadius: 'var(--radius-sm)' }} />)}

@@ -6,8 +6,11 @@ import { Income } from '../income/income.model.js';
 import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
 import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
 import { Op } from 'sequelize';
+import { toCOP } from '../../utils/currency.js';
 
 const toNum = (v) => parseFloat(v) || 0;
+// Suscripciones pueden estar en USD/EUR: convertir SIEMPRE antes de sumar con valores COP.
+const subMonthlyCOP = (s) => toCOP(toNum(s.montoMensual), s.moneda);
 
 const nextPaymentDate = (dayOfMonth) => {
     const today = new Date();
@@ -48,7 +51,7 @@ const computeHealthScore = (subscriptions, creditCards, bankCredits) => {
         .reduce((a, c) => a + toNum(c.valorCuota) + toNum(c.cuotaAdministracion), 0);
     const monthlySubs = subscriptions
         .filter(s => s.status === 'activa')
-        .reduce((a, s) => a + toNum(s.montoMensual), 0);
+        .reduce((a, s) => a + subMonthlyCOP(s), 0);
     const totalMonthly = monthlyCredits + monthlySubs;
 
     if (totalMonthly > 5_000_000) {
@@ -93,7 +96,7 @@ export const AnalyticsService = {
 
         const monthlySubscriptions = subscriptions
             .filter(s => s.status === 'activa')
-            .reduce((a, s) => a + toNum(s.montoMensual), 0);
+            .reduce((a, s) => a + subMonthlyCOP(s), 0);
 
         const monthlyBankCredits = bankCredits
             .filter(c => c.status === 'activo')
@@ -112,6 +115,11 @@ export const AnalyticsService = {
             (a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0
         );
 
+        // Deudas personales en cuotas: solo tipo 'deuda' activas (los 'gasto' son recurrentes, no saldo)
+        const totalDebtPersonal = personalDebts
+            .filter(d => d.tipo === 'deuda' && d.status === 'activo')
+            .reduce((a, d) => a + toNum(d.saldoPendiente), 0);
+
         // Mensual (fijo): siempre cuenta. Extra: solo cuenta si fue registrado en el mes en curso.
         const now = new Date();
         const isExtraThisMonth = (i) => {
@@ -120,7 +128,9 @@ export const AnalyticsService = {
         };
         const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo' || isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
         const totalIncomeExtra = incomes.filter(i => i.tipo === 'extra' && isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
-        const monthlyPersonalDebts = personalDebts.reduce((a, d) => a + toNum(d.montoCuota), 0);
+        const monthlyPersonalDebts = personalDebts
+            .filter(d => d.status === 'activo')
+            .reduce((a, d) => a + toNum(d.montoCuota), 0);
         const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
         const totalObligaciones = monthlySubscriptions + monthlyBankCredits + monthlyCreditCards + monthlyPersonalDebts;
         const dineroLibre = totalIncome - totalObligaciones - monthlySavings;
@@ -139,7 +149,7 @@ export const AnalyticsService = {
                 date: d.toISOString().slice(0, 10),
                 name: s.nombre,
                 type: 'subscription',
-                amount: toNum(s.montoMensual),
+                amount: subMonthlyCOP(s),
                 moneda: s.moneda,
             });
         });
@@ -184,7 +194,8 @@ export const AnalyticsService = {
             debt: {
                 bankCredits: totalDebtCredits,
                 creditCards: totalDebtCards,
-                total: totalDebtCredits + totalDebtCards,
+                personalDebts: totalDebtPersonal,
+                total: totalDebtCredits + totalDebtCards + totalDebtPersonal,
             },
             counts: {
                 activeSubscriptions: subscriptions.filter(s => s.status === 'activa').length,
@@ -231,7 +242,7 @@ export const AnalyticsService = {
                     const end = s.fechaFin ? new Date(s.fechaFin) : null;
                     return start <= monthEnd && (!end || end >= monthStart) && s.status !== 'cancelada';
                 })
-                .reduce((a, s) => a + toNum(s.montoMensual), 0);
+                .reduce((a, s) => a + subMonthlyCOP(s), 0);
 
             const creditTotal = bankCredits
                 .filter(c => {
@@ -288,13 +299,13 @@ export const AnalyticsService = {
         const totalUsed = creditCards.reduce((a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0);
         const utilization = totalCupo > 0 ? (totalUsed / totalCupo) * 100 : 0;
         const monthlyObl = activeCredits.reduce((a, c) => a + toNum(c.valorCuota) + toNum(c.cuotaAdministracion), 0)
-            + activeSubs.reduce((a, s) => a + toNum(s.montoMensual), 0)
+            + activeSubs.reduce((a, s) => a + subMonthlyCOP(s), 0)
             + creditCards.flatMap(c => c.CreditCardPurchases || []).reduce((a, p) => a + toNum(p.valorCuotaMensual), 0)
             + personalDebts.filter(d => d.status === 'activo').reduce((a, d) => a + toNum(d.montoCuota), 0);
         const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
         const dineroLibre = totalIncome - monthlyObl - monthlySavings;
         const oblRatio = totalIncome > 0 ? (monthlyObl / totalIncome) * 100 : 0;
-        const subsTotal = activeSubs.reduce((a, s) => a + toNum(s.montoMensual), 0);
+        const subsTotal = activeSubs.reduce((a, s) => a + subMonthlyCOP(s), 0);
 
         if (!totalIncome) {
             recs.push({ type: 'info', title: 'Registra tus ingresos', description: 'Sin ingresos registrados no podemos calcular tu dinero libre ni darte consejos personalizados.', action: '/income/new' });
@@ -334,12 +345,13 @@ export const AnalyticsService = {
     },
 
     getDebtFreedom: async (userId) => {
-        const [bankCredits, creditCards] = await Promise.all([
+        const [bankCredits, creditCards, personalDebts] = await Promise.all([
             BankCredit.findAll({ where: { userId } }),
             CreditCard.findAll({
                 where: { userId },
                 include: [{ model: CreditCardPurchase, as: 'CreditCardPurchases', where: { status: 'activa' }, required: false }],
             }),
+            PersonalDebt.findAll({ where: { userId } }),
         ]);
 
         const activeCredits = bankCredits.filter(c => c.status === 'activo' || c.status === 'en_mora' || c.status === 'atrasado');
@@ -368,7 +380,18 @@ export const AnalyticsService = {
             return { nombre: c.nombre, type: 'credit_card', saldo, monthlyPayment, monthsLeft };
         }).filter(Boolean);
 
-        const allItems = [...creditItems, ...cardItems];
+        // Deudas personales en cuotas (tipo 'deuda' activas con saldo)
+        const personalItems = personalDebts
+            .filter(d => d.tipo === 'deuda' && d.status === 'activo' && toNum(d.saldoPendiente) > 0)
+            .map(d => {
+                const monthlyPayment = toNum(d.montoCuota);
+                const monthsLeft = d.numeroCuotas
+                    ? Math.max(0, Number(d.numeroCuotas) - Number(d.cuotasPagadas))
+                    : (monthlyPayment > 0 ? Math.ceil(toNum(d.saldoPendiente) / monthlyPayment) : 0);
+                return { nombre: d.nombre, type: 'personal_debt', saldo: toNum(d.saldoPendiente), monthlyPayment, monthsLeft };
+            });
+
+        const allItems = [...creditItems, ...cardItems, ...personalItems];
         if (allItems.length === 0) return { hasDebts: false, totalDebt: 0, monthlyPayments: 0, estimatedMonths: 0, estimatedDate: null, breakdown: [] };
 
         const totalDebt = allItems.reduce((a, i) => a + i.saldo, 0);
@@ -404,7 +427,7 @@ export const AnalyticsService = {
             }),
         ]);
 
-        const subMonthly = subscriptions.reduce((a, s) => a + toNum(s.montoMensual), 0);
+        const subMonthly = subscriptions.reduce((a, s) => a + subMonthlyCOP(s), 0);
         const creditMonthly = bankCredits.reduce((a, c) => a + toNum(c.valorCuota) + toNum(c.cuotaAdministracion), 0);
         const cardMonthly = creditCards.flatMap(c => c.CreditCardPurchases || [])
             .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0);

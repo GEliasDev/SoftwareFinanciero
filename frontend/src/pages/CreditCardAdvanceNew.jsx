@@ -4,9 +4,7 @@ import Swal from 'sweetalert2';
 import { CreditCardService } from '../services/creditCardService';
 import { ArrowLeft, Banknote, Check, DollarSign, ChevronRight, AlertCircle } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
-
-const fmt = (n) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
+import { fmt, localISODate } from '../utils/format';
 
 function calcCuota(monto, cuotas, tasaPct) {
   if (!monto || !cuotas || cuotas < 1) return 0;
@@ -28,7 +26,7 @@ export const CreditCardAdvanceNew = () => {
     descripcion: 'Avance en efectivo',
     montoTotal: '',
     numeroCuotas: '1',
-    fechaCompra: new Date().toISOString().slice(0, 10),
+    fechaCompra: localISODate(),
   });
 
   useEffect(() => {

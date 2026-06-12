@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UserCircle, LogOut, CalendarClock, Sun, Moon, Search } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { CreditCardService } from '../../services/creditCardService';
@@ -11,24 +11,7 @@ const applyTheme = (theme) => {
   localStorage.setItem('debti-theme', theme);
 };
 
-const ROUTE_LABELS = {
-  '/':              'Dashboard',
-  '/subscriptions': 'Suscripciones',
-  '/credit-cards':  'Tarjetas de Crédito',
-  '/bank-credits':  'Créditos Bancarios',
-  '/reminders':     'Recordatorios',
-  '/reports':       'Reportes y Analítica',
-  '/profile':       'Mi Perfil',
-};
-
-const getPageLabel = (pathname) => {
-  if (pathname === '/') return 'Dashboard';
-  const base = '/' + pathname.split('/')[1];
-  return ROUTE_LABELS[base] || 'Debti';
-};
-
 export const Navbar = () => {
-  const location = useLocation();
   const navigate = useNavigate();
   const user = AuthService.getCurrentUser();
 
@@ -85,9 +68,8 @@ export const Navbar = () => {
   return (
     <>
     {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
+    {/* Sin título de página: cada vista tiene su propio encabezado (evita el nombre duplicado) */}
     <header className="navbar">
-      <span className="navbar-title">{getPageLabel(location.pathname)}</span>
-
       <div className="navbar-right">
         {/* Search button */}
         <button

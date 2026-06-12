@@ -117,7 +117,7 @@ export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
         </button>
 
         {open && (
-          <div style={{ marginTop: '0.875rem', overflowX: 'auto' }}>
+          <div className="amortization-table" style={{ marginTop: '0.875rem', overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border)' }}>
@@ -129,7 +129,7 @@ export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, idx) => {
+                {rows.map((r) => {
                   const isPaid = r.k <= pagadas;
                   const rowDate = isPaid
                     ? null

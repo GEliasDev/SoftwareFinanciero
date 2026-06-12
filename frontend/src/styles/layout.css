@@ -38,6 +38,16 @@
   text-decoration: none;
 }
 
+.sidebar-logo-full { height: 52px; width: auto; display: block; }
+/* Isotipo solo: visible únicamente en el rail de tablet */
+.sidebar-logo-icon { height: 34px; width: auto; display: none; }
+
+/* Dark mode: el wordmark verde oscuro se pierde sobre fondo oscuro → blanco
+   (mismo tratamiento que el logo del panel de auth) */
+[data-theme="dark"] .sidebar-logo img {
+  filter: brightness(0) invert(1);
+}
+
 .sidebar-logo-mark {
   width: 28px;
   height: 28px;
@@ -242,22 +252,11 @@
   flex-shrink: 0;
 }
 
-.navbar-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-right: 12px;
-}
-
 .navbar-right {
   display: flex;
   align-items: center;
   gap: 14px;
+  margin-left: auto; /* el navbar ya no lleva título de página */
 }
 
 /* Pill global "por pagar este mes" */
@@ -766,6 +765,18 @@ textarea.auth-input { height: auto !important; }
 ══════════════════════════════════════════════ */
 
 /* ── Tablet: sidebar colapsado con sólo íconos (768px–1024px) ── */
+/* ── Grilla de KPIs (StatCards) ──
+   Desktop: auto-fit fluido · Tablet/móvil: 2 columnas fijas (evita la tarjeta
+   huérfana 3+1 en tablet y la columna única con scroll eterno en móvil). */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .kpi-grid { gap: 10px; } }
+@media (max-width: 360px)  { .kpi-grid { grid-template-columns: 1fr; } }
+
 @media (min-width: 768px) and (max-width: 1024px) {
   .sidebar {
     width: 64px;
@@ -776,6 +787,9 @@ textarea.auth-input { height: auto !important; }
   /* Ocultar texto en el sidebar */
   .sidebar-logo-name { display: none; }
   .sidebar-logo { justify-content: center; padding: 0 4px; }
+  /* En el rail solo cabe el isotipo: el wordmark completo quedaba recortado ("deb") */
+  .sidebar-logo-full { display: none; }
+  .sidebar-logo-icon { display: block; }
   .nav-section-title { display: none; }
   .sidebar-summary { display: none; }
   .nav-item > span:not(.nav-icon) { display: none; }

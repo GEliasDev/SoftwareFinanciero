@@ -5,7 +5,7 @@ import {
   ArrowLeft, Info, Landmark, ChevronRight, ChevronLeft, Check, AlertCircle, Wallet,
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
-import { fmt, fmtDateLong } from '../utils/format';
+import { fmt, fmtDateLong, localISODate } from '../utils/format';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
 const STEP_FIELDS = [['nombre', 'entidad', 'tipoCredito'], ['montoTotal', 'numeroCuotas', 'tasaInteres', 'cuotaAdministracion', 'seguro', 'cuotasPagadas'], ['diaPago', 'fechaInicio']];
@@ -107,7 +107,11 @@ export const BankCreditNew = () => {
   const totalAPagar = cuotaMensual * cuotas;
   const totalIntereses = cuotaBase * cuotas - monto;
   const fechaFin = formData.fechaInicio && cuotas
-    ? (() => { const d = new Date(formData.fechaInicio); d.setMonth(d.getMonth() + cuotas); return d.toISOString().slice(0, 10); })()
+    ? (() => {
+        // Parseo local: new Date('YYYY-MM-DD') interpreta UTC y corre la fecha un día en UTC-5.
+        const [y, m, d] = formData.fechaInicio.split('-').map(Number);
+        return localISODate(new Date(y, m - 1 + cuotas, d));
+      })()
     : null;
 
   return (

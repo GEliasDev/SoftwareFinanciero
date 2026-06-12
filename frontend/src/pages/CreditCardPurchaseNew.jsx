@@ -7,9 +7,7 @@ import {
   Utensils, Car, Heart, Tv2, Home, Laptop, Tag, BookOpen, Plane, Package,
 } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
-
-const fmt = (n) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
+import { fmt, localISODate } from '../utils/format';
 
 const CATEGORIES = [
   { value: 'comida',          label: 'Comida',          Icon: Utensils, color: '#f97316' },
@@ -43,7 +41,7 @@ export const CreditCardPurchaseNew = () => {
     descripcion: '',
     montoTotal: '',
     numeroCuotas: '1',
-    fechaCompra: new Date().toISOString().slice(0, 10),
+    fechaCompra: localISODate(),
     categoria: 'otros',
   });
 
