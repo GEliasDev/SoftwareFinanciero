@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
-import { BottomNav } from './BottomNav';
 import { AuthService } from '../../services/authService';
 
 export const MainLayout = () => {
@@ -24,7 +23,6 @@ export const MainLayout = () => {
           <Outlet />
         </main>
       </div>
-      <BottomNav onOpenSidebar={() => setSidebarOpen(true)} />
     </div>
   );
 };

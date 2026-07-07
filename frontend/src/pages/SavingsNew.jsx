@@ -161,7 +161,7 @@ export const SavingsNew = () => {
               <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
                 <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.125rem' }}>Progreso inicial y plazo</h3>
                 <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 0.75rem' }}>Opcional — se usa para estimar cuándo llegas a tu meta.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-row-2">
                   {field('aporteMensual', 'Aporte mensual planeado', 'Cuánto aportarás cada mes', { type: 'number', min: '0', placeholder: '0' })}
                   {field('montoAcumulado', 'Ya tengo ahorrado', '0 si empiezas desde cero', { type: 'number', min: '0', placeholder: '0' })}
                 </div>

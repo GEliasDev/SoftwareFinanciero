@@ -88,11 +88,16 @@ PWA con service worker (`sw.js` + workbox), notificaciones push (`pushService.js
 - Backend: `cd backend && npm run dev` (nodemon, :3001).
 
 ## Verificación visual (importante)
-No hay navegador integrado, pero **Playwright global + Chromium están instalados**.
-Para revisar pantallas: script en `%TEMP%/pw-runner/`, ejecutar con
-`NODE_PATH="$(npm root -g)" node script.js`, guardar PNG y abrirlo con Read.
-Las pantallas internas requieren login: registrar usuario de prueba vía
-`POST /api/users` e inyectar el token en `localStorage` antes de navegar.
+No hay navegador integrado. **Playwright + Chromium están instalados localmente en
+`%TEMP%\pw-runner\`** (npm project propio; ya NO hay instalación global — si falta,
+`cd %TEMP%\pw-runner && npm i playwright && npx playwright install chromium`).
+Para revisar pantallas: escribir el script dentro de `%TEMP%\pw-runner\` y correr
+`node script.js` desde ahí (resuelve `require('playwright')` del node_modules local),
+guardar PNG y abrirlo con Read.
+Las pantallas internas requieren login: `POST /api/users/login` devuelve
+`{ token, user }`; inyectar ambos en `localStorage` (`token` y `user` como JSON)
+vía `context.addInitScript` antes de navegar. Viewport móvil de referencia: 390×844.
+Ojo: si el puerto 5174 está ocupado, Vite usa 5175.
 
 ## Regla de diseño (PERMANENTE)
 **Usar SIEMPRE la skill `ui-ux-pro-max` para CUALQUIER cambio de frontend**
@@ -123,6 +128,11 @@ motor antes de decidir:
   el componente `EmptyState.jsx` se eliminó por duplicado/muerto).
 - **Grilla de KPIs**: clase `.kpi-grid` (auto-fit en desktop, 2 columnas en
   tablet/móvil). No usar grids inline para filas de StatCards.
+- **Filas de formulario a 2 columnas**: usar la clase `.form-row-2` (colapsa a
+  1 columna en ≤640px), NUNCA `style={{ gridTemplateColumns: '1fr 1fr' }}` inline —
+  los estilos inline no pueden ser anulados por media queries y rompen móvil
+  (bug corregido en 12 formularios el 2026-07-06). Márgenes/gap extra sí pueden
+  ir inline junto a la clase.
 - **Swatches de color**: clase `.color-swatch` (extiende el área táctil a 44px+).
 - **A11y**: hay skip-link en `MainLayout` (`#main-content`) y anillo `:focus-visible`
   global; las gráficas clave llevan `role="img"` + `aria-label` con resumen.
@@ -135,6 +145,12 @@ motor antes de decidir:
   + barra de pestañas, y cada pestaña es una ruta anidada real (no apilar todo en una
   pantalla). Ej: `/credit-cards/:id` (Resumen), `/:id/statement`, `/:id/purchases`,
   `/:id/analysis`. Estado compartido vía `<Outlet context=...>` + `useOutletContext`.
+- **Navegación móvil (≤767px)**: NO hay bottom nav global (se eliminó a pedido del
+  usuario); la navegación es la hamburguesa fija arriba a la izquierda que abre el
+  sidebar como drawer (cierre: X dentro del header del sidebar, nunca superpuesta
+  al logo). En los DETALLES, la `TabNav` se ancla abajo como barra fija de secciones
+  (CSS en components.css; el layout raíz lleva la clase `detail-layout` para el
+  padding inferior). En desktop/tablet las pestañas siguen arriba.
 - **Formularios de alta = asistente por pasos** (wizard) con indicador de progreso,
   validación en vivo (onBlur), feedback de envío y **vista previa en vivo**. Los
   formularios simples pueden ser de una página seccionada.
@@ -187,6 +203,18 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
 - Patrón `useEffect(() => { load(); }, [id])` dispara el lint `set-state-in-effect`
   en varias páginas; es pre-existente y no bloquea el build.
 - `git` advierte `LF will be replaced by CRLF` (Windows) — inofensivo.
+- **Actualizaciones de `cupoDisponible` deben ser atómicas en SQL** (`literal`
+  con `LEAST`/`GREATEST`), NUNCA leer-modificar-guardar en JS: "Pagar corte"
+  dispara N pagos en `Promise.all` y el read-modify-write perdía los incrementos
+  concurrentes (bug real: pagar un extracto de 12 compras solo restauraba el
+  capital de ~1). Ver `registerPurchasePayment`/`undoPurchasePayment`.
+  Si un cupo queda inconsistente: `node backend/scripts/fix-cupo-disponible.js`
+  (dry-run; `--apply` para corregir) lo recalcula desde las compras.
+- **Las FKs NO tienen `ON DELETE CASCADE`**: borrar un padre (p. ej. tarjeta)
+  exige borrar sus hijos primero en el service (error 23503 si no).
+- `sequelize.sync` usa `alter: { drop: false }`: con `alter: true` a secas
+  intentaba `DROP CONSTRAINT` de FKs con nombre distinto en la BD y el
+  arranque fallaba intermitentemente (error 42704).
 
 ## Skills disponibles relevantes
 `ui-ux-pro-max` (diseño, OBLIGATORIO en frontend), `superpowers:brainstorming`

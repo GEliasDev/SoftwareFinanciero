@@ -719,21 +719,84 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
   background: var(--brand-100); color: var(--brand-700);
 }
 
-/* En móvil las pestañas hacen scroll horizontal: ocultar scrollbar y añadir
-   un degradado pegado al borde derecho como affordance de "hay más pestañas". */
-@media (max-width: 768px) {
-  .tab-nav { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .tab-nav::-webkit-scrollbar { display: none; }
-  .tab-nav::after {
-    content: '';
-    flex: 0 0 28px;
-    margin-left: -28px;
-    position: sticky;
+/* En móvil las pestañas del detalle se anclan abajo, como barra de secciones
+   fija (patrón app nativa; decisión del usuario 2026-07-07 — antes iban arriba
+   con scroll horizontal). El contenedor del detalle lleva `.detail-layout`
+   para reservar el espacio inferior. */
+@media (max-width: 767px) {
+  .tab-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
     right: 0;
-    align-self: stretch;
-    background: linear-gradient(to right, transparent, var(--bg));
-    pointer-events: none;
+    z-index: 40;
+    gap: 0;
+    margin-bottom: 0;
+    background: var(--color-surface);
+    border-bottom: none;
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: visible;
   }
+  .tab-nav-item {
+    position: relative;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-height: 56px;
+    padding: 6px 4px;
+    font-size: 10.5px;
+    border-bottom: none;
+    margin-bottom: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-nav-item svg { width: 18px; height: 18px; }
+  .tab-nav-item:hover { background: none; border-radius: 0; }
+  .tab-nav-item.active { border-bottom-color: transparent; }
+  /* Indicador activo: línea superior (como el bottom nav clásico) */
+  .tab-nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--brand-600);
+  }
+  /* La insignia flota junto al icono en vez de empujar el layout vertical */
+  .tab-nav-item .tab-badge {
+    position: absolute;
+    top: 4px;
+    left: calc(50% + 8px);
+  }
+  /* Espacio para que el final del contenido no quede bajo la barra */
+  .detail-layout { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+}
+
+/* ── Fila de compra (detalle de tarjeta) ── */
+.purchase-row {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  background: var(--color-surface);
+  transition: background 0.12s ease;
+}
+.purchase-row.paid { background: var(--color-bg); opacity: 0.82; }
+/* :active da feedback en táctil, donde no existe hover */
+.purchase-row:hover, .purchase-row:active { background: var(--brand-50); }
+@media (max-width: 480px) {
+  .purchase-row { padding: 0.625rem 0.75rem; }
+  /* La fila pagada ya se distingue por atenuación y barra completa;
+     ocultar el badge libera ~60px para la descripción. */
+  .purchase-status-badge { display: none; }
 }
 
 /* ── Tabla de amortización: compactar en móvil para que las 6 columnas quepan

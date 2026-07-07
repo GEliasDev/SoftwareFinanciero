@@ -202,11 +202,11 @@ export const CreditCardEdit = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Identidad de la tarjeta</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Nombre, banco y estado</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
                   {field('nombre', 'Nombre / Alias *', null, { placeholder: 'Ej: Visa Gold' })}
                   {field('entidad', 'Entidad / Banco *', null, { placeholder: 'Ej: Bancolombia' })}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-row-2">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Estado</label>
                     <select className="form-input" name="status" value={data.status} onChange={handleChange}>
@@ -228,7 +228,7 @@ export const CreditCardEdit = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Datos financieros</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Cupo y tasa</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-row-2">
                   {field('cupoTotal', 'Cupo total (COP) *', 'El cupo disponible se ajusta solo', { type: 'number', min: '0.01', step: '0.01', placeholder: '0' })}
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Tasa mensual (%) *</label>
@@ -237,7 +237,7 @@ export const CreditCardEdit = () => {
                       : tasaEA ? <p className="form-hint" style={{ color: isHighRate ? 'var(--color-warning)' : 'var(--color-success)' }}>≈ {tasaEA}% E.A. {isHighRate ? '⚠ Alta' : '✓ Normal'}</p> : null}
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+                <div className="form-row-2" style={{ marginTop: '0.75rem' }}>
                   {field('comisionAvance', 'Comisión por avance (COP)', 'Déjalo en 0 si la tarjeta no cobra avances', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 9900' })}
                   {field('cuotaManejo', 'Cuota de manejo (COP)', 'Cargo fijo que se agrega en cada corte. 0 si no aplica', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 30000' })}
                 </div>
@@ -250,7 +250,7 @@ export const CreditCardEdit = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Fechas de ciclo</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Días de corte y de pago</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-row-2">
                   {field('fechaCorte', 'Día de corte * (1–31)', null, { type: 'number', min: '1', max: '31', placeholder: 'Ej: 20' })}
                   {field('fechaPago', 'Día de pago * (1–31)', null, { type: 'number', min: '1', max: '31', placeholder: 'Ej: 5' })}
                 </div>

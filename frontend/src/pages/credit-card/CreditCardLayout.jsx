@@ -170,7 +170,7 @@ export const CreditCardLayout = () => {
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in detail-layout">
       {/* Header */}
       <div className="page-header" style={{ marginBottom: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

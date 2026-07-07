@@ -179,7 +179,7 @@ export const CreditCardAdvanceNew = () => {
               />
               {showErr('descripcion') && <p className="form-error" id="adv-desc-err"><AlertCircle size={11} /> {errs.descripcion}</p>}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-row-2" style={{ gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label" htmlFor="adv-monto">Monto del avance *</label>
                 <input

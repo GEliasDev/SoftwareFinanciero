@@ -24,13 +24,14 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
   const daysPago = payDate ? daysUntil(payDate) : null;
   const u        = urgencyStyle(daysPago ?? 99);
 
-  // Abrir por defecto: corte vigente (próximo) + corte con pago pendiente (si existe)
+  // Abrir por defecto SOLO un corte: el más antiguo con pago pendiente
+  // (vencido o en ventana de pago); si ya está todo pagado, el corte vigente.
+  // Abrir ambos alargaba demasiado la vista en móvil.
   const [expanded, setExpanded] = useState(() => {
-    const init = {};
-    buildSchedule(purchases ?? [], card).forEach(s => {
-      if (s.isCurrent || s.isPaymentDue) init[s.key] = true;
-    });
-    return init;
+    const schedule = buildSchedule(purchases ?? [], card);
+    const pendiente = schedule.find(s => s.isPast && s.lines.some(l => !l.wasPaid));
+    const target = pendiente ?? schedule.find(s => s.isCurrent);
+    return target ? { [target.key]: true } : {};
   });
 
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));

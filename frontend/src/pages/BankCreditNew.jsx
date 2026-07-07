@@ -175,11 +175,11 @@ export const BankCreditNew = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Identidad del crédito</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>¿Cómo se llama, de qué entidad y qué tipo?</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
                   {field('nombre', 'Nombre / Alias *', 'Como quieres identificar este crédito', { placeholder: 'Ej: Crédito Addi Electrodomésticos' })}
                   {field('entidad', 'Entidad *', null, { placeholder: 'Ej: Addi, Sistecrédito, Bancolombia…' })}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-row-2">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Tipo de crédito</label>
                     <select className="form-input" name="tipoCredito" value={formData.tipoCredito} onChange={handleChange}>
@@ -200,11 +200,11 @@ export const BankCreditNew = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Datos financieros</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Monto, cuotas y tasa. Verás la cuota estimada a la izquierda.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
                   {field('montoTotal', 'Monto total (COP) *', 'Capital solicitado', { type: 'number', min: '0.01', step: '0.01', placeholder: '0.00' })}
                   {field('numeroCuotas', 'Número de cuotas *', null, { type: 'number', min: '1', step: '1', placeholder: 'Ej: 36' })}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
                   {field('tasaInteres', 'Tasa de interés (%) *', null, { type: 'number', min: '0.01', step: '0.01', placeholder: 'Ej: 1.8' })}
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Tipo de tasa *</label>
@@ -214,7 +214,7 @@ export const BankCreditNew = () => {
                     </select>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
                   {field('cuotaAdministracion', 'Cuota administración', 'Cargo fijo mensual de administración', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
                   {field('seguro', 'Seguro / aval mensual', 'Seguro de vida o aval (Addi, Sistecrédito…)', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
                 </div>
@@ -225,7 +225,7 @@ export const BankCreditNew = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Fechas</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Día de pago e inicio del crédito</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-row-2">
                   {field('diaPago', 'Día de pago * (1–31)', 'Día del mes en que pagas la cuota', { type: 'number', min: '1', max: '31', placeholder: 'Ej: 5' })}
                   {field('fechaInicio', 'Fecha de inicio *', 'Cuándo arrancó el crédito', { type: 'date' })}
                 </div>

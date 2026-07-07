@@ -112,11 +112,11 @@ export const BankCreditEdit = () => {
             <div>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Identidad</h3>
               <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Nombre, entidad y tipo del crédito</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
                 {field('nombre', 'Nombre *', null, { placeholder: 'Ej: Crédito Addi' })}
                 {field('entidad', 'Entidad *', null, { placeholder: 'Ej: Addi, Sistecrédito, Bancolombia' })}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-row-2">
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Tipo de crédito</label>
                   <select className="form-input" name="tipoCredito" value={data.tipoCredito} onChange={handleChange}>

@@ -123,7 +123,7 @@ export const SubscriptionNew = () => {
                 <div style={{ marginTop: '0.75rem' }}>
                   {field('descripcion', 'Descripción (opcional)', null, { placeholder: 'Detalle adicional' })}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+                <div className="form-row-2" style={{ marginTop: '0.75rem' }}>
                   {field('monto', 'Monto *', null, { type: 'number', min: '0.01', step: '0.01', placeholder: '0.00' })}
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Moneda *</label>
@@ -149,7 +149,7 @@ export const SubscriptionNew = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>El cobro</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Cuándo y desde cuándo te cobran</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-row-2">
                   {field('diaCobro', 'Día de cobro * (1–31)', 'Día del mes en que se cobra', { type: 'number', min: '1', max: '31', placeholder: 'Ej: 15' })}
                   {field('fechaInicio', 'Fecha de inicio *', 'Desde cuándo está activa', { type: 'date' })}
                 </div>

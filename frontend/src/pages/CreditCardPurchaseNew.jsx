@@ -206,7 +206,7 @@ export const CreditCardPurchaseNew = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-row-2" style={{ gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Monto *</label>
                 <input
@@ -238,7 +238,7 @@ export const CreditCardPurchaseNew = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-row-2" style={{ gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Fecha de compra *</label>
                 <input

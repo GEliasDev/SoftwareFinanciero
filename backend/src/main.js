@@ -73,7 +73,9 @@ const PORT = process.env.PORT || 3001;
 
 (async () => {
     try {
-        await sequelize.sync({ alter: true });
+        // alter.drop:false evita que sync intente DROP CONSTRAINT de FKs cuyo
+        // nombre no coincide en la BD (error 42704 intermitente al arrancar).
+        await sequelize.sync({ alter: { drop: false } });
         startReminderJob();
         startMoraJob();
         startWeeklyDigestJob();

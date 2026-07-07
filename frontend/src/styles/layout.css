@@ -29,7 +29,28 @@
   padding: 16px 16px 14px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
+
+/* Botón de cierre del drawer — dentro del header, a la derecha del logo.
+   Solo existe en móvil (en desktop/tablet el sidebar no se cierra). */
+.sidebar-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.sidebar-close:hover, .sidebar-close:active { background: var(--surface-2); color: var(--text); }
 
 .sidebar-logo {
   display: flex;
@@ -699,68 +720,6 @@ textarea.auth-input { height: auto !important; }
 }
 
 /* ══════════════════════════════════════════════
-   BOTTOM NAVIGATION (móvil)
-══════════════════════════════════════════════ */
-.bottom-nav {
-  display: none; /* solo visible en móvil via media query */
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: calc(60px + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
-  z-index: 50;
-}
-
-.bottom-nav-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  color: var(--color-text-muted);
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  padding: 6px 4px;
-  min-height: 44px;
-  transition: color 0.15s;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  position: relative;
-}
-
-.bottom-nav-item span {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1;
-}
-
-.bottom-nav-item.active {
-  color: var(--brand-600);
-}
-
-/* Indicador activo — línea superior */
-.bottom-nav-item.active::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 2px;
-  border-radius: 0 0 2px 2px;
-  background: var(--brand-600);
-}
-
-/* ══════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════ */
 
@@ -808,21 +767,26 @@ textarea.auth-input { height: auto !important; }
   .sidebar { transform: translateX(-100%); box-shadow: var(--shadow-lg); }
   .sidebar.open { transform: translateX(0); }
 
-  /* El hamburger solo aparece cuando el sidebar está abierto (botón X para cerrar) */
-  .menu-toggle { display: none; }
-  .menu-toggle.sidebar-open { display: flex; align-items: center; justify-content: center; }
+  /* Hamburguesa fija en la esquina superior izquierda: abre el drawer
+     (reemplazó al bottom nav). Alineada con los botones del navbar (56px). */
+  .menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: 10px;
+    left: 12px;
+    width: 36px;
+    height: 36px;
+  }
+  /* Con el drawer abierto la hamburguesa se oculta (tapaba el logo);
+     el cierre es la X del header del sidebar o tocar el overlay */
+  .menu-toggle.sidebar-open { display: none; }
+  .sidebar-close { display: flex; }
 
   /* Layout sin margen izquierdo (no hay sidebar fija) */
   .main-wrapper { margin-left: 0; }
-  .navbar { padding-left: 24px; }
-
-  /* Bottom nav visible */
-  .bottom-nav { display: flex; }
-
-  /* Padding inferior para que el contenido no quede bajo el bottom nav */
-  .main-content {
-    padding-bottom: calc(60px + env(safe-area-inset-bottom) + 20px);
-  }
+  /* Hueco a la izquierda para la hamburguesa */
+  .navbar { padding-left: 60px; }
 }
 
 /* ── Tablet/móvil grande: ajustes de layout (≤768px) ── */
@@ -839,11 +803,7 @@ textarea.auth-input { height: auto !important; }
 @media (max-width: 640px) {
   /* Drawer parcial — no pantalla completa */
   .sidebar { width: min(280px, 85vw); }
-  /* padding-bottom mantiene espacio sobre el bottom nav */
-  .main-content {
-    padding: 16px;
-    padding-bottom: calc(60px + env(safe-area-inset-bottom) + 16px);
-  }
+  .main-content { padding: 16px; }
   .auth-form-section { padding: 20px 16px; }
   .auth-form-card { padding: 20px; }
   .form-row-2 { grid-template-columns: 1fr; }
@@ -851,8 +811,18 @@ textarea.auth-input { height: auto !important; }
   .page-header .page-subtitle { font-size: 12.5px; }
   .stat-card { padding: 12px 14px; }
   .stat-card-value { font-size: 1.15rem; }
-  .stat-card-label { font-size: 11px; }
-  .stat-card-delta { font-size: 10.5px; }
+  /* En móvil la etiqueta puede ocupar 2 líneas en vez de truncarse */
+  .stat-card-label {
+    font-size: 11px;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.3;
+  }
+  /* display:flex (no inline-flex) para que el texto largo envuelva
+     en vez de desbordar la tarjeta */
+  .stat-card-delta { font-size: 10.5px; display: flex; flex-wrap: wrap; min-width: 0; }
   .card { padding: 14px; }
   .card-title { font-size: 13px; }
   .card-subtitle { font-size: 11.5px; }
@@ -891,16 +861,13 @@ textarea.auth-input { height: auto !important; }
 
 /* ── Móvil pequeño (≤480px) ── */
 @media (max-width: 480px) {
-  .main-content {
-    padding: 12px;
-    padding-bottom: calc(60px + env(safe-area-inset-bottom) + 12px);
-  }
+  .main-content { padding: 12px; }
   .page-header { gap: 8px; }
   .page-header .page-title { font-size: 1.05rem; }
   .page-header .page-subtitle { font-size: 12px; }
   .stat-card-value { font-size: 1rem; }
   .stat-card-label { font-size: 10.5px; }
-  .stat-card-delta { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat-card-delta { font-size: 10px; }
   .card { padding: 12px; border-radius: var(--radius-md); }
   .card-title { font-size: 12.5px; }
   .card-subtitle { font-size: 11px; }
@@ -910,7 +877,6 @@ textarea.auth-input { height: auto !important; }
   /* 16px evita el auto-zoom de iOS al enfocar inputs */
   .form-input { height: 44px; font-size: 16px; }
   .form-label { font-size: 12px; }
-  .menu-toggle { top: 10px; left: 10px; width: 36px; height: 36px; }
   .sidebar-overlay { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
   .wizard-grid { gap: 1rem; }
   .split-grid { gap: 12px; }
@@ -926,7 +892,6 @@ textarea.auth-input { height: auto !important; }
 @media print {
   .sidebar,
   .navbar,
-  .bottom-nav,
   .btn,
   .page-header button,
   [class*="skeleton"] { display: none !important; }

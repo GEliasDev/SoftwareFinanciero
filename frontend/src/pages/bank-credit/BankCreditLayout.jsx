@@ -110,7 +110,7 @@ export const BankCreditLayout = () => {
   ];
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in detail-layout">
       <div className="page-header" style={{ marginBottom: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button onClick={() => navigate('/bank-credits')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>

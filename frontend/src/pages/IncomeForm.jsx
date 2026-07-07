@@ -200,7 +200,7 @@ export const IncomeForm = () => {
               {field('nombre', 'Nombre *', null, {
                 placeholder: form.tipo === 'extra' ? 'Ej: Proyecto freelance, Regalo' : 'Ej: Salario Bancolombia',
               })}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-row-2">
                 {field('monto', form.tipo === 'extra' ? 'Monto (COP) *' : 'Monto mensual (COP) *', null, { type: 'number', min: '1', placeholder: '500 000' })}
                 {field('diaCobro', form.tipo === 'extra' ? 'Día en que lo recibiste *' : 'Día en que llega *', 'Día del mes (1–31)', { type: 'number', min: '1', max: '31', placeholder: '15' })}
               </div>

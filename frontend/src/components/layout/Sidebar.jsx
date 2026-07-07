@@ -45,23 +45,23 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
 
   return (
     <>
-      {/* Botón hamburguesa — solo en desktop/tablet; en móvil lo reemplaza el BottomNav */}
+      {/* Botón hamburguesa fijo (esquina superior izquierda): abre el drawer en móvil.
+          Se oculta mientras el drawer está abierto; el cierre vive dentro del header
+          del sidebar (patrón estándar, evita tapar el logo). */}
       <button
         className={`menu-toggle${isOpen ? ' sidebar-open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Toggle menu"
+        onClick={() => setIsOpen(true)}
+        aria-label="Abrir menú"
       >
-        {isOpen ? <X size={20} /> : <Menu size={20} />}
-        {!isOpen && (
-          <span style={{
-            position: 'absolute', bottom: 2, right: 2,
-            width: 14, height: 14, borderRadius: '50%',
-            background: 'var(--brand-600)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <ActiveIcon size={8} color="white" />
-          </span>
-        )}
+        <Menu size={20} />
+        <span style={{
+          position: 'absolute', bottom: 2, right: 2,
+          width: 14, height: 14, borderRadius: '50%',
+          background: 'var(--brand-600)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <ActiveIcon size={8} color="white" />
+        </span>
       </button>
 
       {isOpen && (
@@ -79,6 +79,9 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
             <img src={logo} alt="Debti" className="sidebar-logo-full" />
             <img src={icono} alt="Debti" className="sidebar-logo-icon" />
           </NavLink>
+          <button className="sidebar-close" onClick={close} aria-label="Cerrar menú">
+            <X size={18} />
+          </button>
         </div>
 
         <nav className="sidebar-nav">

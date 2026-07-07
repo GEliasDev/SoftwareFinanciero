@@ -108,7 +108,7 @@ export const ReminderNew = () => {
                 <input className="form-input" name="nombre" value={formData.nombre} onChange={handleChange} required placeholder="Ej: Pago Netflix, Cuota crédito..." />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-row-2">
                 <div className="form-group">
                   <label className="form-label">Tipo de deuda *</label>
                   <select className="form-input" name="debtType" value={formData.debtType} onChange={handleChange}>

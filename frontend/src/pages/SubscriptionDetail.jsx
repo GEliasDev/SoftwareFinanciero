@@ -160,7 +160,7 @@ export const SubscriptionDetail = () => {
               <label className="form-label">Descripción</label>
               <input className="form-input" name="descripcion" value={editData.descripcion} onChange={handleEditChange} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-row-2">
               <div className="form-group">
                 <label className="form-label">Monto *</label>
                 <input className="form-input" type="number" name="monto" value={editData.monto} onChange={handleEditChange} required min="0.01" step="0.01" />

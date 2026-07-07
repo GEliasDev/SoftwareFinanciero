@@ -241,7 +241,7 @@ export const Profile = () => {
             </div>
           ) : (
             <form onSubmit={handleProfileSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="form-row-2" style={{ gap: '1rem', marginBottom: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Primer nombre *</label>
                   <input
@@ -309,7 +309,7 @@ export const Profile = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div className="form-row-2" style={{ gap: '1rem', marginBottom: '1.25rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">País</label>
                   <input

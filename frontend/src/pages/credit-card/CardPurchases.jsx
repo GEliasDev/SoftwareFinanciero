@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ShoppingBag, CheckSquare, Plus, Search, X, SlidersHorizontal, ChevronUp, ChevronDown, ChevronRight, Banknote,
@@ -14,14 +14,9 @@ export const CardPurchases = () => {
   const [filterCat, setFilterCat]       = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy]             = useState('fecha');
+  // Todos los meses cerrados por defecto; `undefined` = cerrado (si contara como
+  // abierto, el primer toque haría !undefined → true y cerrarlo exigiría dos toques).
   const [expandedMonths, setExpandedMonths] = useState({});
-
-  useEffect(() => {
-    if (purchases.length > 0) {
-      const latest = purchases.map(p => p.fechaCompra.slice(0, 7)).sort().reverse()[0];
-      setExpandedMonths(prev => ({ ...prev, [latest]: true }));
-    }
-  }, [purchases]);
 
   const filteredPurchases = useMemo(() => purchases.filter(p => {
     const matchSearch = !searchText || p.descripcion.toLowerCase().includes(searchText.toLowerCase());
@@ -96,7 +91,9 @@ export const CardPurchases = () => {
         <div>
           {sortedMonths.map(month => {
             const monthPurchases = purchasesByMonth[month];
-            const isOpen = expandedMonths[month] !== false;
+            // Con búsqueda/filtro activo se muestran todos los resultados;
+            // sin filtro, solo lo que el usuario haya abierto.
+            const isOpen = hasFilters || !!expandedMonths[month];
             const mTotal = monthPurchases.reduce((s, p) => s + parseFloat(p.montoTotal ?? 0), 0);
             const mActive = monthPurchases.filter(p => p.status === 'activa').length;
             return (
@@ -127,9 +124,7 @@ export const CardPurchases = () => {
                       const pgColor = isPaid ? 'var(--pos-600)' : cuotasPagadas > 0 ? 'var(--brand-600)' : 'var(--text-3)';
                       return (
                         <div key={p.id} onClick={() => navigate(`/credit-cards/${id}/purchases/${p.id}`)}
-                          style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: isPaid ? 'var(--color-bg)' : 'var(--color-surface)', opacity: isPaid ? 0.82 : 1, transition: 'background 0.12s ease' }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--brand-50)'}
-                          onMouseLeave={e => e.currentTarget.style.background = isPaid ? 'var(--color-bg)' : 'var(--color-surface)'}>
+                          className={`purchase-row ${isPaid ? 'paid' : ''}`}>
                           <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: `${cat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <cat.Icon size={16} style={{ color: cat.color }} />
                           </div>
@@ -143,7 +138,7 @@ export const CardPurchases = () => {
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                 <span className="tabular" style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-primary)' }}>{fmt(p.montoTotal)}</span>
-                                {isPaid ? <span style={{ background: '#dcfce7', color: '#15803d', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>PAGADA</span> : <span style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>ACTIVA</span>}
+                                {isPaid ? <span className="purchase-status-badge" style={{ background: '#dcfce7', color: '#15803d', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>PAGADA</span> : <span className="purchase-status-badge" style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>ACTIVA</span>}
                               </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: '0.3rem' }}>

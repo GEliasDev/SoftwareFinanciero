@@ -1,3 +1,4 @@
+import { literal } from 'sequelize';
 import { CreditCard } from './creditCard.model.js';
 import { CreditCardPurchase } from './creditCardPurchase.model.js';
 import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema, purchaseUpdateSchema, advanceCreateSchema } from './creditCard.schema.js';
@@ -62,9 +63,12 @@ return card;
         if (!isAdmin && card.userId !== userId) {
             throw new AppError('Acceso no autorizado a tarjeta de crédito', 403);
         }
+        // Sin ON DELETE CASCADE en la FK: borrar las compras primero o la
+        // eliminación falla con violación de clave foránea (23503).
+        await CreditCardPurchase.destroy({ where: { creditCardId: id } });
         await card.destroy();
-logger.info(`Credit card ${id} deleted by user ${userId}`);
-return;
+        logger.info(`Credit card ${id} deleted by user ${userId}`);
+        return;
     },
 
     // ── Resumen mensual ───────────────────────────────────────
@@ -229,10 +233,13 @@ return;
         // La cuota de manejo es cupo-neutral: no restaura cupo al pagarse.
         if (purchase.tipo !== 'cuota_manejo') {
             const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
-            const nuevoCupo = parseFloat(
-                (parseFloat(card.cupoDisponible) + capitalPorCuota).toFixed(2)
+            // Incremento atómico en SQL: "Pagar corte" dispara varios pagos en
+            // paralelo y un read-modify-write en JS pierde los incrementos
+            // concurrentes (el último write pisa a los demás).
+            await CreditCard.update(
+                { cupoDisponible: literal(`LEAST("cupoTotal", "cupoDisponible" + ${Number(capitalPorCuota).toFixed(2)})`) },
+                { where: { id: card.id } }
             );
-            await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
         }
 
         await purchase.update({
@@ -351,10 +358,11 @@ return;
         // La cuota de manejo es cupo-neutral: no revierte cupo.
         if (purchase.tipo !== 'cuota_manejo') {
             const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
-            const nuevoCupo = parseFloat(
-                (parseFloat(card.cupoDisponible) - capitalPorCuota).toFixed(2)
+            // Decremento atómico (mismo motivo que en registerPurchasePayment).
+            await CreditCard.update(
+                { cupoDisponible: literal(`GREATEST(0, "cupoDisponible" - ${Number(capitalPorCuota).toFixed(2)})`) },
+                { where: { id: card.id } }
             );
-            await card.update({ cupoDisponible: Math.max(0, nuevoCupo) });
         }
 
         return purchase.update({
