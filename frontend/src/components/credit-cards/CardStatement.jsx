@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  FileText, CalendarClock, ChevronDown, ChevronRight, CheckSquare, TrendingDown,
+  FileText, CalendarClock, ChevronDown, ChevronUp, ChevronRight, CheckSquare, TrendingDown,
 } from 'lucide-react';
 import { getCardGradient } from '../../utils/cardColors';
 import {
@@ -36,8 +36,25 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
 
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
+  // Historial: los cortes con saldo pendiente siempre se muestran; de los ya
+  // pagados (que solo crecen mes a mes) se ocultan los más antiguos tras un
+  // "Ver más" para no alargar la vista con extractos que ya no importan.
+  const [showAllHistory, setShowAllHistory] = useState(false);
+
   const hasData = (current && current.total > 0) || past.length > 0 || future.length > 0;
   if (!hasData) return null;
+
+  const HISTORY_VISIBLE_PAID = 2;
+  const hiddenPaidCount = past.filter((slot, idx) => {
+    const hasPending = slot.lines.some(l => !l.wasPaid);
+    return !hasPending && idx < past.length - HISTORY_VISIBLE_PAID;
+  }).length;
+  const visiblePast = showAllHistory
+    ? past
+    : past.filter((slot, idx) => {
+        const hasPending = slot.lines.some(l => !l.wasPaid);
+        return hasPending || idx >= past.length - HISTORY_VISIBLE_PAID;
+      });
 
   const LineRow = ({ line }) => {
     const vis = getMovimientoVisual(line.tipo, line.categoria);
@@ -270,8 +287,25 @@ export const CardStatement = ({ card, purchases, onPayMonth, paying = false }) =
               Historial
             </SectionLabel>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {past.map(slot => <AccordionItem key={slot.key} slot={slot} />)}
+              {visiblePast.map(slot => <AccordionItem key={slot.key} slot={slot} />)}
             </div>
+            {hiddenPaidCount > 0 && (
+              <button
+                onClick={() => setShowAllHistory(v => !v)}
+                style={{
+                  width: '100%', marginTop: '0.4rem', padding: '0.5rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)',
+                }}
+              >
+                {showAllHistory ? (
+                  <>Ocultar cortes anteriores <ChevronUp size={13} /></>
+                ) : (
+                  <>Ver {hiddenPaidCount} corte{hiddenPaidCount !== 1 ? 's' : ''} anterior{hiddenPaidCount !== 1 ? 'es' : ''} <ChevronDown size={13} /></>
+                )}
+              </button>
+            )}
           </div>
         )}
 
