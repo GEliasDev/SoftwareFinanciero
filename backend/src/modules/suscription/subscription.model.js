@@ -61,7 +61,7 @@ Subscription.init(
             allowNull: false,
         },
     },
-    { sequelize, modelName: 'Subscription', tableName: 'subscriptions' }
+    { sequelize, modelName: 'Subscription', tableName: 'subscriptions', indexes: [{ fields: ['userId'] }] }
 );
 
 Subscription.belongsTo(User, { foreignKey: 'userId' });

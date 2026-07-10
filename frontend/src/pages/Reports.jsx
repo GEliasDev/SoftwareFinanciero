@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts';
 import { AnalyticsService } from '../services/analyticsService';
+import { NetWorthService } from '../services/netWorthService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
@@ -79,6 +80,7 @@ export const Reports = () => {
   const [activeTab, setActiveTab] = useState('analytics');
   const [summary, setSummary]     = useState(null);
   const [trend, setTrend]         = useState([]);
+  const [netWorth, setNetWorth]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [exporting, setExporting] = useState(false);
 
@@ -98,13 +100,15 @@ export const Reports = () => {
       CreditCardService.getAll(),
       BankCreditService.getAll(),
       PersonalDebtService.getAll(),
-    ]).then(([s, t, subRes, cardRes, credRes, debtRes]) => {
+      NetWorthService.getHistory(),
+    ]).then(([s, t, subRes, cardRes, credRes, debtRes, nwRes]) => {
       if (s.status       === 'fulfilled') setSummary(s.value);
       if (t.status       === 'fulfilled') setTrend(t.value);
       if (subRes.status  === 'fulfilled') setSubs(subRes.value);
       if (cardRes.status === 'fulfilled') setCards(cardRes.value);
       if (credRes.status === 'fulfilled') setCredits(credRes.value);
       if (debtRes.status === 'fulfilled') setDebts(debtRes.value);
+      if (nwRes.status   === 'fulfilled') setNetWorth(nwRes.value);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -456,6 +460,52 @@ export const Reports = () => {
               </div>
             </div>
           )}
+
+          {/* Patrimonio neto */}
+          {netWorth.length > 0 && (() => {
+            const nwData = netWorth.map(n => ({
+              ...n,
+              monthLabel: new Date(n.mes + '-02').toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }),
+            }));
+            const last = nwData[nwData.length - 1];
+            return (
+              <div className="card" style={{ padding: '20px 24px' }}>
+                <div className="card-header" style={{ marginBottom: 14, paddingBottom: 10 }}>
+                  <div>
+                    <h3 className="card-title">Patrimonio Neto</h3>
+                    <p className="card-subtitle">Ahorro acumulado − deuda de tarjetas, créditos y obligaciones personales</p>
+                  </div>
+                  <span className="tabular" style={{ fontSize: 15, fontWeight: 700, color: last.patrimonioNeto >= 0 ? 'var(--color-success)' : 'var(--neg-600)' }}>
+                    {fmt(last.patrimonioNeto)}
+                  </span>
+                </div>
+                {nwData.length < 2 ? (
+                  <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)', margin: 0 }}>
+                    Este es tu primer mes registrado — el histórico se irá construyendo mes a mes automáticamente.
+                  </p>
+                ) : (
+                  <div
+                    role="img"
+                    aria-label={`Patrimonio neto de los últimos ${nwData.length} meses. Último mes: ${fmt(last.patrimonioNeto)}`}
+                  >
+                    <ResponsiveContainer width="100%" height={210}>
+                      <AreaChart data={nwData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="gNeto" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#047857" stopOpacity={0.25} /><stop offset="95%" stopColor="#047857" stopOpacity={0} /></linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <XAxis dataKey="monthLabel" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
+                        <YAxis tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={55} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <ReferenceLine y={0} stroke="var(--color-border)" strokeDasharray="3 3" />
+                        <Area type="monotone" dataKey="patrimonioNeto" name="Patrimonio neto" stroke="#047857" fill="url(#gNeto)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Distribución + Próximos pagos */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, TrendingUp, CreditCard, Bell, Landmark, AlertCircle, ArrowRight } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Eye, EyeOff, TrendingUp, CreditCard, Bell, Landmark, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { AuthService } from '../services/authService';
 import logo from '../assets/logo.png';
 import icono from '../assets/icono.png';
@@ -16,13 +16,25 @@ export const Login = () => {
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [showPwd, setShowPwd]     = useState(false);
-  const [error, setError]         = useState('');
+  const [searchParams] = useSearchParams();
+  // api.js redirige aquí con ?expired=1 cuando el refresh token también
+  // expiró (30 días sin usar la app) — antes redirigía en silencio y el
+  // usuario no entendía por qué "se salió" de la nada.
+  const [error, setError]         = useState(searchParams.get('expired') ? 'Tu sesión expiró. Inicia sesión de nuevo.' : '');
   const [loading, setLoading]     = useState(false);
   const [touched, setTouched]     = useState({});
+  // Paso 2: cuentas con 2FA activo no reciben sesión hasta verificar el código.
+  const [tempToken, setTempToken] = useState(null);
+  const [code, setCode]           = useState('');
   const navigate = useNavigate();
 
   const emailError    = touched.email    && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) ? 'Ingresa un correo válido' : '';
   const passwordError = touched.password && password.length < 6 ? 'Mínimo 6 caracteres' : '';
+
+  const goInApp = () => {
+    const needsOnboarding = localStorage.getItem('debti-onboarding') === '1';
+    navigate(needsOnboarding ? '/onboarding' : '/');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,11 +43,28 @@ export const Login = () => {
     setLoading(true);
     setError('');
     try {
-      await AuthService.login(email, password);
-      const needsOnboarding = localStorage.getItem('debti-onboarding') === '1';
-      navigate(needsOnboarding ? '/onboarding' : '/');
+      const result = await AuthService.login(email, password);
+      if (result.requiresTwoFactor) {
+        setTempToken(result.tempToken);
+      } else {
+        goInApp();
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Correo o contraseña incorrectos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await AuthService.verifyTwoFactor(tempToken, code);
+      goInApp();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Código incorrecto.');
     } finally {
       setLoading(false);
     }
@@ -81,8 +110,8 @@ export const Login = () => {
               <div className="auth-logo">
                 <img src={logo} alt="Debti" style={{ height: 52, width: 'auto' }} />
               </div>
-              <h2>Iniciar sesión</h2>
-              <p>Bienvenido de vuelta a tu panel financiero</p>
+              <h2>{tempToken ? 'Verificación en dos pasos' : 'Iniciar sesión'}</h2>
+              <p>{tempToken ? 'Ingresa el código de tu app autenticadora' : 'Bienvenido de vuelta a tu panel financiero'}</p>
             </div>
 
             <div className="auth-form-card">
@@ -93,66 +122,92 @@ export const Login = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} noValidate>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="login-email">Correo electrónico</label>
-                  <input
-                    id="login-email"
-                    className={`form-input auth-input ${touched.email && emailError ? 'error' : ''}`}
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    onBlur={() => setTouched(t => ({ ...t, email: true }))}
-                    placeholder="correo@ejemplo.com"
-                    autoComplete="email"
-                    aria-describedby={emailError ? 'login-email-err' : undefined}
-                    aria-invalid={!!emailError}
-                  />
-                  {touched.email && emailError && (
-                    <p className="form-error" id="login-email-err"><AlertCircle size={11} /> {emailError}</p>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                    <label className="form-label" htmlFor="login-password" style={{ margin: 0 }}>Contraseña</label>
-                    <Link to="/forgot-password" style={{ fontSize: 12, color: 'var(--brand-600)', fontWeight: 500, textDecoration: 'none' }}
-                      onMouseOver={e => e.target.style.textDecoration = 'underline'}
-                      onMouseOut={e => e.target.style.textDecoration = 'none'}>
-                      ¿Olvidaste tu contraseña?
-                    </Link>
-                  </div>
-                  <div className="auth-pwd-wrap">
+              {tempToken ? (
+                <form onSubmit={handleVerifyCode} noValidate>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="login-2fa-code">Código de 6 dígitos</label>
                     <input
-                      id="login-password"
-                      className={`form-input auth-input ${touched.password && passwordError ? 'error' : ''}`}
-                      type={showPwd ? 'text' : 'password'}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      onBlur={() => setTouched(t => ({ ...t, password: true }))}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      aria-describedby={passwordError ? 'login-pwd-err' : undefined}
-                      aria-invalid={!!passwordError}
+                      id="login-2fa-code"
+                      className="form-input auth-input"
+                      style={{ textAlign: 'center', fontSize: 22, letterSpacing: '0.3em', fontVariantNumeric: 'tabular-nums' }}
+                      type="text" inputMode="numeric" maxLength={6} autoFocus
+                      value={code}
+                      onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="000000"
                     />
-                    <button type="button" className="auth-eye-btn" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-                      {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
                   </div>
-                  {touched.password && passwordError && (
-                    <p className="form-error" id="login-pwd-err"><AlertCircle size={11} /> {passwordError}</p>
-                  )}
-                </div>
+                  <button type="submit" className="auth-submit-btn" disabled={loading || code.length !== 6}>
+                    {loading ? 'Verificando…' : <><ShieldCheck size={16} /><span>Verificar</span></>}
+                  </button>
+                  <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: 10 }}
+                    onClick={() => { setTempToken(null); setCode(''); setError(''); }}>
+                    Volver
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleSubmit} noValidate>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="login-email">Correo electrónico</label>
+                    <input
+                      id="login-email"
+                      className={`form-input auth-input ${touched.email && emailError ? 'error' : ''}`}
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      onBlur={() => setTouched(t => ({ ...t, email: true }))}
+                      placeholder="correo@ejemplo.com"
+                      autoComplete="email"
+                      aria-describedby={emailError ? 'login-email-err' : undefined}
+                      aria-invalid={!!emailError}
+                    />
+                    {touched.email && emailError && (
+                      <p className="form-error" id="login-email-err"><AlertCircle size={11} /> {emailError}</p>
+                    )}
+                  </div>
 
-                <button type="submit" className="auth-submit-btn" disabled={loading}>
-                  {loading ? 'Ingresando…' : <><span>Ingresar a mi cuenta</span><ArrowRight size={16} /></>}
-                </button>
-              </form>
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                      <label className="form-label" htmlFor="login-password" style={{ margin: 0 }}>Contraseña</label>
+                      <Link to="/forgot-password" style={{ fontSize: 12, color: 'var(--brand-600)', fontWeight: 500, textDecoration: 'none' }}
+                        onMouseOver={e => e.target.style.textDecoration = 'underline'}
+                        onMouseOut={e => e.target.style.textDecoration = 'none'}>
+                        ¿Olvidaste tu contraseña?
+                      </Link>
+                    </div>
+                    <div className="auth-pwd-wrap">
+                      <input
+                        id="login-password"
+                        className={`form-input auth-input ${touched.password && passwordError ? 'error' : ''}`}
+                        type={showPwd ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        onBlur={() => setTouched(t => ({ ...t, password: true }))}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        aria-describedby={passwordError ? 'login-pwd-err' : undefined}
+                        aria-invalid={!!passwordError}
+                      />
+                      <button type="button" className="auth-eye-btn" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                        {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {touched.password && passwordError && (
+                      <p className="form-error" id="login-pwd-err"><AlertCircle size={11} /> {passwordError}</p>
+                    )}
+                  </div>
+
+                  <button type="submit" className="auth-submit-btn" disabled={loading}>
+                    {loading ? 'Ingresando…' : <><span>Ingresar a mi cuenta</span><ArrowRight size={16} /></>}
+                  </button>
+                </form>
+              )}
             </div>
 
-            <div className="auth-footer-link">
-              ¿No tienes cuenta? <Link to="/register">Regístrate gratis</Link>
-            </div>
+            {!tempToken && (
+              <div className="auth-footer-link">
+                ¿No tienes cuenta? <Link to="/register">Regístrate gratis</Link>
+              </div>
+            )}
           </div>
         </div>
 

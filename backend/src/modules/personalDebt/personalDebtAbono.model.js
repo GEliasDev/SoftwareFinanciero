@@ -14,7 +14,10 @@ PersonalDebtAbono.init(
         saldoDespues:   { type: DataTypes.DECIMAL(15, 2), allowNull: false },
         fecha:          { type: DataTypes.DATEONLY, allowNull: false },
     },
-    { sequelize, modelName: 'PersonalDebtAbono', tableName: 'personal_debt_abonos', updatedAt: false }
+    {
+        sequelize, modelName: 'PersonalDebtAbono', tableName: 'personal_debt_abonos', updatedAt: false,
+        indexes: [{ fields: ['personalDebtId'] }],
+    }
 );
 
 PersonalDebtAbono.belongsTo(PersonalDebt, { foreignKey: 'personalDebtId', onDelete: 'CASCADE' });

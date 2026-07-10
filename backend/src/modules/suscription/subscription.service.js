@@ -3,6 +3,8 @@ import { subscriptionCreateSchema, subscriptionUpdateSchema } from './subscripti
 import { calcularMontoMensual, calcularTotalAnual } from './utils/subscriptionCalculation.js';
 import { AppError } from '../../middlewares/appError.js';
 import { ActivityLogService } from '../activityLog/activityLog.service.js';
+import { ReminderService } from '../reminder/reminder.service.js';
+import logger from '../../utils/logger.js';
 
 export const SubscriptionService = {
     createSubscription: async (data) => {
@@ -18,6 +20,17 @@ export const SubscriptionService = {
             userId: data.userId,
         });
         ActivityLogService.log(data.userId, 'created', 'subscription', sub.nombre, { monto: montoMensual });
+        try {
+            await ReminderService.createReminder({
+                userId: data.userId,
+                debtType: 'subscription',
+                debtId: sub.id,
+                nombre: sub.nombre,
+                diasAnticipacion: 3,
+            });
+        } catch (err) {
+            logger.error(`No se pudo auto-crear recordatorio para suscripción ${sub.id}: ${err.message}`);
+        }
         return sub;
     },
 

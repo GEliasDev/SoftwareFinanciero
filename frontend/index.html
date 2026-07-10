@@ -5,6 +5,16 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Debti — Finanzas personales</title>
+
+    <!-- PWA: color de la barra de estado/chrome antes de instalar (Android) -->
+    <meta name="theme-color" content="#047857" />
+
+    <!-- iOS/Safari no lee el manifest para el modo standalone ni el ícono de
+         "Añadir a inicio": necesita sus propias meta tags. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Debti" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <style>
       #splash {
         position: fixed; inset: 0; z-index: 9999;

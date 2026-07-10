@@ -76,7 +76,10 @@ CreditCardPurchase.init(
             defaultValue: null,
         },
     },
-    { sequelize, modelName: 'CreditCardPurchase', tableName: 'credit_card_purchases' }
+    {
+        sequelize, modelName: 'CreditCardPurchase', tableName: 'credit_card_purchases',
+        indexes: [{ fields: ['creditCardId'] }, { fields: ['avanceId'] }],
+    }
 );
 
 CreditCardPurchase.belongsTo(CreditCard, { foreignKey: 'creditCardId' });

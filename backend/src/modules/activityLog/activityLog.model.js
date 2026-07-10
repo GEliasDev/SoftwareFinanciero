@@ -13,7 +13,12 @@ ActivityLog.init(
         entityName: { type: DataTypes.STRING,  allowNull: false },       // nombre legible del recurso
         meta:       { type: DataTypes.JSONB,   allowNull: true },        // datos extra (monto, etc.)
     },
-    { sequelize, modelName: 'ActivityLog', tableName: 'activity_logs', timestamps: true, updatedAt: false }
+    {
+        sequelize, modelName: 'ActivityLog', tableName: 'activity_logs', timestamps: true, updatedAt: false,
+        // Postgres no indexa el lado "muchos" de una FK automáticamente;
+        // getRecent() filtra por userId y ordena por createdAt en cada carga.
+        indexes: [{ fields: ['userId', 'createdAt'] }],
+    }
 );
 
 ActivityLog.belongsTo(User, { foreignKey: 'userId' });

@@ -15,7 +15,10 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.js',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-192.svg', 'pwa-512.svg'],
+      // pwa-*.svg / favicon.svg no existen en public/ (bug real: el manifest
+      // apuntaba a iconos inexistentes → 404 → Chrome no ofrecía instalar).
+      // Iconos reales generados desde el isotipo de marca (src/assets/icono.png).
+      includeAssets: ['favicon.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Debti — Finanzas Personales',
         short_name: 'Debti',
@@ -27,13 +30,14 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         icons: [
-          { src: 'pwa-192.svg', sizes: '192x192', type: 'image/svg+xml' },
-          { src: 'pwa-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
-          { src: 'favicon.svg', sizes: 'any',     type: 'image/svg+xml' },
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
         ],
       },
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        // +png: los iconos de instalación ahora son PNG (antes solo se
+        // precacheaban svg/js/css, dejando los iconos fuera del caché offline).
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
       },
     }),
   ],

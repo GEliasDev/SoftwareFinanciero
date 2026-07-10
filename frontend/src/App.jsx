@@ -1,70 +1,80 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './components/layout/MainLayout';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
-import { Dashboard } from './pages/Dashboard';
-
-// Suscripciones
-import { Subscriptions } from './pages/Subscriptions';
-import { SubscriptionNew } from './pages/SubscriptionNew';
-import { SubscriptionDetail } from './pages/SubscriptionDetail';
-
-// Tarjetas de crédito
-import { CreditCards } from './pages/CreditCards';
-import { CreditCardNew } from './pages/CreditCardNew';
-import { CreditCardLayout } from './pages/credit-card/CreditCardLayout';
-import { CardOverview } from './pages/credit-card/CardOverview';
-import { CardStatementPage } from './pages/credit-card/CardStatementPage';
-import { CardPurchases } from './pages/credit-card/CardPurchases';
-import { CardAnalysis } from './pages/credit-card/CardAnalysis';
-import { CreditCardEdit } from './pages/CreditCardEdit';
-import { CreditCardPurchaseDetail } from './pages/CreditCardPurchaseDetail';
-import { CreditCardPurchaseNew } from './pages/CreditCardPurchaseNew';
-import { CreditCardAdvanceNew } from './pages/CreditCardAdvanceNew';
-
-// Créditos bancarios
-import { BankCredits } from './pages/BankCredits';
-import { BankCreditNew } from './pages/BankCreditNew';
-import { BankCreditLayout } from './pages/bank-credit/BankCreditLayout';
-import { BankCreditOverview } from './pages/bank-credit/BankCreditOverview';
-import { BankCreditSchedule } from './pages/bank-credit/BankCreditSchedule';
-import { BankCreditAnalysis } from './pages/bank-credit/BankCreditAnalysis';
-import { BankCreditEdit } from './pages/BankCreditEdit';
-
-// Recordatorios
-import { Reminders } from './pages/Reminders';
-import { ReminderNew } from './pages/ReminderNew';
-
-// Ingresos
-import { Income } from './pages/Income';
-import { IncomeForm } from './pages/IncomeForm';
-
-// Obligaciones personales
-import { PersonalDebts } from './pages/PersonalDebts';
-import { PersonalDebtNew } from './pages/PersonalDebtNew';
-import { PersonalDebtDetail } from './pages/PersonalDebtDetail';
-import { PersonalDebtEdit } from './pages/PersonalDebtEdit';
-
-// Metas de ahorro
-import { Savings } from './pages/Savings';
-import { SavingsNew } from './pages/SavingsNew';
-import { SavingsDetail } from './pages/SavingsDetail';
-import { SavingsEdit } from './pages/SavingsEdit';
-
-// Presupuesto
-import { Budget } from './pages/Budget';
-
-// Herramientas
-import { Reports } from './pages/Reports';
-import { ActivityLog } from './pages/ActivityLog';
-import { Profile } from './pages/Profile';
-import { Onboarding } from './pages/Onboarding';
 
 import { AuthService } from './services/authService';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { NotFound } from './pages/NotFound';
+
+// Todo lo que vive detrás del login se carga bajo demanda: antes las ~40
+// páginas (incluyendo recharts, xlsx, sweetalert2 de varias de ellas) se
+// empaquetaban en un solo chunk de 1.4 MB que se descargaba incluso para
+// entrar al login. `lazyNamed` adapta el export nombrado (`export const X`)
+// de cada página al `default` que exige React.lazy, sin tocar los archivos.
+const lazyNamed = (loader, name) => lazy(() => loader().then(m => ({ default: m[name] })));
+
+const Dashboard = lazyNamed(() => import('./pages/Dashboard'), 'Dashboard');
+
+// Suscripciones
+const Subscriptions = lazyNamed(() => import('./pages/Subscriptions'), 'Subscriptions');
+const SubscriptionNew = lazyNamed(() => import('./pages/SubscriptionNew'), 'SubscriptionNew');
+const SubscriptionDetail = lazyNamed(() => import('./pages/SubscriptionDetail'), 'SubscriptionDetail');
+
+// Tarjetas de crédito
+const CreditCards = lazyNamed(() => import('./pages/CreditCards'), 'CreditCards');
+const CreditCardNew = lazyNamed(() => import('./pages/CreditCardNew'), 'CreditCardNew');
+const CreditCardLayout = lazyNamed(() => import('./pages/credit-card/CreditCardLayout'), 'CreditCardLayout');
+const CardOverview = lazyNamed(() => import('./pages/credit-card/CardOverview'), 'CardOverview');
+const CardStatementPage = lazyNamed(() => import('./pages/credit-card/CardStatementPage'), 'CardStatementPage');
+const CardPurchases = lazyNamed(() => import('./pages/credit-card/CardPurchases'), 'CardPurchases');
+const CardAnalysis = lazyNamed(() => import('./pages/credit-card/CardAnalysis'), 'CardAnalysis');
+const CreditCardEdit = lazyNamed(() => import('./pages/CreditCardEdit'), 'CreditCardEdit');
+const CreditCardPurchaseDetail = lazyNamed(() => import('./pages/CreditCardPurchaseDetail'), 'CreditCardPurchaseDetail');
+const CreditCardPurchaseNew = lazyNamed(() => import('./pages/CreditCardPurchaseNew'), 'CreditCardPurchaseNew');
+const CreditCardAdvanceNew = lazyNamed(() => import('./pages/CreditCardAdvanceNew'), 'CreditCardAdvanceNew');
+const CreditCardImport = lazyNamed(() => import('./pages/CreditCardImport'), 'CreditCardImport');
+
+// Créditos bancarios
+const BankCredits = lazyNamed(() => import('./pages/BankCredits'), 'BankCredits');
+const BankCreditNew = lazyNamed(() => import('./pages/BankCreditNew'), 'BankCreditNew');
+const BankCreditLayout = lazyNamed(() => import('./pages/bank-credit/BankCreditLayout'), 'BankCreditLayout');
+const BankCreditOverview = lazyNamed(() => import('./pages/bank-credit/BankCreditOverview'), 'BankCreditOverview');
+const BankCreditSchedule = lazyNamed(() => import('./pages/bank-credit/BankCreditSchedule'), 'BankCreditSchedule');
+const BankCreditAnalysis = lazyNamed(() => import('./pages/bank-credit/BankCreditAnalysis'), 'BankCreditAnalysis');
+const BankCreditEdit = lazyNamed(() => import('./pages/BankCreditEdit'), 'BankCreditEdit');
+
+// Recordatorios
+const Reminders = lazyNamed(() => import('./pages/Reminders'), 'Reminders');
+const ReminderNew = lazyNamed(() => import('./pages/ReminderNew'), 'ReminderNew');
+
+// Ingresos
+const Income = lazyNamed(() => import('./pages/Income'), 'Income');
+const IncomeForm = lazyNamed(() => import('./pages/IncomeForm'), 'IncomeForm');
+
+// Obligaciones personales
+const PersonalDebts = lazyNamed(() => import('./pages/PersonalDebts'), 'PersonalDebts');
+const PersonalDebtNew = lazyNamed(() => import('./pages/PersonalDebtNew'), 'PersonalDebtNew');
+const PersonalDebtDetail = lazyNamed(() => import('./pages/PersonalDebtDetail'), 'PersonalDebtDetail');
+const PersonalDebtEdit = lazyNamed(() => import('./pages/PersonalDebtEdit'), 'PersonalDebtEdit');
+
+// Metas de ahorro
+const Savings = lazyNamed(() => import('./pages/Savings'), 'Savings');
+const SavingsNew = lazyNamed(() => import('./pages/SavingsNew'), 'SavingsNew');
+const SavingsDetail = lazyNamed(() => import('./pages/SavingsDetail'), 'SavingsDetail');
+const SavingsEdit = lazyNamed(() => import('./pages/SavingsEdit'), 'SavingsEdit');
+
+// Presupuesto
+const Budget = lazyNamed(() => import('./pages/Budget'), 'Budget');
+
+// Herramientas
+const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
+const ActivityLog = lazyNamed(() => import('./pages/ActivityLog'), 'ActivityLog');
+const Profile = lazyNamed(() => import('./pages/Profile'), 'Profile');
+const Onboarding = lazyNamed(() => import('./pages/Onboarding'), 'Onboarding');
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -73,10 +83,21 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Fallback simple mientras carga el chunk de la ruta — mismo patrón visual
+// (.skeleton) que ya usan las páginas para sus propios estados de carga.
+const RouteFallback = () => (
+  <div style={{ padding: 24 }}>
+    <div className="skeleton" style={{ height: 32, width: '40%', marginBottom: 16, borderRadius: 'var(--radius-md)' }} />
+    <div className="skeleton" style={{ height: 120, marginBottom: 12, borderRadius: 'var(--radius-md)' }} />
+    <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-md)' }} />
+  </div>
+);
+
 function App() {
   return (
     <ErrorBoundary>
     <BrowserRouter>
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         {/* Públicas */}
         <Route path="/login" element={<Login />} />
@@ -105,6 +126,7 @@ function App() {
           </Route>
           <Route path="credit-cards/:id/edit" element={<CreditCardEdit />} />
           <Route path="credit-cards/:id/purchases/new" element={<CreditCardPurchaseNew />} />
+          <Route path="credit-cards/:id/purchases/import" element={<CreditCardImport />} />
           <Route path="credit-cards/:id/advances/new" element={<CreditCardAdvanceNew />} />
           <Route path="credit-cards/:id/purchases/:purchaseId" element={<CreditCardPurchaseDetail />} />
 
@@ -150,6 +172,7 @@ function App() {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
     </ErrorBoundary>
   );

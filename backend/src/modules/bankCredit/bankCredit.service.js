@@ -3,6 +3,8 @@ import { bankCreditCreateSchema, bankCreditUpdateSchema } from './bankCredit.sch
 import { bankCreditCalculation } from './utils/bankCreditCalculation.js';
 import { AppError } from '../../middlewares/appError.js';
 import { ActivityLogService } from '../activityLog/activityLog.service.js';
+import { ReminderService } from '../reminder/reminder.service.js';
+import logger from '../../utils/logger.js';
 
 export const BankCreditService = {
     createBankCredit: async (data) => {
@@ -37,6 +39,17 @@ export const BankCreditService = {
             userId: data.userId,
         });
         ActivityLogService.log(data.userId, 'created', 'bank_credit', credit.nombre, { monto: parsed.montoTotal });
+        try {
+            await ReminderService.createReminder({
+                userId: data.userId,
+                debtType: 'bank_credit',
+                debtId: credit.id,
+                nombre: credit.nombre,
+                diasAnticipacion: 3,
+            });
+        } catch (err) {
+            logger.error(`No se pudo auto-crear recordatorio para crédito ${credit.id}: ${err.message}`);
+        }
         return credit;
     },
 

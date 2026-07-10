@@ -5,7 +5,8 @@ import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
 import { ActivityLogService } from '../services/activityLogService';
 import { PushService } from '../services/pushService';
-import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Activity, CreditCard, Landmark, Repeat, Wallet, Handshake, Target, PlusCircle, Pencil, XCircle, Bell, BellOff, Mail, MailX } from 'lucide-react';
+import { TwoFactorService } from '../services/twoFactorService';
+import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Activity, CreditCard, Landmark, Repeat, Wallet, Handshake, Target, PlusCircle, Pencil, XCircle, Bell, BellOff, Mail, MailX, ShieldCheck, Shield, Download } from 'lucide-react';
 
 const Alert = ({ type, message, onClose }) => (
   <div className={`info-box ${type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -46,6 +47,11 @@ export const Profile = () => {
   const [emailDigest, setEmailDigest] = useState(false);
   const [emailDigestLoading, setEmailDigestLoading] = useState(false);
   const [emailDigestAlert, setEmailDigestAlert] = useState(null);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorSetup, setTwoFactorSetup] = useState(null); // { qrDataUrl, secret } mientras se activa
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [twoFactorAlert, setTwoFactorAlert] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -54,6 +60,7 @@ export const Profile = () => {
   const [showCurrent, setShowCurrent]   = useState(false);
   const [showNew, setShowNew]           = useState(false);
   const [showConfirm, setShowConfirm]   = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
     if (!PushService.isSupported()) return;
@@ -82,6 +89,69 @@ export const Profile = () => {
       setPushAlert({ type: 'error', message: 'Error al configurar notificaciones. Intenta de nuevo.' });
     } finally {
       setPushLoading(false);
+    }
+  };
+
+  const handleStartTwoFactorSetup = async () => {
+    setTwoFactorLoading(true);
+    setTwoFactorAlert(null);
+    try {
+      const result = await TwoFactorService.setup();
+      setTwoFactorSetup(result);
+    } catch {
+      setTwoFactorAlert({ type: 'error', message: 'No se pudo generar el código QR. Intenta de nuevo.' });
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handleConfirmTwoFactor = async (e) => {
+    e.preventDefault();
+    setTwoFactorLoading(true);
+    setTwoFactorAlert(null);
+    try {
+      await TwoFactorService.confirm(twoFactorCode);
+      setTwoFactorEnabled(true);
+      setTwoFactorSetup(null);
+      setTwoFactorCode('');
+      setTwoFactorAlert({ type: 'success', message: 'Verificación en dos pasos activada.' });
+    } catch (err) {
+      setTwoFactorAlert({ type: 'error', message: err.response?.data?.message || 'Código incorrecto.' });
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handleDisableTwoFactor = async () => {
+    const result = await Swal.fire({
+      title: 'Desactivar verificación en dos pasos',
+      text: 'Confirma tu contraseña para desactivarla.',
+      icon: 'warning',
+      input: 'password',
+      inputPlaceholder: 'Tu contraseña',
+      showCancelButton: true,
+      confirmButtonColor: '#DC2626',
+      confirmButtonText: 'Desactivar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed || !result.value) return;
+    try {
+      await TwoFactorService.disable(result.value);
+      setTwoFactorEnabled(false);
+      setTwoFactorAlert({ type: 'success', message: 'Verificación en dos pasos desactivada.' });
+    } catch (err) {
+      setTwoFactorAlert({ type: 'error', message: err.response?.data?.message || 'No se pudo desactivar.' });
+    }
+  };
+
+  const handleExportData = async () => {
+    setExportLoading(true);
+    try {
+      await UserService.exportData();
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar la exportación. Intenta de nuevo.' });
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -121,6 +191,7 @@ export const Profile = () => {
           ciudad: data.ciudad || '',
         });
         setEmailDigest(!!data.emailDigest);
+        setTwoFactorEnabled(!!data.twoFactorEnabled);
       })
       .catch(() => setProfileAlert({ type: 'error', message: 'No se pudo cargar tu perfil.' }))
       .finally(() => setLoadingProfile(false));
@@ -389,6 +460,74 @@ export const Profile = () => {
             </button>
           </form>
         </div>
+
+        {/* Verificación en dos pasos (2FA) */}
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <ShieldCheck size={18} style={{ color: 'var(--color-primary)' }} />
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+              Verificación en dos pasos
+            </h2>
+          </div>
+
+          {twoFactorAlert && (
+            <Alert type={twoFactorAlert.type} message={twoFactorAlert.message} onClose={() => setTwoFactorAlert(null)} />
+          )}
+
+          {twoFactorSetup ? (
+            <form onSubmit={handleConfirmTwoFactor}>
+              <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)', marginBottom: '0.875rem' }}>
+                Escanea el código con Google Authenticator, Authy u otra app similar, y confirma con el código de 6 dígitos que genere.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.875rem' }}>
+                <img src={twoFactorSetup.qrDataUrl} alt="Código QR para 2FA" style={{ width: 180, height: 180, borderRadius: 8, border: '1px solid var(--color-border)' }} />
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '1rem', wordBreak: 'break-all' }}>
+                ¿No puedes escanear? Ingresa manualmente: <code className="tabular">{twoFactorSetup.secret}</code>
+              </p>
+              <div className="form-group">
+                <label className="form-label">Código de 6 dígitos</label>
+                <input
+                  className="form-input"
+                  style={{ textAlign: 'center', fontSize: 18, letterSpacing: '0.25em', fontVariantNumeric: 'tabular-nums' }}
+                  type="text" inputMode="numeric" maxLength={6} autoFocus
+                  value={twoFactorCode}
+                  onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setTwoFactorSetup(null); setTwoFactorCode(''); }}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={twoFactorLoading || twoFactorCode.length !== 6}>
+                  {twoFactorLoading ? 'Verificando…' : 'Confirmar'}
+                </button>
+              </div>
+            </form>
+          ) : twoFactorEnabled ? (
+            <div>
+              <div className="info-box success" style={{ marginBottom: '1.25rem' }}>
+                <ShieldCheck size={16} />
+                <span>Tu cuenta está protegida con verificación en dos pasos.</span>
+              </div>
+              <button type="button" className="btn btn-danger" style={{ width: '100%' }} onClick={handleDisableTwoFactor}>
+                Desactivar
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="info-box primary" style={{ marginBottom: '1.25rem', fontSize: 12, display: 'flex', gap: 10 }}>
+                <Shield size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>Añade una capa extra de seguridad: además de tu contraseña, pedirá un código de tu teléfono al iniciar sesión.</span>
+              </div>
+              <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={handleStartTwoFactorSetup} disabled={twoFactorLoading}>
+                <ShieldCheck size={14} />
+                {twoFactorLoading ? 'Generando…' : 'Activar verificación en dos pasos'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       {/* ── Actividad reciente ── */}
       {activityLogs.length > 0 && (
@@ -489,6 +628,20 @@ export const Profile = () => {
             {emailDigestLoading ? 'Guardando...' : emailDigest ? 'Desactivar' : 'Activar resumen'}
           </button>
         </div>
+      </div>
+
+      {/* Exportar datos */}
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <Download size={16} style={{ color: 'var(--color-primary)' }} />
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Exporta tus datos</h2>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+          Descarga toda tu información (tarjetas, créditos, suscripciones, ingresos, deudas, metas, presupuesto e historial) en un solo archivo .json.
+        </p>
+        <button className="btn btn-secondary" onClick={handleExportData} disabled={exportLoading}>
+          <Download size={14} /> {exportLoading ? 'Generando...' : 'Descargar mis datos'}
+        </button>
       </div>
 
       {/* Zona de peligro */}

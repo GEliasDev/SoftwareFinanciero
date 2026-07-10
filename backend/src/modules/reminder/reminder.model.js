@@ -63,7 +63,15 @@ Reminder.init(
             allowNull: true,
         },
     },
-    { sequelize, modelName: 'Reminder', tableName: 'reminders' }
+    {
+        sequelize, modelName: 'Reminder', tableName: 'reminders',
+        indexes: [
+            { fields: ['userId'] },
+            // El cron diario escanea TODOS los usuarios por estas 3 columnas
+            // (reminderJob.js → getPendingReminders), sin filtrar por userId.
+            { fields: ['fechaRecordatorio', 'enviado', 'status'] },
+        ],
+    }
 );
 
 Reminder.belongsTo(User, { foreignKey: 'userId' });

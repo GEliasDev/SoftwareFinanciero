@@ -14,7 +14,7 @@ Income.init(
         status:   { type: DataTypes.ENUM('activo', 'inactivo'), allowNull: false, defaultValue: 'activo' },
         userId:   { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, modelName: 'Income', tableName: 'incomes' }
+    { sequelize, modelName: 'Income', tableName: 'incomes', indexes: [{ fields: ['userId'] }] }
 );
 
 Income.belongsTo(User, { foreignKey: 'userId' });

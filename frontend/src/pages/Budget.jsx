@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight, ShoppingCart, X, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronLeft, ChevronRight, ShoppingCart, X, AlertTriangle, Sparkles } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { BudgetService } from '../services/budgetService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { fmt, fmtDate, monthKey, addMonths, monthLabel, capFirst, localISODate } from '../utils/format';
+import { CATEGORIES, getCat } from '../utils/creditCard';
 
-const CATEGORY_COLORS = ['#5B4DF1','#059669','#DC2626','#D97706','#3B82F6','#7C3AED','#0891B2','#BE185D','#65A30D','#EA580C'];
-const PRESET_CATEGORIES = ['Mercado','Transporte','Restaurantes','Entretenimiento','Salud','Educación','Ropa','Servicios del hogar','Viajes','Tecnología'];
+// Misma taxonomía de categorías que Tarjetas (antes Presupuesto usaba texto
+// libre sin relación alguna con `CreditCardPurchase.categoria` — el gasto real
+// de las compras nunca podía sumarse aquí porque ni los nombres coincidían).
 
 // Aritmética de meses en hora LOCAL (toISOString corría el mes/día en UTC-5).
 const currentMes = () => monthKey();
@@ -20,7 +22,7 @@ export const Budget = () => {
   const [loading, setLoading] = useState(true);
   const [showAddCat, setShowAddCat] = useState(false);
   const [showAddExp, setShowAddExp] = useState(null); // categoria name
-  const [catForm, setCatForm] = useState({ categoria: '', limite: '', color: CATEGORY_COLORS[0] });
+  const [catForm, setCatForm] = useState({ categoria: '', limite: '' });
   const [expForm, setExpForm] = useState({ monto: '', descripcion: '', fecha: localISODate() });
 
   const load = useCallback(async () => {
@@ -35,11 +37,22 @@ export const Budget = () => {
   const totalLimite  = data?.categories.reduce((a, c) => a + c.limite, 0) ?? 0;
   const totalGastado = data?.categories.reduce((a, c) => a + c.gastado, 0) ?? 0;
 
+  // Abre el formulario con una categoría detectada (gasto real sin
+  // presupuesto asignado) ya seleccionada, lista para ponerle un límite.
+  const presupuestarDetectada = (categoria) => {
+    setCatForm({ categoria, limite: '' });
+    setShowAddCat(true);
+  };
+
   const handleAddCategory = async (e) => {
     e.preventDefault();
+    if (!catForm.categoria) {
+      Swal.fire({ icon: 'warning', title: 'Elige una categoría', text: 'Selecciona una de la lista.' });
+      return;
+    }
     try {
-      await BudgetService.upsertCategory({ mes, categoria: catForm.categoria, limite: Number(catForm.limite), color: catForm.color });
-      setCatForm({ categoria: '', limite: '', color: CATEGORY_COLORS[0] });
+      await BudgetService.upsertCategory({ mes, categoria: catForm.categoria, limite: Number(catForm.limite), color: getCat(catForm.categoria).color });
+      setCatForm({ categoria: '', limite: '' });
       setShowAddCat(false);
       load();
     } catch (err) {
@@ -139,6 +152,29 @@ export const Budget = () => {
         </div>
       )}
 
+      {/* Gasto real detectado (compras de tarjeta) en categorías sin presupuesto */}
+      {!loading && data?.sinPresupuestar?.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.25rem', borderColor: 'var(--brand-200)', background: 'var(--brand-50)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Sparkles size={15} style={{ color: 'var(--brand-600)' }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--brand-700)' }}>Detectamos gasto sin presupuestar este mes</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {data.sinPresupuestar.map(d => {
+              const cat = getCat(d.categoria);
+              return (
+                <div key={d.categoria} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.625rem 0.875rem' }}>
+                  <cat.Icon size={15} style={{ color: cat.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{cat.label}</span>
+                  <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>{fmt(d.gastado)}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={() => presupuestarDetectada(d.categoria)}>Presupuestar</button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Categories */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -166,11 +202,12 @@ export const Budget = () => {
             const pct = cat.limite > 0 ? Math.min(100, (cat.gastado / cat.limite) * 100) : 0;
             const overBudget = cat.gastado > cat.limite;
             const catExpenses = data.expenses.filter(e => e.categoria === cat.categoria);
+            const catInfo = getCat(cat.categoria);
             return (
               <div key={cat.id} className="card" style={{ padding: '1rem 1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: cat.color, flexShrink: 0 }} />
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', flex: 1 }}>{cat.categoria}</span>
+                  <catInfo.Icon size={15} style={{ color: cat.color, flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', flex: 1 }}>{catInfo.label}</span>
                   {overBudget && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: 'var(--neg-600)', background: 'var(--neg-50)', border: '1px solid var(--neg-600)', borderRadius: 20, padding: '2px 7px', flexShrink: 0 }}>
                       <AlertTriangle size={10} /> Límite superado
@@ -187,7 +224,7 @@ export const Budget = () => {
                   <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => setShowAddExp(cat.categoria)} title="Agregar gasto" aria-label={`Agregar gasto en ${cat.categoria}`}>
                     <PlusCircle size={14} />
                   </button>
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', color: 'var(--neg-600)' }} onClick={() => handleDeleteCategory(cat.id, cat.categoria)} title="Eliminar categoría" aria-label={`Eliminar categoría ${cat.categoria}`}>
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', color: 'var(--neg-600)' }} onClick={() => handleDeleteCategory(cat.id, catInfo.label)} title="Eliminar categoría" aria-label={`Eliminar categoría ${catInfo.label}`}>
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -237,27 +274,25 @@ export const Budget = () => {
           <form onSubmit={handleAddCategory}>
             <div className="form-group">
               <label className="form-label">Categoría *</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
-                {PRESET_CATEGORIES.map(c => (
-                  <button key={c} type="button"
-                    onClick={() => setCatForm(p => ({ ...p, categoria: c }))}
+              {/* Misma taxonomía que Tarjetas: así el gasto de Compras se
+                  puede sumar aquí automáticamente en vez de texto libre. */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                {CATEGORIES.map(c => (
+                  <button key={c.value} type="button"
+                    onClick={() => setCatForm(p => ({ ...p, categoria: c.value }))}
                     style={{
-                      fontSize: 12, fontWeight: catForm.categoria === c ? 700 : 500,
-                      padding: '4px 10px', borderRadius: 20, cursor: 'pointer', border: '1px solid',
-                      borderColor: catForm.categoria === c ? 'var(--brand-600)' : 'var(--border)',
-                      background: catForm.categoria === c ? 'var(--brand-50)' : 'var(--surface-2)',
-                      color: catForm.categoria === c ? 'var(--brand-600)' : 'var(--text-2)',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      fontSize: 12, fontWeight: catForm.categoria === c.value ? 700 : 500,
+                      padding: '5px 11px', borderRadius: 20, cursor: 'pointer', border: '1px solid',
+                      borderColor: catForm.categoria === c.value ? c.color : 'var(--border)',
+                      background: catForm.categoria === c.value ? `${c.color}18` : 'var(--surface-2)',
+                      color: catForm.categoria === c.value ? c.color : 'var(--text-2)',
                       transition: 'all 0.12s ease',
                     }}>
-                    {c}
+                    <c.Icon size={12} /> {c.label}
                   </button>
                 ))}
               </div>
-              <input
-                className="form-input" required
-                value={catForm.categoria} onChange={e => setCatForm(p => ({ ...p, categoria: e.target.value }))}
-                placeholder="O escribe una propia…"
-              />
             </div>
             <div className="form-group">
               <label className="form-label">Límite mensual *</label>
@@ -266,17 +301,6 @@ export const Budget = () => {
                 value={catForm.limite} onChange={e => setCatForm(p => ({ ...p, limite: e.target.value }))}
                 placeholder="500000"
               />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Color</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {CATEGORY_COLORS.map(c => (
-                  <button key={c} type="button" className="color-swatch" aria-label={`Color ${c}`}
-                    onClick={() => setCatForm(p => ({ ...p, color: c }))}
-                    style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: catForm.color === c ? '3px solid var(--text)' : '2px solid transparent', cursor: 'pointer' }}
-                  />
-                ))}
-              </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Guardar</button>
@@ -291,7 +315,7 @@ export const Budget = () => {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div className="card" style={{ width: '100%', maxWidth: 480, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, margin: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Gasto en {showAddExp}</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Gasto en {getCat(showAddExp).label}</h3>
               <button onClick={() => setShowAddExp(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)' }}><X size={18} /></button>
             </div>
             <form onSubmit={handleAddExpense}>

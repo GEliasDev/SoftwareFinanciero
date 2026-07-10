@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { ActivityLog } from './activityLog.model.js';
 
 export const ActivityLogService = {
@@ -9,9 +10,15 @@ export const ActivityLogService = {
         }
     },
 
-    getRecent: async (userId, limit = 30) => {
+    // `before`: paginación por cursor (createdAt del último registro visto).
+    // Antes el frontend pedía un `limit` cada vez más grande para "Cargar
+    // más", pero el controller lo topaba siempre en 50 — la respuesta era
+    // idéntica en cada clic y nunca se podía ver nada más viejo.
+    getRecent: async (userId, { limit = 30, before } = {}) => {
+        const where = { userId };
+        if (before) where.createdAt = { [Op.lt]: new Date(before) };
         return ActivityLog.findAll({
-            where: { userId },
+            where,
             order: [['createdAt', 'DESC']],
             limit,
         });

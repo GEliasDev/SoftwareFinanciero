@@ -16,7 +16,7 @@ SavingsGoal.init(
         status:         { type: DataTypes.ENUM('activo', 'completado', 'pausado'), allowNull: false, defaultValue: 'activo' },
         userId:         { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, modelName: 'SavingsGoal', tableName: 'savings_goals' }
+    { sequelize, modelName: 'SavingsGoal', tableName: 'savings_goals', indexes: [{ fields: ['userId'] }] }
 );
 
 SavingsGoal.belongsTo(User, { foreignKey: 'userId' });

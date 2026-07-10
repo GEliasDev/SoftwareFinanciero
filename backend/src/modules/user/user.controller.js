@@ -7,7 +7,54 @@ export const UserController = {
         try {
             const { email, password } = req.body;
             const result = await UserService.login(email, password);
+            const message = result.requiresTwoFactor ? 'Ingresa tu código de verificación' : 'Inicio de sesión exitoso';
+            res.status(200).json({ message, ...result });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    refreshToken: async (req, res, next) => {
+        try {
+            const result = await UserService.refreshAccessToken(req.body.refreshToken);
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    verifyTwoFactorLogin: async (req, res, next) => {
+        try {
+            const { tempToken, code } = req.body;
+            const result = await UserService.verifyTwoFactorLogin(tempToken, code);
             res.status(200).json({ message: 'Inicio de sesión exitoso', ...result });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    setupTwoFactor: async (req, res, next) => {
+        try {
+            const result = await UserService.setupTwoFactor(req.user.id);
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    confirmTwoFactor: async (req, res, next) => {
+        try {
+            const result = await UserService.confirmTwoFactor(req.user.id, req.body.code);
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    disableTwoFactor: async (req, res, next) => {
+        try {
+            const result = await UserService.disableTwoFactor(req.user.id, req.body.password);
+            res.status(200).json(result);
         } catch (error) {
             next(error);
         }
@@ -32,6 +79,18 @@ export const UserController = {
             const cappedLimit = Math.min(parseInt(limit) || 10, 100);
             const result = await UserService.getAllUsers({ page: +page, limit: cappedLimit });
             res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    exportData: async (req, res, next) => {
+        try {
+            const data = await UserService.exportAllData(req.user.id);
+            const fecha = new Date().toISOString().slice(0, 10);
+            res.setHeader('Content-Disposition', `attachment; filename="debti-datos-${fecha}.json"`);
+            res.setHeader('Content-Type', 'application/json');
+            res.status(200).send(JSON.stringify(data, null, 2));
         } catch (error) {
             next(error);
         }

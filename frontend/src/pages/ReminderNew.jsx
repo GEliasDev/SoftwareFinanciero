@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ReminderService } from '../services/reminderService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
-import { ArrowLeft, Bell, Info, Repeat, CreditCard, Landmark } from 'lucide-react';
+import { ArrowLeft, Bell, Info, Repeat, CreditCard, Landmark, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 
 const DEBT_META = {
-  subscription: { label: 'Suscripción', Icon: Repeat },
-  credit_card:  { label: 'Tarjeta de Crédito', Icon: CreditCard },
-  bank_credit:  { label: 'Crédito Bancario', Icon: Landmark },
+  subscription: { label: 'Suscripción', plural: 'suscripciones', Icon: Repeat, newRoute: '/subscriptions/new' },
+  credit_card:  { label: 'Tarjeta de Crédito', plural: 'tarjetas de crédito', Icon: CreditCard, newRoute: '/credit-cards/new' },
+  bank_credit:  { label: 'Crédito Bancario', plural: 'créditos bancarios', Icon: Landmark, newRoute: '/bank-credits/new' },
 };
 
 export const ReminderNew = () => {
@@ -19,11 +19,20 @@ export const ReminderNew = () => {
   const [loadingDebts, setLoadingDebts] = useState(true);
   const [error, setError] = useState('');
   const [debts, setDebts] = useState({ subscriptions: [], creditCards: [], bankCredits: [] });
+  // Deudas que YA tienen recordatorio (se crea automáticamente al dar de alta
+  // una tarjeta/crédito/suscripción) — se excluyen de las listas de abajo
+  // para no ofrecer algo que solo fallaría con "ya existe un recordatorio".
+  const [reminded, setReminded] = useState({ subscription: new Set(), credit_card: new Set(), bank_credit: new Set() });
   const [formData, setFormData] = useState({ debtType: 'subscription', debtId: '', nombre: '', diasAnticipacion: '3' });
 
   useEffect(() => {
-    Promise.all([SubscriptionService.getAll(), CreditCardService.getAll(), BankCreditService.getAll()])
-      .then(([subs, cards, credits]) => setDebts({ subscriptions: subs, creditCards: cards, bankCredits: credits }))
+    Promise.all([SubscriptionService.getAll(), CreditCardService.getAll(), BankCreditService.getAll(), ReminderService.getAll()])
+      .then(([subs, cards, credits, reminders]) => {
+        setDebts({ subscriptions: subs, creditCards: cards, bankCredits: credits });
+        const byType = { subscription: new Set(), credit_card: new Set(), bank_credit: new Set() };
+        reminders.forEach(r => byType[r.debtType]?.add(r.debtId));
+        setReminded(byType);
+      })
       .catch(() => setError('No se pudieron cargar las deudas disponibles.'))
       .finally(() => setLoadingDebts(false));
   }, []);
@@ -34,11 +43,15 @@ export const ReminderNew = () => {
     { value: 'bank_credit', label: 'Crédito Bancario' },
   ];
 
-  const getDebtList = () => {
+  // Todas las deudas de este tipo, sin importar si ya tienen recordatorio.
+  const getAllDebtsOfType = () => {
     if (formData.debtType === 'subscription') return debts.subscriptions;
     if (formData.debtType === 'credit_card') return debts.creditCards;
     return debts.bankCredits;
   };
+
+  // Solo las que aún no tienen uno — son las únicas que de verdad se pueden crear.
+  const getDebtList = () => getAllDebtsOfType().filter(d => !reminded[formData.debtType]?.has(d.id));
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -108,38 +121,61 @@ export const ReminderNew = () => {
                 <input className="form-input" name="nombre" value={formData.nombre} onChange={handleChange} required placeholder="Ej: Pago Netflix, Cuota crédito..." />
               </div>
 
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label className="form-label">Tipo de deuda *</label>
-                  <select className="form-input" name="debtType" value={formData.debtType} onChange={handleChange}>
-                    {debtTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Deuda *</label>
-                  <select className="form-input" name="debtId" value={formData.debtId} onChange={handleChange} required>
-                    <option value="">-- Seleccionar --</option>
-                    {getDebtList().map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
-                  </select>
-                </div>
+              <div className="form-group">
+                <label className="form-label">Tipo de deuda *</label>
+                <select className="form-input" name="debtType" value={formData.debtType} onChange={handleChange}>
+                  {debtTypeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
               </div>
 
-              {getDebtList().length === 0 && (
-                <p style={{ fontSize: 12, color: 'var(--color-warning)', marginBottom: '0.75rem' }}>
-                  No hay {debtTypeOptions.find(o => o.value === formData.debtType)?.label.toLowerCase()}s registradas.
-                </p>
+              {getDebtList().length === 0 ? (
+                // Sin nada que seleccionar: mostrar el motivo exacto y una
+                // salida clara, en vez de un <select> vacío sin explicación.
+                <div className={`info-box ${getAllDebtsOfType().length === 0 ? 'primary' : 'success'}`} style={{ marginBottom: '1rem' }}>
+                  {getAllDebtsOfType().length === 0 ? (
+                    <>
+                      <Info size={14} style={{ marginTop: 2, flexShrink: 0 }} />
+                      <div>
+                        <p style={{ margin: '0 0 0.5rem' }}>
+                          Aún no tienes ninguna {meta?.label.toLowerCase()} registrada — créala primero.
+                        </p>
+                        <Link to={meta?.newRoute} className="btn btn-secondary btn-sm">
+                          <meta.Icon size={13} /> Nueva {meta?.label.toLowerCase()}
+                        </Link>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} style={{ marginTop: 2, flexShrink: 0, color: 'var(--color-success)' }} />
+                      <p style={{ margin: 0 }}>
+                        Todas tus {meta?.plural} ya tienen recordatorio (se crea solo al darlas
+                        de alta). Ajusta los días de anticipación desde <Link to="/reminders">la lista de recordatorios</Link>.
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Deuda *</label>
+                    <select className="form-input" name="debtId" value={formData.debtId} onChange={handleChange} required>
+                      <option value="">-- Seleccionar --</option>
+                      {getDebtList().map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ maxWidth: 280 }}>
+                    <label className="form-label">Días de anticipación * (1–30)</label>
+                    <input className="form-input" type="number" name="diasAnticipacion" value={formData.diasAnticipacion} onChange={handleChange} required min="1" max="30" placeholder="3" />
+                    <p className="form-hint">Cuántos días antes del pago quieres el aviso.</p>
+                  </div>
+
+                  <div className="flex justify-end gap-2" style={{ marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => navigate('/reminders')}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Guardando...' : 'Crear recordatorio'}</button>
+                  </div>
+                </>
               )}
-
-              <div className="form-group" style={{ maxWidth: 280 }}>
-                <label className="form-label">Días de anticipación * (1–30)</label>
-                <input className="form-input" type="number" name="diasAnticipacion" value={formData.diasAnticipacion} onChange={handleChange} required min="1" max="30" placeholder="3" />
-                <p className="form-hint">Cuántos días antes del pago quieres el aviso.</p>
-              </div>
-
-              <div className="flex justify-end gap-2" style={{ marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => navigate('/reminders')}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Guardando...' : 'Crear recordatorio'}</button>
-              </div>
             </form>
           )}
         </div>

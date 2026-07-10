@@ -33,4 +33,16 @@ export const UserService = {
     const response = await api.post('/users/reset-password', { token, newPassword });
     return response.data;
   },
+  // Descarga todos los datos del usuario como un .json (derecho de portabilidad).
+  exportData: async () => {
+    const response = await api.get('/users/export', { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `debti-datos-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
 };

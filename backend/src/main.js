@@ -19,12 +19,14 @@ import searchRoutes from './modules/search/search.routes.js';
 import activityLogRoutes from './modules/activityLog/activityLog.routes.js';
 import pushSubscriptionRoutes from './modules/pushSubscription/pushSubscription.routes.js';
 import budgetRoutes from './modules/budget/budget.routes.js';
+import netWorthRoutes from './modules/netWorth/netWorth.routes.js';
 import './modules/budget/budget.model.js';
 import './modules/personalDebt/personalDebtAbono.model.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { startReminderJob } from './jobs/reminderJob.js';
 import { startMoraJob } from './jobs/bankCreditMoraJob.js';
 import { startWeeklyDigestJob } from './jobs/weeklyDigestJob.js';
+import { startNetWorthSnapshotJob } from './jobs/netWorthSnapshotJob.js';
 
 const app = express();
 
@@ -66,6 +68,7 @@ app.use('/api/search',       searchRoutes);
 app.use('/api/activity-log', activityLogRoutes);
 app.use('/api/push',        pushSubscriptionRoutes);
 app.use('/api/budget',      budgetRoutes);
+app.use('/api/net-worth',   netWorthRoutes);
 
 app.use(errorHandler);
 
@@ -73,12 +76,18 @@ const PORT = process.env.PORT || 3001;
 
 (async () => {
     try {
-        // alter.drop:false evita que sync intente DROP CONSTRAINT de FKs cuyo
-        // nombre no coincide en la BD (error 42704 intermitente al arrancar).
-        await sequelize.sync({ alter: { drop: false } });
+        // sync() SIN alter: crea tablas que falten (BD nueva/vacía) pero nunca
+        // toca una tabla que ya existe. `alter` se retiró porque Sequelize no
+        // siempre detecta un UNIQUE constraint ya existente y crea uno nuevo en
+        // cada arranque — encontramos 298 duplicados en users.email y 52 en
+        // push_subscriptions.endpoint (2026-07-10, ya limpiados). Los cambios a
+        // tablas existentes ahora van por migraciones versionadas en
+        // backend/src/db/migrations/ (`npx sequelize-cli db:migrate`).
+        await sequelize.sync();
         startReminderJob();
         startMoraJob();
         startWeeklyDigestJob();
+        startNetWorthSnapshotJob();
         app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${PORT}`));
     } catch (error) {
         console.error('Error al iniciar el servidor:', error);

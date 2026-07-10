@@ -12,7 +12,7 @@ PushSubscription.init(
         p256dh:       { type: DataTypes.TEXT,    allowNull: false },
         auth:         { type: DataTypes.TEXT,    allowNull: false },
     },
-    { sequelize, modelName: 'PushSubscription', tableName: 'push_subscriptions' }
+    { sequelize, modelName: 'PushSubscription', tableName: 'push_subscriptions', indexes: [{ fields: ['userId'] }] }
 );
 
 PushSubscription.belongsTo(User, { foreignKey: 'userId' });

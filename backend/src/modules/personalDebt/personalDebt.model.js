@@ -20,7 +20,7 @@ PersonalDebt.init(
         status:         { type: DataTypes.ENUM('activo', 'pagado', 'inactivo'), allowNull: false, defaultValue: 'activo' },
         userId:         { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, modelName: 'PersonalDebt', tableName: 'personal_debts' }
+    { sequelize, modelName: 'PersonalDebt', tableName: 'personal_debts', indexes: [{ fields: ['userId'] }] }
 );
 
 PersonalDebt.belongsTo(User, { foreignKey: 'userId' });

@@ -12,10 +12,39 @@ créditos bancarios, suscripciones, recordatorios y reportes. Español (es-CO, C
   CSS plano con variables (sin Tailwind). `frontend/`.
 - **Backend:** Node + Express + Sequelize, Zod para validación. `backend/`.
 - Auth por JWT en `localStorage`. El frontend usa `baseURL: '/api'` (proxy de Vite).
+- **Access token (1h) + refresh token (30 días, rota en cada uso)**: `POST /users/login`
+  devuelve ambos; `frontend/src/services/api.js` intercepta cualquier 401 y llama a
+  `POST /users/refresh-token` en silencio antes de reintentar la petición original —
+  antes un formulario largo (ej. cargar un extracto a mano) perdía todo lo no
+  guardado cuando expiraba el JWT sin aviso. Solo si el refresh también falla
+  redirige a `/login?expired=1` (Login.jsx muestra el aviso). Un solo slot de
+  refresh token por usuario (`User.refreshToken`): iniciar sesión en otro
+  dispositivo invalida la sesión anterior.
+- **2FA opcional (TOTP)**: `Profile.jsx` → "Verificación en dos pasos" genera un QR
+  (`/users/2fa/setup`, librería `otplib` — usa la API funcional/async de v13,
+  `generate`/`verify`/`generateSecret`/`generateURI`, NO el objeto `authenticator`
+  de v11/v12 que asumen la mayoría de tutoriales). `twoFactorEnabled` solo pasa a
+  `true` tras confirmar un código real (`/2fa/confirm`), nunca solo con generar el QR.
+  Con 2FA activo, `POST /users/login` NO devuelve `token`: devuelve
+  `{ requiresTwoFactor: true, tempToken }` (JWT de 5 min, solo sirve para
+  `/users/2fa/login-verify`, sin acceso a ninguna otra ruta). `Login.jsx` maneja
+  el paso 2 con un input de 6 dígitos.
 
 ## Base de datos
 - **PostgreSQL** alojado en Supabase. Credenciales en `backend/.env`.
-- `sequelize.sync({ alter: true })` corre en cada arranque del servidor — **no hay migraciones manuales**. Los cambios al modelo se aplican automáticamente.
+- `sequelize.sync()` (sin `alter`) corre en cada arranque: crea tablas que falten en una BD
+  vacía, pero **nunca modifica una tabla que ya existe**.
+- **Cambios de esquema a tablas existentes van por migraciones versionadas**
+  (`backend/src/db/migrations/`, `sequelize-cli`). Flujo:
+  1. Editar el modelo en `<módulo>.model.js` (agregar campo/índice/etc.).
+  2. `npx sequelize-cli migration:generate --name algo-descriptivo` (genera un
+     `.cjs` en `migrations/`; escribir `up`/`down` a mano con `queryInterface`).
+  3. `npx sequelize-cli db:migrate` para aplicarla (usa `.sequelizerc` →
+     `src/db/migrations-config.cjs`, mismas variables de `.env`).
+  - Se adoptó 2026-07-10 tras encontrar 298 constraints UNIQUE duplicados en
+    `users.email` (y 52 en `push_subscriptions.endpoint`): con `alter: true`,
+    Sequelize no siempre detecta un UNIQUE ya existente y crea uno nuevo en
+    cada arranque. Ver gotcha correspondiente más abajo.
 - SSL habilitado automáticamente para hosts que no sean `localhost`/`127.0.0.1`.
 
 ## Arquitectura del backend
@@ -33,7 +62,7 @@ utils/                 — Cálculos puros (sin efectos secundarios)
 El service lanza `throw new AppError('mensaje', statusCode)` para errores esperados; el middleware `errorHandler` en `main.js` los captura y los convierte en JSON.
 
 ### Módulos existentes
-`user | creditCard | bankCredit | suscription | reminder | analytics | income | personalDebt | savingsGoal | budget | activityLog | search | pushSubscription`
+`user | creditCard | bankCredit | suscription | reminder | analytics | income | personalDebt | savingsGoal | budget | activityLog | search | pushSubscription | netWorth`
 
 > El módulo de suscripciones tiene un typo histórico: la carpeta es `suscription` (sin "b"), no `subscription`.
 
@@ -45,6 +74,11 @@ Utilidades transversales en `backend/src/utils/`: `emailService.js`, `logger.js`
 - `cuotaManejoJob.js` — genera cargos `cuota_manejo` idempotentemente al llegar la fecha de corte de cada tarjeta activa.
 - `bankCreditMoraJob.js` — marca créditos en mora.
 - `weeklyDigestJob.js` — resumen semanal por email (opt-in con `User.emailDigest`).
+- `netWorthSnapshotJob.js` — día 1 de cada mes congela `NetWorthSnapshot` (activos −
+  pasivos) del mes recién cerrado, por usuario. El mes en curso (sin snapshot aún) se
+  calcula en vivo — ver `netWorth.service.js::getHistory`. Activos = ahorro acumulado
+  (`SavingsGoal.montoAcumulado`); pasivos = cupo de tarjeta usado + saldo de créditos +
+  `PersonalDebt` tipo `deuda` (no `gasto`, que es recurrente sin saldo).
 
 ### Rutas frontend completas (App.jsx)
 ```
@@ -58,6 +92,7 @@ Utilidades transversales en `backend/src/utils/`: `emailService.js`, `logger.js`
   /analysis                → CardAnalysis
 /credit-cards/:id/edit
 /credit-cards/:id/purchases/new
+/credit-cards/:id/purchases/import  → importar CSV/Excel (mapeo de columnas)
 /credit-cards/:id/advances/new
 /credit-cards/:id/purchases/:purchaseId
 /bank-credits              → lista | /new
@@ -81,6 +116,17 @@ Utilidades transversales en `backend/src/utils/`: `emailService.js`, `logger.js`
 Otras piezas de frontend: `GlobalSearch` (Ctrl+K, módulo `search` del backend),
 dark mode (`data-theme` en `<html>`, persistido en `localStorage['debti-theme']`),
 PWA con service worker (`sw.js` + workbox), notificaciones push (`pushService.js`).
+
+**Code-splitting por ruta** (`App.jsx`): todas las páginas protegidas se cargan con
+`React.lazy` vía el helper `lazyNamed(loader, name)` — adapta el `export const X`
+de cada página (no hay default exports) al `default` que exige `lazy()`, sin tocar
+los archivos de página. Antes todo iba en un solo chunk de ~1.4 MB descargado
+incluso para ver el login; ahora el chunk de entrada bajó a ~335 KB y cada ruta
+trae su propio JS bajo demanda (verificado: entrar a Reportes solo descarga
+`Reports-*.js` + `AreaChart-*.js`, no todas las páginas). `Suspense` envuelve
+`<Routes>` con un fallback tipo skeleton (`RouteFallback`). Login/Register/
+ForgotPassword/ResetPassword NO son lazy (es lo primero que ve un usuario sin
+sesión — evitar el parpadeo de carga ahí).
 
 ## Comandos
 - Todo junto: `npm run dev` (raíz) — levanta backend y frontend.
@@ -109,8 +155,10 @@ motor antes de decidir:
 ## Sistema de diseño (Debti)
 - **Estilo:** fintech corporativo limpio (Stripe/Mercury/Ramp).
 - **Tokens** en `frontend/src/index.css :root`. Usar variables, nunca hex crudo:
-  - Marca índigo-violeta: `--brand-600 #5B4DF1` (+ rampa 50..800). Evitar gradientes
-    morado→rosa "AI".
+  - Marca verde esmeralda: `--brand-600 #047857` (rampa 50..800, ver `index.css`).
+    Evitar gradientes morado→rosa "AI". (Nota: versiones antiguas de este documento
+    decían "índigo-violeta #5B4DF1" — ese color nunca se usó en el CSS real; corregido
+    2026-07-10 tras encontrar la discrepancia en auditoría.)
   - Positivo `--pos-600 #059669`, alerta `--warn-600`, peligro `--neg-600`.
   - Neutros slate: `--bg --surface --surface-2 --border --text --text-2 --text-3`.
   - Alias `--color-*` re-apuntan a la rampa nueva (compatibilidad; no romper).
@@ -196,6 +244,15 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   y `fmtDate()` de `frontend/src/utils/format.js`.
 - **Suscripciones pueden ser USD/EUR**: convertir con `toCOP()` (`backend/src/utils/currency.js`)
   antes de sumarlas con valores COP en analytics.
+- **`XLSX.read()` de SheetJS corrompe números/fechas en formato es-CO al leer
+  CSV**: con `raw:true` coacciona texto tipo `"150.000,50"` a `150` (corta en
+  el primer punto decimal, `.` es separador de miles aquí, no decimal); con
+  `cellDates:true` además "adivina" fechas `DD/MM/YYYY` con heurísticas
+  propias que a veces no coinciden con `parseFecha` propio. Por eso
+  `CreditCardImport.jsx` NUNCA usa `XLSX.read` para `.csv` — tiene su propio
+  parser CSV (`parseCSV`) que entrega texto crudo sin coacciones; `XLSX.read`
+  solo se usa para `.xlsx`/`.xls` reales (con `raw:false` para igual evitar
+  la coacción numérica).
 - **Los `<select>` devuelven STRING.** El backend valida con Zod `z.number()` (sin
   coerción): convertir con `Number()` antes de enviar IDs/numéricos.
 - `text-transform: capitalize` capitaliza preposiciones ("Junio De 2026"); usar
@@ -212,9 +269,36 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   (dry-run; `--apply` para corregir) lo recalcula desde las compras.
 - **Las FKs NO tienen `ON DELETE CASCADE`**: borrar un padre (p. ej. tarjeta)
   exige borrar sus hijos primero en el service (error 23503 si no).
-- `sequelize.sync` usa `alter: { drop: false }`: con `alter: true` a secas
-  intentaba `DROP CONSTRAINT` de FKs con nombre distinto en la BD y el
-  arranque fallaba intermitentemente (error 42704).
+- **`sequelize.sync({ alter: true })` duplicaba constraints UNIQUE en cada
+  arranque** (298 en `users.email`, 52 en `push_subscriptions.endpoint` —
+  encontrados y limpiados 2026-07-10): Sequelize no siempre reconoce que ya
+  existe un UNIQUE equivalente y crea uno nuevo con nombre autogenerado. Por
+  eso ahora `main.js` usa `sync()` sin `alter` (ver sección "Base de datos"
+  arriba) y los cambios de esquema van por migraciones. Si vuelven a
+  aparecer duplicados: `SELECT conname FROM pg_constraint WHERE conrelid =
+  'tabla'::regclass AND contype = 'u'` para listarlos y `ALTER TABLE ...
+  DROP CONSTRAINT` los sobrantes (dejar 1).
+- **Al agregar un modelo NUEVO con `indexes:` declarados, evita guardar varios
+  archivos seguidos** (cada guardado reinicia nodemon): si dos arranques de
+  `sync()` se solapan mientras la tabla aún no existe, ambos intentan crear el
+  mismo índice y el segundo revienta con `42P07 relation ... already exists`
+  (pasó con `net_worth_snapshots`). No es un bug real de datos — nodemon
+  reintenta solo y arranca bien en el siguiente intento — pero conviene
+  esperar a que el backend termine de reiniciar antes de guardar el próximo
+  archivo relacionado.
+- **Exportación de datos**: `GET /users/export` (Profile.jsx → "Exporta tus datos")
+  arma un solo JSON con todo lo del usuario (tarjetas+compras, créditos, suscripciones,
+  ingresos, deudas, metas, presupuesto, historial, patrimonio neto). Siempre usa
+  `req.user.id` de la sesión — nunca un id de la URL — para que nadie pueda pedir el
+  export de otra cuenta. Registrada ANTES de `/:id` en las rutas (si no, Express
+  interpretaría "export" como un id).
+- **El manifest PWA apuntaba a iconos inexistentes** (`pwa-192.svg` etc. nunca
+  existieron en `public/`) — Chrome nunca ofrecía instalar. Iconos reales en
+  `frontend/public/icon-192.png` / `icon-512.png` (generados desde
+  `src/assets/icono.png`, fondo blanco sólido porque iOS rellena de negro las
+  zonas transparentes del apple-touch-icon). `beforeinstallprompt` no dispara
+  en Chromium headless/Playwright (limitación de automatización, no bug real);
+  para probar instalación real usar `npm run preview` + Chrome de verdad.
 
 ## Skills disponibles relevantes
 `ui-ux-pro-max` (diseño, OBLIGATORIO en frontend), `superpowers:brainstorming`

@@ -120,7 +120,7 @@ BankCredit.init(
             allowNull: false,
         },
     },
-    { sequelize, modelName: 'BankCredit', tableName: 'bank_credits' }
+    { sequelize, modelName: 'BankCredit', tableName: 'bank_credits', indexes: [{ fields: ['userId'] }] }
 );
 
 BankCredit.belongsTo(User, { foreignKey: 'userId' });

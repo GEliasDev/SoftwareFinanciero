@@ -75,7 +75,7 @@ CreditCard.init(
             allowNull: false,
         },
     },
-    { sequelize, modelName: 'CreditCard', tableName: 'credit_cards' }
+    { sequelize, modelName: 'CreditCard', tableName: 'credit_cards', indexes: [{ fields: ['userId'] }] }
 );
 
 CreditCard.belongsTo(User, { foreignKey: 'userId' });

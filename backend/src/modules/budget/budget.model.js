@@ -9,7 +9,7 @@ export const Budget = sequelize.define('Budget', {
     categoria: { type: DataTypes.STRING(80), allowNull: false },
     limite:    { type: DataTypes.DECIMAL(14, 2), allowNull: false, defaultValue: 0 },
     color:     { type: DataTypes.STRING(7), defaultValue: '#5B4DF1' },
-}, { tableName: 'budgets', timestamps: true, updatedAt: 'updatedAt' });
+}, { tableName: 'budgets', timestamps: true, updatedAt: 'updatedAt', indexes: [{ fields: ['userId', 'mes'] }] });
 
 // BudgetExpense: gasto registrado manualmente contra una categoria del mes
 export const BudgetExpense = sequelize.define('BudgetExpense', {
@@ -20,4 +20,4 @@ export const BudgetExpense = sequelize.define('BudgetExpense', {
     monto:      { type: DataTypes.DECIMAL(14, 2), allowNull: false },
     descripcion:{ type: DataTypes.STRING(120), defaultValue: '' },
     fecha:      { type: DataTypes.DATEONLY, allowNull: false },
-}, { tableName: 'budget_expenses', timestamps: true, updatedAt: false });
+}, { tableName: 'budget_expenses', timestamps: true, updatedAt: false, indexes: [{ fields: ['userId', 'mes'] }] });

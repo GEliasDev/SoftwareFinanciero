@@ -38,18 +38,37 @@ const groupByDate = (logs) => {
 const timeLabel = (iso) =>
   new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
+const PAGE_SIZE = 50;
+
 export const ActivityLog = () => {
-  const [logs,    setLogs]    = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [limit,   setLimit]   = useState(50);
+  const [logs,        setLogs]        = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Si la última página trajo menos de PAGE_SIZE, no hay nada más viejo.
+  const [hasMore,     setHasMore]     = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    ActivityLogService.getRecent(limit)
-      .then(setLogs)
+    ActivityLogService.getRecent(PAGE_SIZE)
+      .then(data => { setLogs(data); setHasMore(data.length === PAGE_SIZE); })
       .catch(() => setLogs([]))
       .finally(() => setLoading(false));
-  }, [limit]);
+  }, []);
+
+  const loadMore = async () => {
+    if (loadingMore || logs.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const before = logs[logs.length - 1].createdAt;
+      const more = await ActivityLogService.getRecent(PAGE_SIZE, before);
+      setLogs(prev => [...prev, ...more]);
+      setHasMore(more.length === PAGE_SIZE);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const grouped = groupByDate(logs);
 
@@ -123,9 +142,9 @@ export const ActivityLog = () => {
               </div>
             </div>
           ))}
-          {logs.length >= limit && (
-            <button className="btn btn-secondary" style={{ alignSelf: 'center' }} onClick={() => setLimit(l => l + 50)}>
-              Cargar más
+          {hasMore && (
+            <button className="btn btn-secondary" style={{ alignSelf: 'center' }} onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? 'Cargando…' : 'Cargar más'}
             </button>
           )}
         </div>
