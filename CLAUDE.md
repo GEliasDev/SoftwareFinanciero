@@ -67,11 +67,56 @@ El service lanza `throw new AppError('mensaje', statusCode)` para errores espera
 > El módulo de suscripciones tiene un typo histórico: la carpeta es `suscription` (sin "b"), no `subscription`.
 
 Utilidades transversales en `backend/src/utils/`: `emailService.js`, `logger.js` (winston),
-`currency.js` (`toCOP(monto, moneda)` — tasas aproximadas, configurables vía env `TRM_USD`/`TRM_EUR`).
+`currency.js` (`toCOP(monto, moneda)` — tasas aproximadas, configurables vía env `TRM_USD`/`TRM_EUR`),
+`categories.js` (`CATEGORIAS` — taxonomía única de categorías de gasto, compartida entre
+`creditCard.schema.js` y `personalDebt.schema.js` para que Presupuesto no vuelva a
+desincronizarse; el frontend tiene su propio `CATEGORIES` en `utils/creditCard.js` con
+icono/color, debe mantenerse en sync manualmente con la lista del backend).
+
+### Presupuesto ↔ gastos personales recurrentes
+`PersonalDebt` tipo `gasto` (ej. arriendo, mercado) tiene un campo opcional `categoria`
+(mismo enum que las compras de tarjeta). `budget.service.js::getMonth` sólo suma estos
+gastos activos con categoría a `gastadoPorCategoria` cuando el mes consultado es el
+**mes calendario real en curso** (`currentMes()`) — nunca en meses pasados o futuros que
+el usuario esté navegando, porque a diferencia de `CreditCardPurchase` (que tiene
+`fechaCompra`), `PersonalDebt` no registra desde/hasta cuándo estuvo activo en cada mes;
+sumarlo siempre habría contaminado el historial con el gasto de hoy. El picker de
+categoría (chips, mismo patrón que `Budget.jsx`) aparece en `PersonalDebtNew.jsx` /
+`PersonalDebtEdit.jsx` solo para tipo `gasto` (las deudas no tienen categoría).
+
+### Suscripciones ↔ cobro automático con tarjeta
+`Subscription.creditCardId` (nullable) vincula una suscripción a una tarjeta propia y
+activa (validado en `subscription.service.js::assertCardOwnership`, tanto en create
+como en update — se puede desvincular mandando `creditCardId: null`). Cuando está
+seteado, `subscriptionChargeJob.js` genera el cargo real cada ciclo en vez de dejarlo
+como obligación solo informativa:
+- Se registra como `CreditCardPurchase` normal (`tipo: 'compra'`, `numeroCuotas: 1`,
+  sin interés) con `subscriptionId` seteado — a propósito NO se usa un `tipo` nuevo,
+  así el cargo aparece automáticamente en Presupuesto/analytics/listados sin tocar
+  cada sitio que filtra `tipo === 'compra'`.
+- Idempotente igual que `cuotaManejoJob.js`: busca un `CreditCardPurchase` con ese
+  `subscriptionId` y `fechaCompra` dentro del ciclo actual antes de crear otro.
+- Respeta `frecuencia`: `mensual` cobra cada mes en `diaCobro`; `anual` solo cobra una
+  vez, en el mes de `fechaInicio` (nunca cobra el equivalente mensual todos los
+  meses — eso cobraría 12× el valor real).
+- Monto convertido a COP con `toCOP()` (suscripción puede ser USD/EUR); si el cupo
+  disponible no alcanza, se salta esa suscripción ese ciclo (log de warning, no
+  bloquea las demás) — no hay reintento a mitad de mes, se pone al día en el próximo
+  día que el cron corra con cupo suficiente.
+- Cupo descontado de forma atómica (`literal` con `GREATEST`, mismo patrón que
+  `registerPurchasePayment`/`undoPurchasePayment`), no read-modify-write.
+- **Evitar doble conteo en dineroLibre**: `analytics.service.js` excluye las
+  suscripciones con `creditCardId` seteado de la suma directa de `Subscription.montoMensual`
+  (en `getSummary` y `getRecommendations`) porque su obligación ya entra por el lado de
+  `CreditCardPurchase.valorCuotaMensual` de la tarjeta. `SubscriptionService.getSummary`
+  (total mostrado en `/subscriptions`) SÍ sigue sumando todas, es informativo y no
+  alimenta dineroLibre.
 
 ### Cron jobs (`backend/src/jobs/`)
-- `reminderJob.js` — se inicia en `main.js` al arrancar el servidor.
+- `reminderJob.js` — se inicia en `main.js` al arrancar el servidor; en el mismo tick
+  diario (8 AM) también dispara `cuotaManejoJob` y `subscriptionChargeJob`.
 - `cuotaManejoJob.js` — genera cargos `cuota_manejo` idempotentemente al llegar la fecha de corte de cada tarjeta activa.
+- `subscriptionChargeJob.js` — genera el cargo automático de suscripciones con tarjeta vinculada (ver arriba).
 - `bankCreditMoraJob.js` — marca créditos en mora.
 - `weeklyDigestJob.js` — resumen semanal por email (opt-in con `User.emailDigest`).
 - `netWorthSnapshotJob.js` — día 1 de cada mes congela `NetWorthSnapshot` (activos −
@@ -299,6 +344,28 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   zonas transparentes del apple-touch-icon). `beforeinstallprompt` no dispara
   en Chromium headless/Playwright (limitación de automatización, no bug real);
   para probar instalación real usar `npm run preview` + Chrome de verdad.
+- **Deploy en Render**: el frontend (`debti-web.onrender.com`) se configuró a mano desde
+  el dashboard de Render, **no** desde `render.yaml` (ese archivo tiene un `repo:` con
+  placeholder sin rellenar — no es la fuente de verdad real; se dejó actualizado como
+  referencia por si algún día se migra a Blueprint). Las reglas de rewrite/headers
+  también viven en el dashboard (pestaña Redirects/Rewrites y Headers del servicio
+  estático), no en el repo.
+- **Tras arreglar los iconos PWA (2026-07-10), el sitio no ofrecía instalar aunque
+  todo estaba bien**: verificado con `Page.getInstallabilityErrors` (Chrome DevTools
+  Protocol, vía Playwright) contra la URL real → `installabilityErrors: []`, cero
+  errores. La causa real: el celular del usuario tenía cacheado el veredicto de "no
+  instalable" de una visita anterior a que el fix se propagara (Cloudflare frente a
+  Render, `cf-cache-status: HIT`). Se resolvió borrando datos del sitio en Chrome
+  (⋮ → Configuración → Configuración de sitios → buscar el dominio → Borrar y
+  restablecer) y volviendo a entrar — Chrome no siempre re-evalúa instalabilidad en
+  cada visita. Si vuelve a pasar tras un deploy: comprobar primero con
+  `Page.getInstallabilityErrors` antes de asumir que es un bug de código.
+  De paso se encontró y corrigió: `frontend/src/sw.js` (el push handler) seguía
+  apuntando a `/pwa-192.svg` y `/favicon.svg` (iconos viejos ya eliminados) — ahora
+  usa `/icon-192.png`. El manifest se sirve con `Content-Type: binary/octet-stream`
+  en vez de `application/json` (Render no reconoce `.webmanifest`) — Chrome lo tolera
+  bien, pero para corregirlo: Headers del servicio en Render → path
+  `/manifest.webmanifest` → `Content-Type: application/json`.
 
 ## Skills disponibles relevantes
 `ui-ux-pro-max` (diseño, OBLIGATORIO en frontend), `superpowers:brainstorming`

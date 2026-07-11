@@ -9,6 +9,8 @@ export const subscriptionCreateSchema = z.object({
     diaCobro: z.number().int().min(1).max(31, { message: 'El día de cobro debe estar entre 1 y 31' }),
     fechaInicio: z.string().date({ message: 'Formato de fecha inválido, use YYYY-MM-DD' }),
     fechaFin: z.string().date().optional(),
+    // Si se envía, la suscripción se cobra automáticamente en esa tarjeta cada ciclo.
+    creditCardId: z.number().int().positive().optional().nullable(),
 });
 
 export const subscriptionUpdateSchema = z.object({
@@ -17,4 +19,5 @@ export const subscriptionUpdateSchema = z.object({
     diaCobro: z.number().int().min(1).max(31).optional(),
     fechaFin: z.string().date().optional(),
     status: z.enum(['activa', 'cancelada', 'pausada']).optional(),
+    creditCardId: z.number().int().positive().optional().nullable(),
 });

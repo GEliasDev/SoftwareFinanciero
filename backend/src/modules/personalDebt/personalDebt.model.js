@@ -18,6 +18,10 @@ PersonalDebt.init(
         numeroCuotas:   { type: DataTypes.INTEGER, allowNull: true },
         diaPago:        { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
         status:         { type: DataTypes.ENUM('activo', 'pagado', 'inactivo'), allowNull: false, defaultValue: 'activo' },
+        // Solo tiene sentido para tipo 'gasto' (recurrente) — permite que
+        // Presupuesto lo sume junto con las compras de tarjeta por categoría.
+        // 'deuda' (préstamo con saldo) no es un gasto discrecional del mes.
+        categoria:      { type: DataTypes.STRING(30), allowNull: true },
         userId:         { type: DataTypes.INTEGER, allowNull: false },
     },
     { sequelize, modelName: 'PersonalDebt', tableName: 'personal_debts', indexes: [{ fields: ['userId'] }] }

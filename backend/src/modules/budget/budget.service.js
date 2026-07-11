@@ -4,6 +4,14 @@ import { budgetCategorySchema, budgetExpenseSchema } from './budget.schema.js';
 import { AppError } from '../../middlewares/appError.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { CreditCardPurchase } from '../creditCard/creditCardPurchase.model.js';
+import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
+
+// Mes local 'YYYY-MM'. NUNCA toISOString() — mismo gotcha de siempre (UTC-5
+// corre el mes después de ~7pm).
+const currentMes = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
 export const BudgetService = {
     getMonth: async (userId, mes) => {
@@ -13,7 +21,7 @@ export const BudgetService = {
         // de meses de 28/30/31 días).
         const hasta = new Date(year, month, 0).toISOString().slice(0, 10);
 
-        const [categories, expenses, purchases] = await Promise.all([
+        const [categories, expenses, purchases, gastosRecurrentes] = await Promise.all([
             Budget.findAll({ where: { userId, mes }, order: [['categoria', 'ASC']] }),
             BudgetExpense.findAll({ where: { userId, mes }, order: [['fecha', 'DESC']] }),
             // Compras de tarjeta del mes por categoría: el gasto real ya se
@@ -33,6 +41,18 @@ export const BudgetService = {
                 include: [{ model: CreditCard, where: { userId }, attributes: [] }],
                 attributes: ['categoria', 'montoTotal'],
             }),
+            // Gastos personales recurrentes (arriendo, mercado…) con categoría.
+            // PersonalDebt no registra desde/hasta cuándo estuvo activo un mes
+            // dado (a diferencia de las compras, que sí tienen fechaCompra), así
+            // que solo se suman al mes REAL en curso — nunca a meses pasados o
+            // futuros que el usuario esté navegando — para no atribuir gasto de
+            // hoy a un enero de hace tres años.
+            mes === currentMes()
+                ? PersonalDebt.findAll({
+                    where: { userId, tipo: 'gasto', status: 'activo', categoria: { [Op.not]: null } },
+                    attributes: ['categoria', 'montoCuota'],
+                })
+                : [],
         ]);
 
         const gastadoPorCategoria = {};
@@ -41,6 +61,9 @@ export const BudgetService = {
         }
         for (const p of purchases) {
             gastadoPorCategoria[p.categoria] = (gastadoPorCategoria[p.categoria] || 0) + parseFloat(p.montoTotal);
+        }
+        for (const g of gastosRecurrentes) {
+            gastadoPorCategoria[g.categoria] = (gastadoPorCategoria[g.categoria] || 0) + parseFloat(g.montoCuota);
         }
 
         // Categorías con gasto real (compras/gastos) que el usuario nunca

@@ -75,10 +75,18 @@ CreditCardPurchase.init(
             allowNull: true,
             defaultValue: null,
         },
+        // Solo cuando el cargo lo generó el auto-cobro de una suscripción
+        // (subscriptionChargeJob.js): referencia a la suscripción de origen,
+        // usada para la comprobación de idempotencia del ciclo.
+        subscriptionId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: null,
+        },
     },
     {
         sequelize, modelName: 'CreditCardPurchase', tableName: 'credit_card_purchases',
-        indexes: [{ fields: ['creditCardId'] }, { fields: ['avanceId'] }],
+        indexes: [{ fields: ['creditCardId'] }, { fields: ['avanceId'] }, { fields: ['subscriptionId'] }],
     }
 );
 

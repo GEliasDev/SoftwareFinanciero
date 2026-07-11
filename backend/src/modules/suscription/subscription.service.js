@@ -4,11 +4,20 @@ import { calcularMontoMensual, calcularTotalAnual } from './utils/subscriptionCa
 import { AppError } from '../../middlewares/appError.js';
 import { ActivityLogService } from '../activityLog/activityLog.service.js';
 import { ReminderService } from '../reminder/reminder.service.js';
+import { CreditCard } from '../creditCard/creditCard.model.js';
 import logger from '../../utils/logger.js';
+
+const assertCardOwnership = async (creditCardId, userId) => {
+    if (!creditCardId) return;
+    const card = await CreditCard.findByPk(creditCardId);
+    if (!card || card.userId !== userId) throw new AppError('Tarjeta de crédito no encontrada', 404);
+    if (card.status !== 'activa') throw new AppError('La tarjeta debe estar activa para cobrar la suscripción', 400);
+};
 
 export const SubscriptionService = {
     createSubscription: async (data) => {
         const parsed = subscriptionCreateSchema.parse(data);
+        await assertCardOwnership(parsed.creditCardId, data.userId);
         const montoMensual = calcularMontoMensual({
             monto: parsed.monto,
             frecuencia: parsed.frecuencia,
@@ -35,11 +44,11 @@ export const SubscriptionService = {
     },
 
     getAllSubscriptions: async (userId) => {
-        return Subscription.findAll({ where: { userId } });
+        return Subscription.findAll({ where: { userId }, include: [{ model: CreditCard, attributes: ['id', 'nombre', 'entidad'] }] });
     },
 
     getSubscriptionById: async (id, userId, isAdmin) => {
-        const subscription = await Subscription.findByPk(id);
+        const subscription = await Subscription.findByPk(id, { include: [{ model: CreditCard, attributes: ['id', 'nombre', 'entidad'] }] });
         if (!subscription) throw new AppError('Suscripción no encontrada', 404);
         if (!isAdmin && subscription.userId !== userId) {
             throw new AppError('Acceso no autorizado a suscripción', 403);
@@ -54,6 +63,7 @@ export const SubscriptionService = {
             throw new AppError('Acceso no autorizado a suscripción', 403);
         }
         const parsed = subscriptionUpdateSchema.parse(data);
+        if (parsed.creditCardId !== undefined) await assertCardOwnership(parsed.creditCardId, subscription.userId);
         return subscription.update(parsed);
     },
 

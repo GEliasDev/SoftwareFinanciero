@@ -28,6 +28,7 @@ export const PersonalDebtService = {
                 montoCuota:     parsed.montoCuota,
                 cuotasPagadas:  0,
                 diaPago:        parsed.diaPago,
+                categoria:      parsed.categoria ?? null,
                 userId:         data.userId,
             });
         }

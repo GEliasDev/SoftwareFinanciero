@@ -43,6 +43,33 @@ services:
         name: X-Content-Type-Options
         value: nosniff
     routes:
+      # El manifest, el service worker y los iconos deben servirse tal cual —
+      # si el catch-all de abajo los reescribe a index.html, el navegador
+      # recibe HTML donde esperaba JSON/JS/PNG y Chrome nunca ofrece
+      # "Instalar app" (bug real: pasó en el primer deploy de la PWA).
+      # Render evalúa las rutas en orden y usa la primera que matchee, por
+      # eso estas van ANTES del catch-all de SPA.
+      - type: rewrite
+        source: /manifest.webmanifest
+        destination: /manifest.webmanifest
+      - type: rewrite
+        source: /sw.js
+        destination: /sw.js
+      - type: rewrite
+        source: /registerSW.js
+        destination: /registerSW.js
+      - type: rewrite
+        source: /icon-192.png
+        destination: /icon-192.png
+      - type: rewrite
+        source: /icon-512.png
+        destination: /icon-512.png
+      - type: rewrite
+        source: /favicon.png
+        destination: /favicon.png
+      - type: rewrite
+        source: /assets/*
+        destination: /assets/*
       - type: rewrite
         source: /*
         destination: /index.html

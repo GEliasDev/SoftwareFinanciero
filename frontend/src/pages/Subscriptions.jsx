@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SubscriptionService } from '../services/subscriptionService';
-import { Plus, Repeat, ChevronRight, Wallet, CalendarRange, CalendarClock } from 'lucide-react';
+import { Plus, Repeat, ChevronRight, Wallet, CalendarRange, CalendarClock, CreditCard } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -112,7 +112,14 @@ export const Subscriptions = () => {
                             {sub.nombre.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>{sub.nombre}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--text)' }}>
+                              {sub.nombre}
+                              {sub.creditCardId && (
+                                <span title="Cobro automático" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--pos-600)' }}>
+                                  <CreditCard size={12} />
+                                </span>
+                              )}
+                            </div>
                             {sub.descripcion && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{sub.descripcion}</div>}
                           </div>
                         </div>

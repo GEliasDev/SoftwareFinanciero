@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CATEGORIAS } from '../../utils/categories.js';
 
 export const creditCardCreateSchema = z.object({
     nombre: z.string().min(1).max(100, { message: 'El nombre debe tener como máximo 100 caracteres' }),
@@ -38,8 +39,6 @@ export const creditCardUpdateSchema = z.object({
     cuotaManejo: z.number().nonnegative().optional(),
     pagoMinimo: z.number().nonnegative().optional().nullable(),
 });
-
-const CATEGORIAS = ['comida', 'transporte', 'salud', 'entretenimiento', 'hogar', 'tecnologia', 'ropa', 'educacion', 'viajes', 'otros'];
 
 export const purchaseCreateSchema = z.object({
   descripcion: z.string().min(1, { message: 'La descripción es requerida' }).max(255, { message: 'La descripción es demasiado larga' }),

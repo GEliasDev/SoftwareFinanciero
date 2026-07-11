@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, AlertCircle, Info } from 'lucide-react';
 import { PersonalDebtService } from '../services/personalDebtService';
 import { PageHeader } from '../components/ui/PageHeader';
+import { CATEGORIES } from '../utils/creditCard';
 import Swal from 'sweetalert2';
 
 export const PersonalDebtEdit = () => {
@@ -12,7 +13,7 @@ export const PersonalDebtEdit = () => {
   const [touched, setTouched]   = useState({});
   const [debtName, setDebtName] = useState('');
   const [form, setForm] = useState({
-    tipo: 'deuda', nombre: '', descripcion: '', prestamista: '', montoCuota: '', status: 'activo',
+    tipo: 'deuda', nombre: '', descripcion: '', prestamista: '', montoCuota: '', status: 'activo', categoria: 'otros',
   });
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export const PersonalDebtEdit = () => {
         prestamista: d.prestamista || '',
         montoCuota:  d.montoCuota != null ? String(d.montoCuota) : '',
         status:      d.status,
+        categoria:   d.categoria || 'otros',
       });
     });
   }, [id]);
@@ -64,7 +66,7 @@ export const PersonalDebtEdit = () => {
       await PersonalDebtService.update(id, {
         nombre:      form.nombre,
         descripcion: form.descripcion || undefined,
-        ...(isDeuda  ? { prestamista: form.prestamista } : { montoCuota: Number(form.montoCuota) }),
+        ...(isDeuda  ? { prestamista: form.prestamista } : { montoCuota: Number(form.montoCuota), categoria: form.categoria }),
         status:      form.status,
       });
       navigate(`/personal-debts/${id}`);
@@ -109,6 +111,30 @@ export const PersonalDebtEdit = () => {
             {field('nombre', 'Nombre *', null, { placeholder: isDeuda ? 'Ej: Préstamo Juan' : 'Ej: Gasolina moto' })}
             {isDeuda && field('prestamista', 'A quién le debes *', null, { placeholder: 'Ej: Juan García' })}
             {field('descripcion', 'Descripción', 'Opcional', { placeholder: 'Notas adicionales' })}
+
+            {!isDeuda && (
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Categoría</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                  {CATEGORIES.map(c => (
+                    <button key={c.value} type="button"
+                      onClick={() => setForm(f => ({ ...f, categoria: c.value }))}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        fontSize: 12, fontWeight: form.categoria === c.value ? 700 : 500,
+                        padding: '5px 11px', borderRadius: 20, cursor: 'pointer', border: '1px solid',
+                        borderColor: form.categoria === c.value ? c.color : 'var(--color-border)',
+                        background: form.categoria === c.value ? `${c.color}18` : 'var(--surface-2)',
+                        color: form.categoria === c.value ? c.color : 'var(--text-2)',
+                        transition: 'all 0.12s ease',
+                      }}>
+                      <c.Icon size={12} /> {c.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="form-hint">Para que Presupuesto lo cuente en la categoría correcta.</p>
+              </div>
+            )}
 
             <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
               <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.75rem' }}>Estado</h3>

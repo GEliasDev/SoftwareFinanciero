@@ -94,8 +94,12 @@ export const AnalyticsService = {
             SavingsGoal.findAll({ where: { userId, status: 'activo' } }),
         ]);
 
+        // Las suscripciones con creditCardId se auto-cobran en la tarjeta
+        // (subscriptionChargeJob.js genera un CreditCardPurchase real cada
+        // ciclo) — ya se cuentan abajo vía monthlyCreditCards. Sumarlas aquí
+        // también las contaría doble en dineroLibre.
         const monthlySubscriptions = subscriptions
-            .filter(s => s.status === 'activa')
+            .filter(s => s.status === 'activa' && !s.creditCardId)
             .reduce((a, s) => a + subMonthlyCOP(s), 0);
 
         const monthlyBankCredits = bankCredits
@@ -298,8 +302,11 @@ export const AnalyticsService = {
         const totalCupo = creditCards.reduce((a, c) => a + toNum(c.cupoTotal), 0);
         const totalUsed = creditCards.reduce((a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0);
         const utilization = totalCupo > 0 ? (totalUsed / totalCupo) * 100 : 0;
+        // Igual que en getSummary: las suscripciones con tarjeta vinculada ya
+        // entran por creditCards.flatMap(...).valorCuotaMensual, no sumarlas
+        // aparte o quedarían dobles en monthlyObl/dineroLibre.
         const monthlyObl = activeCredits.reduce((a, c) => a + toNum(c.valorCuota) + toNum(c.cuotaAdministracion), 0)
-            + activeSubs.reduce((a, s) => a + subMonthlyCOP(s), 0)
+            + activeSubs.filter(s => !s.creditCardId).reduce((a, s) => a + subMonthlyCOP(s), 0)
             + creditCards.flatMap(c => c.CreditCardPurchases || []).reduce((a, p) => a + toNum(p.valorCuotaMensual), 0)
             + personalDebts.filter(d => d.status === 'activo').reduce((a, d) => a + toNum(d.montoCuota), 0);
         const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);

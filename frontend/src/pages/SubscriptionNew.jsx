@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { SubscriptionService } from '../services/subscriptionService';
+import { CreditCardService } from '../services/creditCardService';
 import {
-  ArrowLeft, Repeat, ChevronRight, ChevronLeft, Check, AlertCircle,
+  ArrowLeft, Repeat, ChevronRight, ChevronLeft, Check, AlertCircle, CreditCard,
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
 import { fmt } from '../utils/format';
@@ -18,8 +19,15 @@ export const SubscriptionNew = () => {
   const [touched, setTouched] = useState({});
   const [formData, setFormData] = useState({
     nombre: '', descripcion: '', monto: '', moneda: 'COP', frecuencia: 'mensual',
-    diaCobro: '', fechaInicio: '', fechaFin: '',
+    diaCobro: '', fechaInicio: '', fechaFin: '', creditCardId: '',
   });
+  const [cards, setCards] = useState([]);
+
+  useEffect(() => {
+    CreditCardService.getAll()
+      .then(data => setCards(data.filter(c => c.status === 'activa')))
+      .catch(() => {});
+  }, []);
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   const markTouched = (name) => setTouched(t => ({ ...t, [name]: true }));
@@ -56,6 +64,7 @@ export const SubscriptionNew = () => {
         diaCobro: Number(formData.diaCobro),
         fechaInicio: formData.fechaInicio,
         fechaFin: formData.fechaFin || undefined,
+        creditCardId: formData.creditCardId ? Number(formData.creditCardId) : undefined,
       });
       navigate('/subscriptions');
     } catch (err) {
@@ -108,6 +117,12 @@ export const SubscriptionNew = () => {
               <span>Al año</span>
               <span className="tabular" style={{ fontWeight: 700 }}>{anual ? fmt(anual, formData.moneda) : '—'}</span>
             </div>
+            {formData.creditCardId && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255,255,255,0.85)', borderTop: '1px solid rgba(255,255,255,0.18)', paddingTop: '0.6rem', marginTop: '0.6rem' }}>
+                <CreditCard size={13} />
+                <span>Cobro automático activado</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -155,6 +170,22 @@ export const SubscriptionNew = () => {
                 </div>
                 <div style={{ marginTop: '0.75rem', maxWidth: 260 }}>
                   {field('fechaFin', 'Fecha de fin (opcional)', 'Si tiene fecha de terminación', { type: 'date' })}
+                </div>
+                <div style={{ marginTop: '0.75rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Cobro automático con tarjeta</label>
+                    <select className="form-input" name="creditCardId" value={formData.creditCardId} onChange={handleChange}>
+                      <option value="">Manual — solo llevar el registro</option>
+                      {cards.map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre} · {c.entidad}</option>
+                      ))}
+                    </select>
+                    <p className="form-hint">
+                      {formData.creditCardId
+                        ? 'Cada ciclo se generará el cargo solo en esta tarjeta, el día de cobro indicado.'
+                        : 'Sin tarjeta, la suscripción solo se usa para calcular tu dinero libre — el pago lo registras aparte.'}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

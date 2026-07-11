@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { SubscriptionService } from '../services/subscriptionService';
-import { ArrowLeft, Edit2, Trash2, Check, X, Wallet, CalendarRange, CalendarClock, Info } from 'lucide-react';
+import { CreditCardService } from '../services/creditCardService';
+import { ArrowLeft, Edit2, Trash2, Check, X, Wallet, CalendarRange, CalendarClock, Info, CreditCard } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -19,6 +20,7 @@ export const SubscriptionDetail = () => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState({});
+  const [cards, setCards] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -34,6 +36,7 @@ export const SubscriptionDetail = () => {
         diaCobro: data.diaCobro,
         fechaInicio: data.fechaInicio?.slice(0, 10) || '',
         fechaFin: data.fechaFin?.slice(0, 10) || '',
+        creditCardId: data.creditCardId || '',
       });
     } catch {
       setError('No se pudo cargar la suscripción.');
@@ -43,6 +46,11 @@ export const SubscriptionDetail = () => {
   };
 
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    CreditCardService.getAll()
+      .then(data => setCards(data.filter(c => c.status === 'activa')))
+      .catch(() => {});
+  }, []);
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -62,6 +70,7 @@ export const SubscriptionDetail = () => {
         diaCobro: Number(editData.diaCobro),
         fechaInicio: editData.fechaInicio,
         fechaFin: editData.fechaFin || undefined,
+        creditCardId: editData.creditCardId ? Number(editData.creditCardId) : null,
       });
       await load();
       setEditing(false);
@@ -147,6 +156,13 @@ export const SubscriptionDetail = () => {
             <InfoRow label="Día de cobro" value={`Día ${sub?.diaCobro}`} />
             <InfoRow label="Fecha inicio" value={fmtDateLong(sub?.fechaInicio)} />
             <InfoRow label="Fecha fin" value={fmtDateLong(sub?.fechaFin)} />
+            <div>
+              <p style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Cobro</p>
+              <p style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--text)', fontSize: 13.5 }}>
+                {sub?.CreditCard && <CreditCard size={13} style={{ color: 'var(--pos-600)' }} />}
+                {sub?.CreditCard ? `Automático · ${sub.CreditCard.nombre}` : 'Manual'}
+              </p>
+            </div>
           </div>
         </SectionCard>
       ) : (
@@ -192,6 +208,20 @@ export const SubscriptionDetail = () => {
                 <label className="form-label">Fecha fin (opcional)</label>
                 <input className="form-input" type="date" name="fechaFin" value={editData.fechaFin} onChange={handleEditChange} />
               </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cobro automático con tarjeta</label>
+              <select className="form-input" name="creditCardId" value={editData.creditCardId} onChange={handleEditChange}>
+                <option value="">Manual — solo llevar el registro</option>
+                {cards.map(c => (
+                  <option key={c.id} value={c.id}>{c.nombre} · {c.entidad}</option>
+                ))}
+              </select>
+              <p className="form-hint">
+                {editData.creditCardId
+                  ? 'Cada ciclo se generará el cargo solo en esta tarjeta, el día de cobro indicado.'
+                  : 'Sin tarjeta, la suscripción solo se usa para calcular tu dinero libre — el pago lo registras aparte.'}
+              </p>
             </div>
             <div className="flex justify-end gap-2" style={{ marginTop: '0.5rem' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>

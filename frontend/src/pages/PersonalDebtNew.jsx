@@ -4,6 +4,7 @@ import { ArrowLeft, Check, AlertCircle, Handshake, Repeat } from 'lucide-react';
 import { PersonalDebtService } from '../services/personalDebtService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { fmt } from '../utils/format';
+import { CATEGORIES } from '../utils/creditCard';
 import Swal from 'sweetalert2';
 
 const TIPO_OPTIONS = [
@@ -27,7 +28,7 @@ export const PersonalDebtNew = () => {
   const [touched, setTouched] = useState({});
   const [form, setForm] = useState({
     tipo: 'deuda', nombre: '', descripcion: '', prestamista: '',
-    montoTotal: '', montoCuota: '',
+    montoTotal: '', montoCuota: '', categoria: 'otros',
   });
 
   const isDeuda    = form.tipo === 'deuda';
@@ -61,7 +62,7 @@ export const PersonalDebtNew = () => {
 
   const changeTipo = (tipo) => {
     setTouched({});
-    setForm(f => ({ tipo, nombre: f.nombre, descripcion: f.descripcion, prestamista: '', montoTotal: '', montoCuota: '' }));
+    setForm(f => ({ tipo, nombre: f.nombre, descripcion: f.descripcion, prestamista: '', montoTotal: '', montoCuota: '', categoria: 'otros' }));
   };
 
   const handleSubmit = async (e) => {
@@ -72,7 +73,7 @@ export const PersonalDebtNew = () => {
     try {
       await PersonalDebtService.create(isDeuda
         ? { tipo: 'deuda', nombre: form.nombre, descripcion: form.descripcion || undefined, prestamista: form.prestamista, montoTotal }
-        : { tipo: 'gasto', nombre: form.nombre, descripcion: form.descripcion || undefined, montoCuota }
+        : { tipo: 'gasto', nombre: form.nombre, descripcion: form.descripcion || undefined, montoCuota, categoria: form.categoria }
       );
       navigate('/personal-debts');
     } catch (err) {
@@ -185,6 +186,29 @@ export const PersonalDebtNew = () => {
                 <>
                   {field('montoCuota', 'Monto mensual (COP) *', null, { type: 'number', min: '1', placeholder: '150 000' })}
                   {field('descripcion', 'Descripción', 'Opcional — para qué es este gasto', { placeholder: 'Ej: Aporte comida casa' })}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Categoría</label>
+                    {/* Misma taxonomía que Tarjetas: así este gasto se suma
+                        junto con las compras en Presupuesto del mes en curso. */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                      {CATEGORIES.map(c => (
+                        <button key={c.value} type="button"
+                          onClick={() => setForm(f => ({ ...f, categoria: c.value }))}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            fontSize: 12, fontWeight: form.categoria === c.value ? 700 : 500,
+                            padding: '5px 11px', borderRadius: 20, cursor: 'pointer', border: '1px solid',
+                            borderColor: form.categoria === c.value ? c.color : 'var(--color-border)',
+                            background: form.categoria === c.value ? `${c.color}18` : 'var(--surface-2)',
+                            color: form.categoria === c.value ? c.color : 'var(--text-2)',
+                            transition: 'all 0.12s ease',
+                          }}>
+                          <c.Icon size={12} /> {c.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="form-hint">Para que Presupuesto lo cuente en la categoría correcta.</p>
+                  </div>
                 </>
               )}
             </div>

@@ -28,8 +28,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(pushData.title || 'Debti', {
       body: pushData.body || '',
-      icon: '/pwa-192.svg',
-      badge: '/favicon.svg',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
       data: { url: pushData.url || '/' },
     })
   );

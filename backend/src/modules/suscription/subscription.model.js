@@ -1,6 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../../db/client.js';
 import { User } from '../user/user.model.js';
+import { CreditCard } from '../creditCard/creditCard.model.js';
 
 export class Subscription extends Model {}
 
@@ -60,8 +61,16 @@ Subscription.init(
             type: DataTypes.INTEGER,
             allowNull: false,
         },
+        // Si está seteado, la suscripción se cobra sola cada ciclo (ver
+        // jobs/subscriptionChargeJob.js) en vez de ser solo un compromiso
+        // informativo para dineroLibre.
+        creditCardId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
     },
-    { sequelize, modelName: 'Subscription', tableName: 'subscriptions', indexes: [{ fields: ['userId'] }] }
+    { sequelize, modelName: 'Subscription', tableName: 'subscriptions', indexes: [{ fields: ['userId'] }, { fields: ['creditCardId'] }] }
 );
 
 Subscription.belongsTo(User, { foreignKey: 'userId' });
+Subscription.belongsTo(CreditCard, { foreignKey: 'creditCardId' });

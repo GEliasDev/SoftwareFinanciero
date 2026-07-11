@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { ReminderService } from '../modules/reminder/reminder.service.js';
 import { PushSubscriptionService } from '../modules/pushSubscription/pushSubscription.service.js';
 import { generateCuotaManejoCharges } from './cuotaManejoJob.js';
+import { generateSubscriptionCharges } from './subscriptionChargeJob.js';
 
 export const startReminderJob = () => {
     cron.schedule('0 8 * * *', async () => {
@@ -34,6 +35,12 @@ export const startReminderJob = () => {
             await generateCuotaManejoCharges();
         } catch (err) {
             console.error('[CuotaManejoJob] Error:', err.message);
+        }
+
+        try {
+            await generateSubscriptionCharges();
+        } catch (err) {
+            console.error('[SubscriptionChargeJob] Error:', err.message);
         }
     });
 
