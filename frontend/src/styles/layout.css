@@ -697,6 +697,13 @@ textarea.auth-input { height: auto !important; }
   gap: 12px;
 }
 
+/* Fila "emoji + nombre" de las metas de ahorro (alta y edición). */
+.emoji-row {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 12px;
+}
+
 .sidebar-overlay {
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);

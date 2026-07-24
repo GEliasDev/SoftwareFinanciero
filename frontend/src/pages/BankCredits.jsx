@@ -4,6 +4,7 @@ import { BankCreditService } from '../services/bankCreditService';
 import { Plus, Landmark, ChevronRight, CalendarClock, Wallet, TrendingDown } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
+import { LoadError } from '../components/ui/LoadError';
 import { fmt, nextOccurrence, daysUntil, urgencyStyle } from '../utils/format';
 
 const STATUS = {
@@ -17,13 +18,17 @@ export const BankCredits = () => {
   const navigate = useNavigate();
   const [credits, setCredits] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(false);
     BankCreditService.getAll()
       .then(setCredits)
-      .catch(console.error)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(() => { load(); }, []);
 
   const activos       = credits.filter(c => c.status === 'activo');
   const totalDebt     = credits.reduce((a, c) => a + parseFloat(c.saldoPendiente ?? 0), 0);
@@ -50,7 +55,7 @@ export const BankCredits = () => {
         }
       />
 
-      {!loading && credits.length > 0 && (
+      {!loading && !error && credits.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
           <StatCard label="Deuda total" value={fmt(totalDebt)} delta="Saldo pendiente" icon={TrendingDown} tone="neg" />
           <StatCard label="Cuota mensual total" value={fmt(monthlyCuotas)} delta="Comprometido por mes" icon={Wallet} tone="warn" />
@@ -62,6 +67,8 @@ export const BankCredits = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 116, borderRadius: 'var(--radius-md)' }} />)}
         </div>
+      ) : error ? (
+        <LoadError onRetry={load} title="No se pudieron cargar tus créditos" />
       ) : credits.length === 0 ? (
         <div className="card">
           <div className="empty-state">

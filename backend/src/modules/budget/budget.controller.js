@@ -1,6 +1,11 @@
 import { BudgetService } from './budget.service.js';
 
-const currentMes = () => new Date().toISOString().slice(0, 7);
+// Mes 'YYYY-MM' en hora LOCAL. Con toISOString, después de las ~7pm del último
+// día del mes (UTC-5) devolvía ya el mes siguiente.
+const currentMes = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
 export const BudgetController = {
     getMonth: async (req, res, next) => {

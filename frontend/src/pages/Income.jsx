@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { IncomeService } from '../services/incomeService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
+import { LoadError } from '../components/ui/LoadError';
 import { Plus, Wallet, Zap, Pencil, Trash2 } from 'lucide-react';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
@@ -58,9 +59,12 @@ export const Income = () => {
   const navigate = useNavigate();
   const [incomes, setIncomes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(false);
 
   const load = () => {
-    IncomeService.getAll().then(setIncomes).catch(console.error).finally(() => setLoading(false));
+    setLoading(true);
+    setError(false);
+    IncomeService.getAll().then(setIncomes).catch(() => setError(true)).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
@@ -97,7 +101,7 @@ export const Income = () => {
         }
       />
 
-      {!loading && incomes.length > 0 && (
+      {!loading && !error && incomes.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
           <StatCard
             label="Total mensual"
@@ -122,6 +126,8 @@ export const Income = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: 'var(--radius-md)' }} />)}
         </div>
+      ) : error ? (
+        <LoadError onRetry={load} title="No se pudieron cargar tus ingresos" />
       ) : incomes.length === 0 ? (
         <div className="card">
           <div className="empty-state">

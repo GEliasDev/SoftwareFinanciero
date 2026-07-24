@@ -1,5 +1,6 @@
 import { Op } from 'sequelize';
 import { BankCredit } from '../modules/bankCredit/bankCredit.model.js';
+import { effectiveDayInMonth } from '../utils/cycleDay.js';
 import cron from 'node-cron';
 
 const GRACE_DAYS = 5; // días de gracia antes de marcar en mora
@@ -13,7 +14,14 @@ function expectedCuotasPagadas(fechaInicio, diaPago, numeroCuotas) {
     let count = 0;
     const inicio = new Date(fechaInicio);
     for (let k = 1; k <= numeroCuotas; k++) {
-        const due = new Date(inicio.getFullYear(), inicio.getMonth() + k, diaPago);
+        // Día recortado al mes de vencimiento: con diaPago=31, `new Date(y,m,31)`
+        // desbordaba al mes siguiente y la cuota se daba por vencida tarde.
+        const mesDue = new Date(inicio.getFullYear(), inicio.getMonth() + k, 1);
+        const due = new Date(
+            mesDue.getFullYear(),
+            mesDue.getMonth(),
+            effectiveDayInMonth(diaPago, mesDue.getFullYear(), mesDue.getMonth())
+        );
         due.setDate(due.getDate() + GRACE_DAYS);
         if (today >= due) count = k;
         else break;

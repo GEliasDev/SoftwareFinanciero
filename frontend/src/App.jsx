@@ -22,6 +22,7 @@ const Dashboard = lazyNamed(() => import('./pages/Dashboard'), 'Dashboard');
 // Suscripciones
 const Subscriptions = lazyNamed(() => import('./pages/Subscriptions'), 'Subscriptions');
 const SubscriptionNew = lazyNamed(() => import('./pages/SubscriptionNew'), 'SubscriptionNew');
+const SubscriptionEdit = lazyNamed(() => import('./pages/SubscriptionEdit'), 'SubscriptionEdit');
 const SubscriptionDetail = lazyNamed(() => import('./pages/SubscriptionDetail'), 'SubscriptionDetail');
 
 // Tarjetas de crédito
@@ -113,6 +114,7 @@ function App() {
           {/* Suscripciones */}
           <Route path="subscriptions" element={<Subscriptions />} />
           <Route path="subscriptions/new" element={<SubscriptionNew />} />
+          <Route path="subscriptions/:id/edit" element={<SubscriptionEdit />} />
           <Route path="subscriptions/:id" element={<SubscriptionDetail />} />
 
           {/* Tarjetas de crédito */}

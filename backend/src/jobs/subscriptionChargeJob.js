@@ -3,6 +3,7 @@ import { Subscription } from '../modules/suscription/subscription.model.js';
 import { CreditCard } from '../modules/creditCard/creditCard.model.js';
 import { CreditCardPurchase } from '../modules/creditCard/creditCardPurchase.model.js';
 import { toCOP } from '../utils/currency.js';
+import { effectiveDayInMonth } from '../utils/cycleDay.js';
 import logger from '../utils/logger.js';
 
 const ymd = (d) =>
@@ -33,11 +34,16 @@ export const generateSubscriptionCharges = async () => {
     let creados = 0;
 
     for (const sub of subs) {
-        const cobroDay = Number(sub.diaCobro);
+        // Recortado al mes en curso: un diaCobro=31 en junio debe cobrar el 30,
+        // no quedarse esperando un día 31 que nunca llega. Ver utils/cycleDay.js.
+        const cobroDay = effectiveDayInMonth(sub.diaCobro, today.getFullYear(), today.getMonth());
         if (day < cobroDay) continue; // aún no llega el día de cobro de este ciclo
 
         if (sub.frecuencia === 'anual') {
-            const startMonth = new Date(sub.fechaInicio).getMonth();
+            // El mes se lee del string 'YYYY-MM-DD' directamente: `new Date(str)`
+            // parsea en UTC y, leído en hora local (UTC-5), un día 1 retrocede al
+            // último día del mes ANTERIOR — la anual nunca cobraba en su mes real.
+            const startMonth = Number(String(sub.fechaInicio).slice(5, 7)) - 1;
             if (today.getMonth() !== startMonth) continue; // solo cobra en su mes aniversario
         }
 

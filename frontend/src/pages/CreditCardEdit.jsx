@@ -4,14 +4,32 @@ import Swal from 'sweetalert2';
 import { CreditCardService } from '../services/creditCardService';
 import {
   ArrowLeft, CreditCard, Check, AlertTriangle, Percent,
-  ChevronRight, ChevronLeft, AlertCircle,
+  ChevronRight, ChevronLeft, AlertCircle, Calendar, DollarSign,
 } from 'lucide-react';
 import { CARD_COLORS, getCardGradient, darkenHex } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
+import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { fmt } from '../utils/format';
+import { TASA_USURA_EA } from '../utils/creditCard';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
 const STEP_FIELDS = [['nombre', 'entidad', 'ultimos4'], ['cupoTotal', 'tasaInteresMensual'], ['fechaCorte', 'fechaPago']];
+
+function calcCuota(monto, cuotas, tasaPct) {
+  if (!monto || cuotas < 1) return 0;
+  if (cuotas === 1) return monto;
+  const i = tasaPct / 100;
+  const f = Math.pow(1 + i, cuotas);
+  return monto * (i * f) / (f - 1);
+}
+
+function nextDatePreview(day) {
+  if (!day) return null;
+  const today = new Date();
+  const d = new Date(today.getFullYear(), today.getMonth(), Number(day));
+  if (d <= today) d.setMonth(d.getMonth() + 1);
+  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+}
 
 export const CreditCardEdit = () => {
   const { id } = useParams();
@@ -20,6 +38,7 @@ export const CreditCardEdit = () => {
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(0);
   const [touched, setTouched] = useState({});
+  const [simCuotas, setSimCuotas] = useState(12);
   const [data, setData] = useState({
     nombre: '', entidad: '', cupoTotal: '', tasaInteresMensual: '',
     fechaCorte: '', fechaPago: '', status: 'activa', ultimos4: '',
@@ -90,21 +109,22 @@ export const CreditCardEdit = () => {
 
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
-      <label className="form-label">{label}</label>
-      <input className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={data[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
+      <label className="form-label" htmlFor={name}>{label}</label>
+      <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={data[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
       {showErr(name) ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p> : hint && <p className="form-hint">{hint}</p>}
     </div>
   );
 
   const tasaMensual = parseFloat(data.tasaInteresMensual) || 0;
   const tasaEA = tasaMensual ? ((Math.pow(1 + tasaMensual / 100, 12) - 1) * 100).toFixed(2) : null;
-  const isHighRate = tasaEA && parseFloat(tasaEA) > 28.5;
+  const isHighRate = tasaEA && parseFloat(tasaEA) > TASA_USURA_EA;
   const cupoNum = parseFloat(data.cupoTotal) || 0;
+  const cuotaSim = cupoNum && tasaMensual ? calcCuota(cupoNum, simCuotas, tasaMensual) : null;
   const gradient = getCardGradient(data.color);
 
   if (loading) return (
     <div className="animate-fade-in">
-      <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: '1.5rem' }}>
+      <div className="wizard-grid">
         {[200, 340].map((h, i) => <div key={i} className="skeleton" style={{ height: h, borderRadius: 'var(--radius-md)' }} />)}
       </div>
     </div>
@@ -188,8 +208,45 @@ export const CreditCardEdit = () => {
               {isHighRate ? <AlertTriangle size={14} /> : <Percent size={14} />}
               <div>
                 <strong>Tasa E.A.: {tasaEA}%</strong>
-                <p style={{ margin: '2px 0 0', fontSize: 11, lineHeight: 1.5 }}>{isHighRate ? 'Supera la tasa de usura referencial (28.5% E.A.).' : 'Dentro del rango habitual en Colombia.'}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, lineHeight: 1.5 }}>{isHighRate ? `Supera la tasa de usura referencial (${TASA_USURA_EA}% E.A.).` : 'Dentro del rango habitual en Colombia.'}</p>
               </div>
+            </div>
+          )}
+
+          {cupoNum > 0 && tasaMensual > 0 && (
+            <div className="card" style={{ padding: '1rem' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><DollarSign size={12} /> Simulador rápido</p>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 0.625rem' }}>Si usas el cupo completo en:</p>
+              <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                {[3, 6, 12, 24].map(n => (
+                  <button key={n} type="button" onClick={() => setSimCuotas(n)}
+                    style={{ flex: 1, padding: '0.3rem 0', fontSize: 12, fontWeight: 600, border: `1.5px solid ${simCuotas === n ? 'var(--brand-600)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-sm)', background: simCuotas === n ? 'var(--brand-50)' : 'transparent', color: simCuotas === n ? 'var(--brand-700)' : 'var(--color-text-secondary)', cursor: 'pointer', transition: 'all 0.1s ease' }}>{n}c</button>
+                ))}
+              </div>
+              {cuotaSim && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--brand-50)', borderRadius: 'var(--radius-sm)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Cuota aprox.</span>
+                  <span className="tabular" style={{ fontWeight: 800, fontSize: 16, color: 'var(--brand-700)' }}>{fmt(cuotaSim)}/mes</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(data.fechaCorte || data.fechaPago) && (
+            <div className="card" style={{ padding: '1rem' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.625rem', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={12} /> Próximas fechas</p>
+              {data.fechaCorte && corte >= 1 && corte <= 31 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '0.3rem 0', borderBottom: '1px solid var(--color-border)' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Próximo corte</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{nextDatePreview(data.fechaCorte)}</span>
+                </div>
+              )}
+              {data.fechaPago && pago >= 1 && pago <= 31 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '0.3rem 0' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Próximo pago</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{nextDatePreview(data.fechaPago)}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -203,8 +260,8 @@ export const CreditCardEdit = () => {
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Identidad de la tarjeta</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Nombre, banco y estado</p>
                 <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
-                  {field('nombre', 'Nombre / Alias *', null, { placeholder: 'Ej: Visa Gold' })}
-                  {field('entidad', 'Entidad / Banco *', null, { placeholder: 'Ej: Bancolombia' })}
+                  {field('nombre', 'Nombre / Alias *', 'Como quieres identificar esta tarjeta', { placeholder: 'Ej: Visa Gold, Principal...' })}
+                  {field('entidad', 'Entidad / Banco *', null, { placeholder: 'Ej: Bancolombia, Davivienda...' })}
                 </div>
                 <div className="form-row-2">
                   <div className="form-group" style={{ margin: 0 }}>
@@ -219,7 +276,7 @@ export const CreditCardEdit = () => {
                     <label className="form-label">Últimos 4 dígitos (opcional)</label>
                     <input className={`form-input ${showErr('ultimos4') ? 'error' : ''}`} style={{ letterSpacing: '0.2em', fontVariantNumeric: 'tabular-nums' }} value={data.ultimos4}
                       onChange={e => setData(prev => ({ ...prev, ultimos4: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onBlur={() => markTouched('ultimos4')} placeholder="1234" maxLength={4} />
-                    {showErr('ultimos4') && <p className="form-error"><AlertCircle size={11} /> {errors.ultimos4}</p>}
+                    {showErr('ultimos4') ? <p className="form-error"><AlertCircle size={11} /> {errors.ultimos4}</p> : <p className="form-hint">Facilita identificarla en pantalla</p>}
                   </div>
                 </div>
               </div>
@@ -250,9 +307,25 @@ export const CreditCardEdit = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Fechas de ciclo</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Días de corte y de pago</p>
-                <div className="form-row-2">
-                  {field('fechaCorte', 'Día de corte * (1–31)', null, { type: 'number', min: '1', max: '31', placeholder: 'Ej: 20' })}
-                  {field('fechaPago', 'Día de pago * (1–31)', null, { type: 'number', min: '1', max: '31', placeholder: 'Ej: 5' })}
+                <DayOfMonthPicker
+                  label="Día de corte"
+                  required
+                  nombreEvento="corte"
+                  value={data.fechaCorte}
+                  onChange={d => { setData(p => ({ ...p, fechaCorte: String(d) })); markTouched('fechaCorte'); }}
+                  error={showErr('fechaCorte') ? errors.fechaCorte : null}
+                  hint="Cierre del periodo de facturación"
+                />
+                <div style={{ marginTop: '1rem' }}>
+                  <DayOfMonthPicker
+                    label="Día de pago"
+                    required
+                    nombreEvento="pago"
+                    value={data.fechaPago}
+                    onChange={d => { setData(p => ({ ...p, fechaPago: String(d) })); markTouched('fechaPago'); }}
+                    error={showErr('fechaPago') ? errors.fechaPago : null}
+                    hint="Fecha límite de pago mensual"
+                  />
                 </div>
               </div>
             )}

@@ -208,7 +208,7 @@ export const CreditCardPurchaseDetail = () => {
 
   if (loading) return (
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+      <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
         {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 88, borderRadius: 'var(--radius-md)' }} />)}
       </div>
       {[240, 200].map((h, i) => (
@@ -272,7 +272,7 @@ export const CreditCardPurchaseDetail = () => {
       <div style={{ height: 5, borderRadius: 99, marginBottom: '1.25rem', background: cardGradient }} />
 
       {/* ── 4 KPI cards ─────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.875rem', marginBottom: '1.25rem' }}>
+      <div className="kpi-grid" style={{ marginBottom: '1.25rem' }}>
         {[
           { label: 'Monto original',      value: fmt(purchase.montoTotal),        accent: 'var(--color-text-secondary)', bg: 'var(--color-bg)',          border: 'var(--color-border)' },
           { label: 'Cuota mensual',        value: fmt(purchase.valorCuotaMensual), accent: 'var(--color-primary)',        bg: 'var(--color-primary-light)', border: 'rgba(21,101,192,0.15)' },
@@ -287,7 +287,7 @@ export const CreditCardPurchaseDetail = () => {
       </div>
 
       {/* ── 2-column body ───────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '6fr 5fr', gap: '1rem', marginBottom: '1rem' }}>
+      <div className="split-grid" style={{ marginBottom: '1rem' }}>
 
         {/* Left: Progress + Timeline + Info */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -388,7 +388,7 @@ export const CreditCardPurchaseDetail = () => {
             <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <ShoppingBag size={14} style={{ color: 'var(--color-primary)' }} /> Información de la compra
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="info-grid">
               {[
                 { label: 'Fecha de compra', value: fmtDate(purchase.fechaCompra), Icon: Calendar },
                 { label: 'Categoría',        value: cat.label,                    Icon: cat.Icon, color: cat.color },

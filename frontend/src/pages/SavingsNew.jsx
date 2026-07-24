@@ -21,9 +21,9 @@ export const SavingsNew = () => {
 
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
-      <label className="form-label">{label}</label>
+      <label className="form-label" htmlFor={name}>{label}</label>
       <input
-        className={`form-input ${showErr(name) ? 'error' : ''}`}
+        id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
         value={form[name]}
         onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
         onBlur={() => mark(name)}
@@ -141,7 +141,7 @@ export const SavingsNew = () => {
 
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr', gap: '0.75rem' }}>
+              <div className="emoji-row">
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Emoji</label>
                   <input

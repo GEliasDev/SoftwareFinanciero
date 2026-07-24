@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { CreditCardService } from '../services/creditCardService';
 import { Plus, CreditCard as CardIcon, AlertTriangle, ShoppingBag, CalendarClock, Wallet } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
-import { fmt, nextOccurrence, daysUntil, urgencyStyle, fmtShort, buildSchedule } from '../utils/creditCard';
+import { LoadError } from '../components/ui/LoadError';
+import { fmt, nextOccurrence, daysUntil, urgencyStyle, fmtShort, buildSchedule, effectiveDayInMonth } from '../utils/creditCard';
 
 const usageColor = (pct) =>
   pct >= 80 ? 'var(--neg-600)' : pct >= 50 ? 'var(--warn-600)' : 'var(--pos-600)';
@@ -19,14 +20,18 @@ export const CreditCards = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [filterDeuda, setFilterDeuda] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(false);
     CreditCardService.getAll()
       .then(setCards)
-      .catch(console.error)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(() => { load(); }, []);
 
   const totalCupo = cards.reduce((s, c) => s + parseFloat(c.cupoTotal ?? 0), 0);
   const totalUsado = cards.reduce((s, c) => s + (parseFloat(c.cupoTotal ?? 0) - parseFloat(c.cupoDisponible ?? c.cupoTotal ?? 0)), 0);
@@ -63,7 +68,11 @@ export const CreditCards = () => {
       
       // Calcular la fecha de pago exacta para este ciclo activo
       const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
-      const date = new Date(activeSlot.date.getFullYear(), activeSlot.date.getMonth() + payMonthOffset, Number(c.fechaPago));
+      // Día recortado al mes destino: un fechaPago=31 en un mes de 30 desbordaba
+      // al mes siguiente y la fecha de pago salía corrida.
+      const payYear  = activeSlot.date.getFullYear();
+      const payMonth = activeSlot.date.getMonth() + payMonthOffset;
+      const date = new Date(payYear, payMonth, effectiveDayInMonth(c.fechaPago, payYear, payMonth));
       const dPago = daysUntil(date);
       
       // Tiene deuda exigible si el ciclo activo ya cerró (isPast)
@@ -135,7 +144,7 @@ export const CreditCards = () => {
       </div>
 
       {/* ── Banner consolidado: estado de cuenta del mes ──────────────── */}
-      {!loading && cardsConDeuda.length > 0 && (
+      {!loading && !error && cardsConDeuda.length > 0 && (
         <div
           className="cc-banner-grid"
           style={{
@@ -199,7 +208,7 @@ export const CreditCards = () => {
       )}
 
       {/* Filter chips */}
-      {!loading && cards.length > 0 && (
+      {!loading && !error && cards.length > 0 && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.875rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => setFilterDeuda(false)}
@@ -232,6 +241,8 @@ export const CreditCards = () => {
         <div className="cc-cards-grid">
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-lg)' }} />)}
         </div>
+      ) : error ? (
+        <LoadError onRetry={load} title="No se pudieron cargar tus tarjetas" />
       ) : cards.length === 0 ? (
         <div className="card">
           <div className="empty-state">

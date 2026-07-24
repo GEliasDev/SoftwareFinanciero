@@ -6,7 +6,11 @@ import { Income } from '../income/income.model.js';
 import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
 import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
 
-const like = (q) => ({ [Op.iLike]: `%${q}%` });
+// Escapa los comodines de LIKE: sin esto, buscar "%" o "_" los interpretaba
+// como patrón y devolvía TODO (o coincidencias raras) en vez de buscar el
+// carácter literal. (Sequelize ya parametriza el valor: no hay inyección SQL.)
+const escapeLike = (s) => String(s).replace(/[\\%_]/g, m => `\\${m}`);
+const like = (q) => ({ [Op.iLike]: `%${escapeLike(q)}%` });
 
 export const SearchService = {
     search: async (userId, q) => {
@@ -54,7 +58,8 @@ export const SearchService = {
         debts.forEach(d => results.push({
             type: 'personal_debt', id: d.id,
             name: d.nombre,
-            meta: `Obligación personal · ${d.status}`,
+            // "Gastos" de cara al usuario desde 2026-07-23 (ver CLAUDE.md).
+            meta: `${d.tipo === 'deuda' ? 'Deuda personal' : 'Gasto'} · ${d.status}`,
             route: `/personal-debts/${d.id}`,
         }));
 

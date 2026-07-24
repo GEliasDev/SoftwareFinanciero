@@ -7,6 +7,7 @@ import {
   ArrowLeft, Repeat, ChevronRight, ChevronLeft, Check, AlertCircle, CreditCard,
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
+import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { fmt } from '../utils/format';
 
 const STEPS = ['Servicio', 'Cobro'];
@@ -76,8 +77,8 @@ export const SubscriptionNew = () => {
 
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
-      <label className="form-label">{label}</label>
-      <input className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
+      <label className="form-label" htmlFor={name}>{label}</label>
+      <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
       {showErr(name) ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p> : hint && <p className="form-hint">{hint}</p>}
     </div>
   );
@@ -164,8 +165,15 @@ export const SubscriptionNew = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>El cobro</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Cuándo y desde cuándo te cobran</p>
-                <div className="form-row-2">
-                  {field('diaCobro', 'Día de cobro * (1–31)', 'Día del mes en que se cobra', { type: 'number', min: '1', max: '31', placeholder: 'Ej: 15' })}
+                <DayOfMonthPicker
+                  label="Día de cobro"
+                  required
+                  nombreEvento="cobro"
+                  value={formData.diaCobro}
+                  onChange={d => { setFormData(p => ({ ...p, diaCobro: String(d) })); markTouched('diaCobro'); }}
+                  error={showErr('diaCobro') ? errors.diaCobro : null}
+                />
+                <div style={{ marginTop: '0.75rem', maxWidth: 260 }}>
                   {field('fechaInicio', 'Fecha de inicio *', 'Desde cuándo está activa', { type: 'date' })}
                 </div>
                 <div style={{ marginTop: '0.75rem', maxWidth: 260 }}>

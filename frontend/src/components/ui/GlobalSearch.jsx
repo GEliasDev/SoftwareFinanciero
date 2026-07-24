@@ -8,7 +8,7 @@ const TYPE_META = {
   bank_credit:   { label: 'Crédito bancario',    Icon: Landmark,   color: '#DC2626' },
   credit_card:   { label: 'Tarjeta de crédito',  Icon: CreditCard, color: '#3B82F6' },
   income:        { label: 'Ingreso',             Icon: Wallet,     color: '#059669' },
-  personal_debt: { label: 'Obligación personal', Icon: Handshake,  color: '#7C3AED' },
+  personal_debt: { label: 'Gasto',               Icon: Handshake,  color: '#7C3AED' },
   savings_goal:  { label: 'Meta de ahorro',      Icon: Target,     color: '#0EA5E9' },
 };
 
@@ -17,23 +17,36 @@ export const GlobalSearch = ({ onClose }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [active, setActive]   = useState(0);
+  const [failed, setFailed]   = useState(false);
   const inputRef  = useRef(null);
   const timerRef  = useRef(null);
+  const reqIdRef  = useRef(0);
   const navigate  = useNavigate();
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   useEffect(() => {
     clearTimeout(timerRef.current);
-    if (query.length < 2) { setResults([]); return; }
+    if (query.length < 2) { setResults([]); setFailed(false); return; }
     setLoading(true);
+    setFailed(false);
     timerRef.current = setTimeout(async () => {
+      // Secuencia por petición: con red lenta, la respuesta de una consulta
+      // vieja podía llegar DESPUÉS de una nueva y pisar los resultados con
+      // los del texto anterior. Solo se aplica la respuesta más reciente.
+      const reqId = ++reqIdRef.current;
       try {
         const res = await api.get(`/search?q=${encodeURIComponent(query)}`);
+        if (reqId !== reqIdRef.current) return;
         setResults(res.data);
         setActive(0);
-      } catch { setResults([]); }
-      finally { setLoading(false); }
+      } catch {
+        if (reqId !== reqIdRef.current) return;
+        setResults([]);
+        setFailed(true);
+      } finally {
+        if (reqId === reqIdRef.current) setLoading(false);
+      }
     }, 280);
     return () => clearTimeout(timerRef.current);
   }, [query]);
@@ -124,8 +137,15 @@ export const GlobalSearch = ({ onClose }) => {
           </div>
         )}
 
+        {/* Error de búsqueda — distinto de "no hay resultados" */}
+        {query.length >= 2 && !loading && failed && (
+          <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: 'var(--neg-600)' }}>No se pudo buscar. Revisa tu conexión.</p>
+          </div>
+        )}
+
         {/* Empty */}
-        {query.length >= 2 && !loading && results.length === 0 && (
+        {query.length >= 2 && !loading && !failed && results.length === 0 && (
           <div style={{ padding: '24px 16px', textAlign: 'center' }}>
             <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Sin resultados para "{query}"</p>
           </div>

@@ -4,6 +4,7 @@ import { PersonalDebtService } from '../services/personalDebtService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
+import { LoadError } from '../components/ui/LoadError';
 import { TrendingDown, Wallet, Percent, Pencil, Plus, Repeat, ArrowLeft, Trash2, AlertCircle, Check, X, History } from 'lucide-react';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
@@ -113,10 +114,13 @@ export const PersonalDebtDetail = () => {
   const [debt, setDebt]       = useState(null);
   const [abonos, setAbonos]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(false);
   const [showAbono, setShowAbono] = useState(false);
 
   const load = () => {
-    PersonalDebtService.getById(id).then(setDebt).catch(console.error).finally(() => setLoading(false));
+    setLoading(true);
+    setError(false);
+    PersonalDebtService.getById(id).then(setDebt).catch(() => setError(true)).finally(() => setLoading(false));
     PersonalDebtService.getAbonos(id).then(setAbonos).catch(() => {});
   };
   useEffect(() => { load(); }, [id]);
@@ -137,7 +141,11 @@ export const PersonalDebtDetail = () => {
   };
 
   if (loading) return <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-md)', margin: 24 }} />;
-  if (!debt) return null;
+  if (error || !debt) return (
+    <div className="animate-fade-in" style={{ padding: 24 }}>
+      <LoadError onRetry={load} title="No se pudo cargar esta obligación" />
+    </div>
+  );
 
   const isDeuda    = debt.tipo === 'deuda';
   const montoTotal = parseFloat(debt.montoTotal ?? 0);

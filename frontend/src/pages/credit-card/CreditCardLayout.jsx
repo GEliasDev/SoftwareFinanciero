@@ -5,9 +5,10 @@ import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, PieChart }
 import { CreditCardService } from '../../services/creditCardService';
 import { TabNav } from '../../components/ui/TabNav';
 import { fmt, nextOccurrence, daysUntil } from '../../utils/format';
-import { CATEGORIES, buildSchedule } from '../../utils/creditCard';
+import { CATEGORIES, buildSchedule, TASA_USURA_EA } from '../../utils/creditCard';
 
-export const TASA_USURA_EA = 28.5;
+// Re-exportada para no romper imports existentes; la fuente vive en utils/creditCard.
+export { TASA_USURA_EA };
 
 export const CreditCardLayout = () => {
   const { id } = useParams();

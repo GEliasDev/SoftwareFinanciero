@@ -14,7 +14,8 @@ export const PushSubscriptionController = {
 
     unsubscribe: async (req, res, next) => {
         try {
-            await PushSubscriptionService.unsubscribe(req.body.endpoint);
+            // Siempre el userId de la sesión, nunca un id del body.
+            await PushSubscriptionService.unsubscribe(req.user.id, req.body?.endpoint);
             res.json({ ok: true });
         } catch (err) { next(err); }
     },

@@ -5,7 +5,8 @@ import { ReminderService } from '../services/reminderService';
 import { Plus, Bell, Trash2, Calendar, Clock, BellRing, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
-import { fmtDateLong, daysUntil, urgencyStyle } from '../utils/format';
+import { LoadError } from '../components/ui/LoadError';
+import { fmtDateLong, daysUntil, urgencyStyle, parseLocalDate } from '../utils/format';
 
 const DEBT_TYPE = {
   subscription: { label: 'Suscripción',        cls: 'badge badge-primary' },
@@ -19,7 +20,9 @@ const STATUS = {
   cancelado: { label: 'Cancelado', cls: 'badge badge-danger'  },
 };
 
-const reminderDays = (r) => (r.fechaRecordatorio ? daysUntil(new Date(r.fechaRecordatorio)) : null);
+// parseLocalDate y no `new Date(str)`: el DATEONLY se parsea en UTC y en UTC-5
+// retrocede un día, corriendo el conteo y el grupo (Hoy / 7 días / Más adelante).
+const reminderDays = (r) => (r.fechaRecordatorio ? daysUntil(parseLocalDate(r.fechaRecordatorio)) : null);
 
 const BUCKETS = [
   { key: 'hoy',      title: 'Hoy y vencidos', test: (d) => d !== null && d <= 0 },
@@ -32,12 +35,14 @@ export const Reminders = () => {
   const navigate = useNavigate();
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = () => {
     setLoading(true);
+    setError(false);
     ReminderService.getAll()
       .then(setReminders)
-      .catch(console.error)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
 
@@ -80,7 +85,7 @@ export const Reminders = () => {
         }
       />
 
-      {!loading && reminders.length > 0 && (
+      {!loading && !error && reminders.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
           <StatCard label="Activos" value={`${activos}`} delta="en seguimiento" icon={CheckCircle2} tone="pos" />
           <StatCard label="Próximos 7 días" value={`${proximos7}`} delta="por vencer" icon={BellRing} tone={proximos7 > 0 ? 'warn' : 'neutral'} />
@@ -92,6 +97,8 @@ export const Reminders = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 'var(--radius-md)' }} />)}
         </div>
+      ) : error ? (
+        <LoadError onRetry={load} title="No se pudieron cargar tus recordatorios" />
       ) : reminders.length === 0 ? (
         <div className="card">
           <div className="empty-state">

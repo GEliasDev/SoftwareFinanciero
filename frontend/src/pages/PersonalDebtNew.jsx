@@ -46,9 +46,9 @@ export const PersonalDebtNew = () => {
 
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
-      <label className="form-label">{label}</label>
+      <label className="form-label" htmlFor={name}>{label}</label>
       <input
-        className={`form-input ${showErr(name) ? 'error' : ''}`}
+        id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
         value={form[name]}
         onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
         onBlur={() => mark(name)}
@@ -94,7 +94,7 @@ export const PersonalDebtNew = () => {
       />
 
       {/* Selector de tipo */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: '1.5rem' }}>
+      <div className="form-row-2" style={{ marginBottom: '1.5rem' }}>
         {TIPO_OPTIONS.map(({ value, icon: Icon, label, desc }) => (
           <div
             key={value}

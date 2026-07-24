@@ -7,6 +7,7 @@ import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
 import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
 import { Op } from 'sequelize';
 import { toCOP } from '../../utils/currency.js';
+import { effectiveDayInMonth } from '../../utils/cycleDay.js';
 
 const toNum = (v) => parseFloat(v) || 0;
 // Suscripciones pueden estar en USD/EUR: convertir SIEMPRE antes de sumar con valores COP.
@@ -14,9 +15,14 @@ const subMonthlyCOP = (s) => toCOP(toNum(s.montoMensual), s.moneda);
 
 const nextPaymentDate = (dayOfMonth) => {
     const today = new Date();
-    const day = Number(dayOfMonth);
-    let d = new Date(today.getFullYear(), today.getMonth(), day);
-    if (d < today) d.setMonth(d.getMonth() + 1);
+    // Día recortado al mes real: un dayOfMonth=31 con new Date(2026,5,31)
+    // desbordaba a julio y "próximo pago" del dashboard salía el 1, no el 30.
+    const enMes = (y, m) => new Date(y, m, effectiveDayInMonth(dayOfMonth, y, m));
+    let d = enMes(today.getFullYear(), today.getMonth());
+    if (d < today) {
+        const nxt = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        d = enMes(nxt.getFullYear(), nxt.getMonth());
+    }
     return d;
 };
 
@@ -132,9 +138,11 @@ export const AnalyticsService = {
         };
         const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo' || isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
         const totalIncomeExtra = incomes.filter(i => i.tipo === 'extra' && isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
-        const monthlyPersonalDebts = personalDebts
-            .filter(d => d.status === 'activo')
-            .reduce((a, d) => a + toNum(d.montoCuota), 0);
+        // Solo los PersonalDebt tipo 'gasto' tienen montoCuota (las deudas lo
+        // guardan en null y se abonan contra saldoPendiente), así que esta suma
+        // es en la práctica "gastos recurrentes del mes".
+        const gastosActivos = personalDebts.filter(d => d.status === 'activo' && d.tipo === 'gasto');
+        const monthlyPersonalDebts = gastosActivos.reduce((a, d) => a + toNum(d.montoCuota), 0);
         const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
         const totalObligaciones = monthlySubscriptions + monthlyBankCredits + monthlyCreditCards + monthlyPersonalDebts;
         const dineroLibre = totalIncome - totalObligaciones - monthlySavings;
@@ -171,18 +179,66 @@ export const AnalyticsService = {
 
         creditCards.filter(c => c.status === 'activa').forEach(c => {
             const d = nextPaymentDate(c.fechaPago);
+            const amount = (c.CreditCardPurchases || [])
+                .filter(p => p.status === 'activa')
+                .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0);
+            // Sin cuotas activas no hay nada que pagar: listarla como "pago
+            // próximo" con monto vacío ("—") hacía pensar que se debe algo.
+            if (amount <= 0) return;
             if (d <= in30) upcoming.push({
                 date: d.toISOString().slice(0, 10),
                 name: c.nombre,
                 type: 'credit_card',
-                amount: (c.CreditCardPurchases || [])
-                    .filter(p => p.status === 'activa')
-                    .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0),
+                amount,
                 moneda: 'COP',
             });
         });
 
         upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+        // Desglose por ítem: el Dashboard muestra el total arriba y el detalle
+        // debajo. La suma de cada lista cuadra exactamente con su total en
+        // `obligations` (por eso las suscripciones con tarjeta vinculada se
+        // excluyen aquí también — ya entran por el lado de la tarjeta).
+        const breakdown = {
+            creditCards: creditCards
+                .filter(c => c.status === 'activa')
+                .map(c => ({
+                    id: c.id,
+                    nombre: c.nombre,
+                    detalle: c.entidad,
+                    monto: (c.CreditCardPurchases || [])
+                        .filter(p => p.status === 'activa')
+                        .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0),
+                }))
+                .filter(c => c.monto > 0)
+                .sort((a, b) => b.monto - a.monto),
+            bankCredits: bankCredits
+                .filter(c => c.status === 'activo')
+                .map(c => ({
+                    id: c.id,
+                    nombre: c.nombre,
+                    detalle: c.entidad,
+                    monto: toNum(c.valorCuota) + toNum(c.cuotaAdministracion),
+                }))
+                .sort((a, b) => b.monto - a.monto),
+            subscriptions: subscriptions
+                .filter(s => s.status === 'activa' && !s.creditCardId)
+                .map(s => ({
+                    id: s.id,
+                    nombre: s.nombre,
+                    detalle: s.moneda !== 'COP' ? s.moneda : null,
+                    monto: subMonthlyCOP(s),
+                }))
+                .sort((a, b) => b.monto - a.monto),
+            personalDebts: gastosActivos
+                .map(d => ({ id: d.id, nombre: d.nombre, detalle: d.categoria, monto: toNum(d.montoCuota) }))
+                .sort((a, b) => b.monto - a.monto),
+            savings: savingsGoals
+                .map(g => ({ id: g.id, nombre: g.nombre, detalle: g.emoji, monto: toNum(g.aporteMensual) }))
+                .filter(g => g.monto > 0)
+                .sort((a, b) => b.monto - a.monto),
+        };
 
         return {
             income: { total: totalIncome, extra: totalIncomeExtra },
@@ -195,11 +251,31 @@ export const AnalyticsService = {
                 savings: monthlySavings,
                 total: totalObligaciones,
             },
+            breakdown,
             debt: {
                 bankCredits: totalDebtCredits,
                 creditCards: totalDebtCards,
                 personalDebts: totalDebtPersonal,
                 total: totalDebtCredits + totalDebtCards + totalDebtPersonal,
+            },
+            // Desglose de SALDOS (lo que se debe), no de cuotas mensuales. Aquí
+            // sí aparecen los PersonalDebt tipo 'deuda', que no tienen cuota
+            // mensual y por eso no salen en `breakdown`.
+            debtBreakdown: {
+                bankCredits: bankCredits
+                    .filter(c => c.status !== 'pagado')
+                    .map(c => ({ id: c.id, nombre: c.nombre, detalle: c.entidad, monto: toNum(c.saldoPendiente) }))
+                    .filter(c => c.monto > 0)
+                    .sort((a, b) => b.monto - a.monto),
+                creditCards: creditCards
+                    .map(c => ({ id: c.id, nombre: c.nombre, detalle: c.entidad, monto: toNum(c.cupoTotal) - toNum(c.cupoDisponible) }))
+                    .filter(c => c.monto > 0)
+                    .sort((a, b) => b.monto - a.monto),
+                personalDebts: personalDebts
+                    .filter(d => d.tipo === 'deuda' && d.status === 'activo')
+                    .map(d => ({ id: d.id, nombre: d.nombre, detalle: d.prestamista, monto: toNum(d.saldoPendiente) }))
+                    .filter(d => d.monto > 0)
+                    .sort((a, b) => b.monto - a.monto),
             },
             counts: {
                 activeSubscriptions: subscriptions.filter(s => s.status === 'activa').length,
@@ -240,8 +316,12 @@ export const AnalyticsService = {
             const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
             const label = d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
 
+            // Igual que en getSummary/getRecommendations: las suscripciones con
+            // tarjeta vinculada NO se suman aquí, su cargo ya viene por
+            // `cardTotal` (subscriptionChargeJob crea un CreditCardPurchase real).
             const subTotal = subscriptions
                 .filter(s => {
+                    if (s.creditCardId) return false;
                     const start = new Date(s.fechaInicio);
                     const end = s.fechaFin ? new Date(s.fechaFin) : null;
                     return start <= monthEnd && (!end || end >= monthStart) && s.status !== 'cancelada';

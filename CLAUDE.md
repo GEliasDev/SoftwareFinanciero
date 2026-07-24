@@ -105,10 +105,12 @@ como obligación solo informativa:
   día que el cron corra con cupo suficiente.
 - Cupo descontado de forma atómica (`literal` con `GREATEST`, mismo patrón que
   `registerPurchasePayment`/`undoPurchasePayment`), no read-modify-write.
-- **Evitar doble conteo en dineroLibre**: `analytics.service.js` excluye las
-  suscripciones con `creditCardId` seteado de la suma directa de `Subscription.montoMensual`
-  (en `getSummary` y `getRecommendations`) porque su obligación ya entra por el lado de
-  `CreditCardPurchase.valorCuotaMensual` de la tarjeta. `SubscriptionService.getSummary`
+- **Evitar doble conteo**: las suscripciones con `creditCardId` se excluyen de la suma
+  directa de `Subscription.montoMensual` en **cuatro** sitios (los tres de
+  `analytics.service.js`: `getSummary`, `getRecommendations` y `getMonthlyTrend`; más la
+  proyección de `Reports.jsx`), porque su obligación ya entra por
+  `CreditCardPurchase.valorCuotaMensual`. Si se agrega otro cálculo que sume
+  suscripciones y compras de tarjeta a la vez, aplicar el mismo filtro. `SubscriptionService.getSummary`
   (total mostrado en `/subscriptions`) SÍ sigue sumando todas, es informativo y no
   alimenta dineroLibre.
 
@@ -128,7 +130,7 @@ como obligación solo informativa:
 ### Rutas frontend completas (App.jsx)
 ```
 /                          → Dashboard
-/subscriptions             → lista | /new | /:id
+/subscriptions             → lista | /new | /:id | /:id/edit
 /credit-cards              → lista | /new
 /credit-cards/:id          → CreditCardLayout (tabs anidados)
   index                    → CardOverview
@@ -176,7 +178,19 @@ sesión — evitar el parpadeo de carga ahí).
 ## Comandos
 - Todo junto: `npm run dev` (raíz) — levanta backend y frontend.
 - Frontend: `cd frontend && npm run dev` (Vite, :5174) · `npm run build` · `npm run lint` · `npm test` (vitest).
-- Backend: `cd backend && npm run dev` (nodemon, :3001).
+- Backend: `cd backend && npm run dev` (nodemon, :3001) · `npm test` (vitest).
+
+## Tests
+Vitest en ambos lados. La cobertura se concentra a propósito en la **lógica de dinero
+y fechas**, que es donde han salido todos los bugs reales:
+- Frontend (`src/utils/__tests__/`): `format.test.js` (fechas, `parseLocalDate`,
+  `effectiveDayInMonth`, `nextOccurrence`), `currency.test.js` (conversión USD/EUR,
+  mensual vs anual), `bankCredit.test.js`.
+- Backend (`src/**/__tests__/`): `cycleDay.test.js`, `reminderCalculation.test.js`
+  (usa `vi.useFakeTimers()` para congelar el reloj en casos de febrero, meses de 30,
+  cruces de año y horas nocturnas), `bankCreditCalculation.test.js`.
+- Al corregir un bug de cálculo, **agregar el test de regresión** que lo habría
+  atrapado (patrón seguido en toda la auditoría de julio 2026).
 
 ## Verificación visual (importante)
 No hay navegador integrado. **Playwright + Chromium están instalados localmente en
@@ -211,14 +225,30 @@ motor antes de decidir:
 - **Tipografía:** IBM Plex Sans (pesos 400-700). Dinero/números con `.tabular`
   (figuras tabulares).
 - **Componentes base** en `frontend/src/components/ui/`: `PageHeader`, `StatCard`,
-  `SectionCard`, `Money`, `BrandMark`. Por módulo:
+  `SectionCard`, `Money`, `BrandMark`, `Stepper`, `TabNav`, `ErrorBoundary`,
+  `LoadError` (estado de "no cargó" con reintento), `DayOfMonthPicker` (selector de
+  día de ciclo tipo calendario con aviso 29-31). Por módulo:
   `components/credit-cards/`, `components/bank-credits/`, `components/subscriptions/`.
 - **Formato** centralizado en `frontend/src/utils/format.js` (`fmt`, `fmtDateLong`,
-  `nextOccurrence`, `daysUntil`, `urgencyStyle`, `localISODate`, `monthKey`,
-  `addMonths`, `capFirst`, ...). No duplicar.
+  `parseLocalDate`, `effectiveDayInMonth`, `nextOccurrence`, `daysUntil`,
+  `urgencyStyle`, `localISODate`, `monthKey`, `addMonths`, `capFirst`, ...). No
+  duplicar. Conversión de moneda de suscripciones (USD/EUR→COP) en
+  `frontend/src/utils/currency.js` (`toCOP`, `subMonthlyCOP`, `subAnnualCOP`),
+  espejo de `backend/src/utils/currency.js`.
 - **Estados vacíos**: usar las clases CSS `.empty-state`, `.empty-state-icon`,
   `.empty-state-title` dentro de un `.card` (patrón canónico en las 10 listas;
   el componente `EmptyState.jsx` se eliminó por duplicado/muerto).
+- **Estado de error de carga**: usar `<LoadError onRetry={load} title="…" />`
+  (`components/ui/LoadError.jsx`), NUNCA `.catch(console.error)` a secas. El catch
+  mudo mostraba el estado VACÍO cuando en realidad la petición falló — el usuario no
+  distinguía "no tengo datos" de "no cargó". Patrón: estado `error`, `load()` que
+  hace `setError(false)` al inicio y `setError(true)` en el catch, y en el render
+  `loading ? skeleton : error ? <LoadError/> : vacío/datos`. Aplicado en las 9
+  páginas de lista/detalle.
+- **Labels de formulario deben asociarse al input** (`htmlFor`/`id`). El helper
+  `field(name, …)` que se repite en los formularios ya pone `htmlFor={name}` +
+  `id={name}`; los `<label className="form-label">` sueltos junto a `<select>`
+  inline aún no — al agregar uno nuevo, asócialo.
 - **Grilla de KPIs**: clase `.kpi-grid` (auto-fit en desktop, 2 columnas en
   tablet/móvil). No usar grids inline para filas de StatCards.
 - **Filas de formulario a 2 columnas**: usar la clase `.form-row-2` (colapsa a
@@ -247,6 +277,20 @@ motor antes de decidir:
 - **Formularios de alta = asistente por pasos** (wizard) con indicador de progreso,
   validación en vivo (onBlur), feedback de envío y **vista previa en vivo**. Los
   formularios simples pueden ser de una página seccionada.
+- **El formulario de edición debe ser espejo del de alta** (unificado 2026-07-23):
+  mismo layout `wizard-grid` (vista previa a la izquierda + formulario a la derecha),
+  mismos pasos, mismos textos de ayuda. La edición vive SIEMPRE en su propia ruta
+  `/<modulo>/:id/edit` — nunca como formulario inline dentro del detalle.
+  - Los campos que el `updateSchema` del backend NO acepta se muestran igual que los
+    editables pero con `disabled` + hint con icono `Lock` explicando por qué
+    (helper `lockedField` en `BankCreditEdit`/`SubscriptionEdit`). **No ocultarlos**:
+    la consistencia visual con el alta es el objetivo, y así el usuario entiende que
+    el dato existe pero es inmutable.
+  - Motivo: antes cada edición era una versión recortada distinta (sin preview, a una
+    columna) y, peor, `SubscriptionDetail` editaba inline enviando `monto`/`moneda`/
+    `frecuencia`/`fechaInicio` que Zod descartaba en silencio — el usuario creía haber
+    cambiado el precio y no pasaba nada. Ver gotcha de Zod más abajo.
+  - Ingresos es el caso ideal: un solo `IncomeForm` sirve para alta y edición.
 - Confirmaciones con **SweetAlert** (no `window.confirm`).
 
 ## Modelo de datos clave: CreditCardPurchase.tipo
@@ -260,6 +304,30 @@ El campo `tipo` distingue el origen del cargo:
 | `cuota_manejo` | cargo mensual por cuota de manejo | **sí** |
 
 Los tipos cupo-neutral (`comision`, `cuota_manejo`) **nunca** deben afectar `cupoDisponible` al crearse, pagarse ni borrarse. Cualquier lógica de cupo debe respetar esta distinción.
+
+## Nomenclatura: "Gastos" (antes "Deudas Personales")
+El módulo `personalDebt` se presenta al usuario como **"Gastos"** (sidebar, Dashboard,
+Reportes, título de la lista) desde 2026-07-23. El motivo: sus dos tipos son
+`gasto` (recurrente, con `montoCuota` → sí pesa en el compromiso mensual) y `deuda`
+(préstamo informal, `montoCuota` en null → solo tiene saldo). Como únicamente los
+`gasto` suman al mensual, la etiqueta "Deudas personales" describía mal lo que el
+número mostraba. Las rutas, modelos y servicios siguen llamándose `personal-debts` /
+`personalDebt` — el cambio es solo de cara al usuario.
+
+## Desglose en el Dashboard (total arriba, detalle debajo)
+`analytics.service.js::getSummary` devuelve, además de los totales:
+- `breakdown` — cuotas mensuales por ítem de cada categoría (`creditCards`,
+  `bankCredits`, `subscriptions`, `personalDebts`, `savings`). **La suma de cada
+  lista cuadra exactamente con su total en `obligations`**, por eso las suscripciones
+  con `creditCardId` se excluyen aquí también.
+- `debtBreakdown` — SALDOS adeudados por ítem (`creditCards`, `bankCredits`,
+  `personalDebts`). Aquí sí aparecen los `PersonalDebt` tipo `deuda`, que no tienen
+  cuota mensual y por eso no salen en `breakdown`.
+
+Cada ítem es `{ id, nombre, detalle, monto }`. El Dashboard los pinta como filas
+desplegables (clases `.dist-legend-toggle` / `.dist-sublist` / `.dist-subrow`): el
+total va en la fila y el detalle por ítem se despliega debajo. Si se agrega una
+categoría nueva, añadirla a las dos listas para que el total siga cuadrando.
 
 ## Cálculo "Dinero Libre"
 
@@ -283,10 +351,75 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   se guarda como `0.0162` (el backend hace `tasaInteres/100`). En cambio
   `CreditCard.tasaInteresMensual` SÍ es porcentaje (`2.18`). No volver a dividir entre
   100 la del crédito (bug histórico: el plan de pagos mostraba interés ~100× menor).
+- **Tasa de usura de referencia**: constante única `TASA_USURA_EA` (= 28.5) en
+  `frontend/src/utils/creditCard.js`. Antes estaba copiada a mano como `28.5` en 4
+  archivos. Importarla, no volver a escribir el número.
+- **Días de ciclo 29/30/31 hay que recortarlos al mes en curso.** `diaCobro` y
+  `fechaCorte` se guardan como 1..31, pero con `if (hoy < diaCobro) continue` una
+  suscripción con día 31 NUNCA se cobraba en abril, junio, septiembre, noviembre ni
+  febrero (cuota perdida, dinero real), y `new Date(2026, 5, 31)` desbordaba a julio
+  rompiendo la comprobación de idempotencia. Usar
+  `effectiveDayInMonth(dia, año, mesIndex)` de `backend/src/utils/cycleDay.js` en
+  cualquier job o cálculo con ciclo mensual (aplicado en `subscriptionChargeJob`,
+  `cuotaManejoJob` y `reminderCalculation.js`). Cubierto por tests en
+  `utils/__tests__/cycleDay.test.js` y `reminder/utils/__tests__/`.
+- **Recordatorios de pago (`reminderCalculation.js` + `reminder.service.js`)**: todo
+  el cálculo de fechas usa día local + `effectiveDayInMonth`, NO `toISOString()` ni
+  `new Date(str)`. Antes `calcularProximaFechaPago(31)` agendaba el pago el 1 o 3 del
+  mes siguiente, y `markAsSentAndReschedule` reprogramaba mal cada ciclo con
+  `setDate(31)`. Los DATEONLY con hora local a medianoche + toISOString eran seguros
+  (misma fecha en UTC), pero se unificó a formateo local para no depender de eso.
+  Cubierto por 11 tests con `vi.useFakeTimers()`.
+- **`budget.controller.js` calculaba el mes por defecto con `toISOString()`** (UTC):
+  después de las ~7pm del último día del mes mostraba el mes siguiente. Ahora usa
+  hora local, igual que `budget.service.js`.
+- **El desborde del día 31 estaba en CINCO sitios fuera de los jobs** (barrido completo
+  2026-07-24): `analytics.service.js::nextPaymentDate` (dashboard),
+  `creditCard.service.js::getUpcomingPayments` y `::getOverview` (días al próximo pago),
+  `bankCreditMoraJob.js::expectedCuotasPagadas` (la cuota se daba por vencida tarde) y
+  `bankCreditCalculation.js` (la `fechaFin` guardada del crédito caía el 1 del mes
+  siguiente — el comentario del código incluso afirmaba, en falso, que el constructor
+  `Date(y,m,d)` evitaba el overflow: **sí desborda**). Todos usan ya
+  `effectiveDayInMonth`. Al construir CUALQUIER fecha con un día 1..31, recortarlo.
+  Si el mes puede salirse de 0..11, normalizar primero con `new Date(y, m, 1)`.
+- **Fechas "de hoy" por defecto (abono de deuda, nombre de archivo del export)** usaban
+  `new Date().toISOString().slice(0,10)` (UTC): de noche registraban el día siguiente.
+  Usar `localToday()`/`localMonth()` de `backend/src/utils/localDate.js`. (Ojo: construir
+  `new Date(año,mes,día).toISOString()` a medianoche local SÍ es seguro; el problema es
+  `new Date()` con la hora actual.)
+- **SEGURIDAD — bypass de 2FA (encontrado y cerrado 2026-07-24)**: `authenticateToken`
+  (`core/middleware/jwtMiddleware.js`) verificaba la firma del JWT pero NO el claim
+  `purpose`. El `tempToken` de 2FA (`purpose:'2fa-pending'`, emitido con solo la
+  contraseña antes del código) era por tanto válido en TODA ruta protegida durante 5
+  min — saltándose el 2FA por completo. Ahora el middleware rechaza cualquier token con
+  `purpose` (los de sesión reales nunca lo llevan). Si se emite otro token de propósito
+  especial (reset, etc.), NO usar `JWT_SECRET` para rutas de sesión sin este chequeo.
+  Cubierto por `core/middleware/__tests__/jwtMiddleware.test.js`.
+- **`new Date('YYYY-MM-DD').getMonth()` devuelve el mes ANTERIOR si el día es 1.**
+  El string se parsea en UTC y se lee en local (UTC-5), así que `'2026-07-01'` cae en
+  el 30 de junio local → `getMonth()` = junio. Reventó la rama `anual` de
+  `subscriptionChargeJob` (la suscripción no cobraba en su mes aniversario). Para
+  sacar año/mes de un DATEONLY, leer el string: `Number(str.slice(5,7)) - 1`.
 - **Nunca `toISOString()` para fechas/meses "de hoy"**: en Colombia (UTC-5) después de
   las ~7 p. m. devuelve el día/mes siguiente, y `new Date('YYYY-MM-DD')` parsea en UTC
   (corría el mes en Presupuesto). Usar `localISODate()`, `monthKey()`, `addMonths()`
   y `fmtDate()` de `frontend/src/utils/format.js`.
+- **Para MOSTRAR o comparar un DATEONLY, usar `parseLocalDate()`/`fmtDateLong()`, nunca
+  `new Date(str)` directo.** `new Date('2026-07-01')` parsea en UTC y, leído en UTC-5,
+  retrocede al 30 de junio: TODA fecha salía un día antes y un 1 de enero mostraba
+  "31 dic del año anterior" (bug encontrado 2026-07-23 en 11 pantallas, incl. el
+  "próximo pago" de Recordatorios). `parseLocalDate` (en `utils/format.js`) construye
+  el Date en hora local desde 'YYYY-MM-DD' y deja pasar los timestamps con hora (que sí
+  son instantes reales). `fmtDateLong` ya lo usa. Cubierto por tests en
+  `utils/__tests__/format.test.js`.
+- **Selector de "día del mes" (cobro/corte/pago): usar `<DayOfMonthPicker>`, no un
+  `<input type=number>` suelto.** El componente (`components/ui/DayOfMonthPicker.jsx`)
+  muestra los 31 días como grilla tipo calendario, calcula la próxima fecha real en
+  vivo y **advierte cuando el día 29-31 no existe en algún mes** (el cobro se corre al
+  último día — ver `effectiveDayInMonth`). Ya conectado en los 7 formularios con día de
+  ciclo (Suscripción, Tarjeta ×2, Crédito, Ingreso). `nextOccurrence` y el cálculo de
+  fecha de pago en `CreditCards.jsx` también recortan el día con `effectiveDayInMonth`
+  para no desbordar al mes siguiente.
 - **Suscripciones pueden ser USD/EUR**: convertir con `toCOP()` (`backend/src/utils/currency.js`)
   antes de sumarlas con valores COP en analytics.
 - **`XLSX.read()` de SheetJS corrompe números/fechas en formato es-CO al leer
@@ -300,6 +433,28 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   la coacción numérica).
 - **Los `<select>` devuelven STRING.** El backend valida con Zod `z.number()` (sin
   coerción): convertir con `Number()` antes de enviar IDs/numéricos.
+- **`Subscription.status` es `'activa'` (femenino), NO `'activo'`.** Los demás
+  módulos usan masculino (`BankCredit`/`PersonalDebt`/`Income`/`Reminder` →
+  `'activo'`; `CreditCardPurchase` → `'activa'`). Un filtro `s.status === 'activo'`
+  sobre suscripciones no casa nunca y devuelve 0 sin error: pasó en la proyección de
+  `Reports.jsx`, donde la columna "Suscripciones" mostró $0 durante mucho tiempo
+  (corregido 2026-07-23). Al filtrar por estado, verificar el enum del modelo.
+- **Costo mensual de una suscripción: usar `montoMensual`, no `monto`.** `monto` es
+  el valor por cobro; para una suscripción anual, tratarlo como mensual multiplica el
+  gasto por 12. `montoMensual` ya viene dividido por el backend. Convertir siempre a
+  COP con `subMonthlyCOP()` de `frontend/src/utils/currency.js` (espejo de
+  `backend/src/utils/currency.js`, mismas tasas — mantener ambos en sync).
+- **Los totales de una lista deben filtrar por estado activo.** La lista de
+  suscripciones sumaba también las canceladas/pausadas en "Costo mensual"
+  (corregido 2026-07-23). Mostrar todas las filas está bien; sumarlas todas no.
+- **Zod descarta en silencio las claves que no están en el schema** (comportamiento
+  por defecto de `z.object`): si el frontend manda un campo que el `updateSchema` no
+  declara, la petición responde 200 pero ese campo NUNCA se guarda, sin error visible.
+  Bug real encontrado 2026-07-23: la edición inline de suscripciones enviaba `monto`,
+  `moneda`, `frecuencia` y `fechaInicio`, ninguno presente en `subscriptionUpdateSchema` —
+  editar el precio de una suscripción "guardaba" sin cambiar nada. Antes de agregar un
+  campo a un formulario de edición, verificar que exista en el `updateSchema`; si no
+  existe a propósito, mostrarlo como solo-lectura (ver convención de formularios arriba).
 - `text-transform: capitalize` capitaliza preposiciones ("Junio De 2026"); usar
   `capFirst(monthLabel(m))` de format.js para etiquetas de mes.
 - Patrón `useEffect(() => { load(); }, [id])` dispara el lint `set-state-in-effect`
@@ -331,6 +486,24 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   reintenta solo y arranca bien en el siguiente intento — pero conviene
   esperar a que el backend termine de reiniciar antes de guardar el próximo
   archivo relacionado.
+- **Push, búsqueda e import — revisados 2026-07-24** (eran los 3 módulos sin auditar):
+  - `PushSubscriptionService.unsubscribe` borraba **solo por `endpoint`**, sin filtrar
+    por usuario: cualquier sesión podía dar de baja la suscripción de otro si conocía
+    su endpoint. Ahora va scoped a `req.user.id` (mismo principio que el export).
+  - `webpush.setVapidDetails()` se llamaba en el nivel del módulo y **lanza si faltan
+    las llaves VAPID**, así que sin ellas el servidor entero no arrancaba — pese a que
+    el push es opcional. Ahora se llama solo si existen; `isEnabled()` es la fuente
+    única (el `reminderJob` ya no comprueba la env por su cuenta).
+  - `subscribe` no validaba el body: un `keys` ausente daba TypeError 500 en vez de 400.
+  - **Import CSV: el delimitador se detecta** (`,`, `;` o tab). Excel en español exporta
+    con `;` —porque aquí la coma es el separador decimal— y el archivo entero se
+    parseaba como UNA columna. Los parsers viven ahora en `frontend/src/utils/csvImport.js`
+    (fuera del componente, para poder testearlos): 15 tests cubren montos es-CO,
+    fechas DD/MM/YYYY y los tres delimitadores.
+  - Búsqueda: los comodines `%`/`_` se escapan (buscar "%" devolvía coincidencias
+    raras); `GlobalSearch` descarta respuestas obsoletas por secuencia de petición
+    (con red lenta, una consulta vieja pisaba los resultados de la nueva) y distingue
+    "sin resultados" de "falló la búsqueda".
 - **Exportación de datos**: `GET /users/export` (Profile.jsx → "Exporta tus datos")
   arma un solo JSON con todo lo del usuario (tarjetas+compras, créditos, suscripciones,
   ingresos, deudas, metas, presupuesto, historial, patrimonio neto). Siempre usa

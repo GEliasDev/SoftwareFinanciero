@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import { CreditCard } from '../modules/creditCard/creditCard.model.js';
 import { CreditCardPurchase } from '../modules/creditCard/creditCardPurchase.model.js';
+import { effectiveDayInMonth } from '../utils/cycleDay.js';
 
 const ymd = (d) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -19,7 +20,9 @@ export const generateCuotaManejoCharges = async () => {
 
     for (const card of cards) {
         const cuota = parseFloat(card.cuotaManejo ?? 0);
-        const cutDay = Number(card.fechaCorte);
+        // Recortado al mes en curso: un fechaCorte=31 en junio corta el 30.
+        // Sin esto la cuota de manejo se saltaba los meses de <31 días.
+        const cutDay = effectiveDayInMonth(card.fechaCorte, today.getFullYear(), today.getMonth());
         if (cuota <= 0) continue;
         if (day < cutDay) continue; // aún no llega el corte de este mes
 
