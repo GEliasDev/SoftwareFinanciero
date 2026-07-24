@@ -3,6 +3,7 @@ import { CreditCard } from './creditCard.model.js';
 import { CreditCardPurchase } from './creditCardPurchase.model.js';
 import { creditCardCreateSchema, creditCardUpdateSchema, purchaseCreateSchema, purchaseUpdateSchema, advanceCreateSchema } from './creditCard.schema.js';
 import { calcularCuotaCompra, calcularPagoMinimo } from './utils/creditCardCalculation.js';
+import { effectiveDayInMonth } from '../../utils/cycleDay.js';
 import { AppError } from '../../middlewares/appError.js';
 import logger from '../../utils/logger.js';
 import { ReminderService } from '../reminder/reminder.service.js';
@@ -340,8 +341,13 @@ return card;
             // Calcular días hasta próximo pago
             if (card.fechaPago) {
                 const diaP = parseInt(card.fechaPago);
-                const next = new Date(today.getFullYear(), today.getMonth(), diaP);
-                if (next <= today) next.setMonth(next.getMonth() + 1);
+                // Día recortado al mes: un diaP=31 desbordaba al mes siguiente.
+                const enMes = (y, m) => new Date(y, m, effectiveDayInMonth(diaP, y, m));
+                let next = enMes(today.getFullYear(), today.getMonth());
+                if (next <= today) {
+                    const nx = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+                    next = enMes(nx.getFullYear(), nx.getMonth());
+                }
                 const diff = Math.ceil((next - today) / (1000 * 60 * 60 * 24));
                 if (nextPaymentDays === null || diff < nextPaymentDays) nextPaymentDays = diff;
             }
@@ -456,7 +462,11 @@ return card;
 
         // Generar los próximos 3 meses de pagos
         for (let m = 0; m < 3; m++) {
-            const date = new Date(today.getFullYear(), today.getMonth() + m, diaPago);
+            // Día recortado al mes destino: un diaPago=31 desbordaba al mes
+            // siguiente y la fecha de pago mostrada salía corrida.
+            const y  = today.getFullYear();
+            const mo = today.getMonth() + m;
+            const date = new Date(y, mo, effectiveDayInMonth(diaPago, y, mo));
             if (date <= today && m === 0) continue;
 
             const purchasesThisMonth = (card.CreditCardPurchases || [])

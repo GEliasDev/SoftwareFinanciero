@@ -5,6 +5,7 @@ import {
   ArrowLeft, Info, Landmark, ChevronRight, ChevronLeft, Check, AlertCircle, Wallet,
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
+import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { fmt, fmtDateLong, localISODate } from '../utils/format';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
@@ -89,8 +90,8 @@ export const BankCreditNew = () => {
 
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
-      <label className="form-label">{label}</label>
-      <input className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
+      <label className="form-label" htmlFor={name}>{label}</label>
+      <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
       {showErr(name) ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p> : hint && <p className="form-hint">{hint}</p>}
     </div>
   );
@@ -225,8 +226,15 @@ export const BankCreditNew = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Fechas</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Día de pago e inicio del crédito</p>
-                <div className="form-row-2">
-                  {field('diaPago', 'Día de pago * (1–31)', 'Día del mes en que pagas la cuota', { type: 'number', min: '1', max: '31', placeholder: 'Ej: 5' })}
+                <DayOfMonthPicker
+                  label="Día de pago"
+                  required
+                  nombreEvento="pago"
+                  value={formData.diaPago}
+                  onChange={d => { setFormData(p => ({ ...p, diaPago: String(d) })); markTouched('diaPago'); }}
+                  error={showErr('diaPago') ? errors.diaPago : null}
+                />
+                <div style={{ marginTop: '0.75rem', maxWidth: 260 }}>
                   {field('fechaInicio', 'Fecha de inicio *', 'Cuándo arrancó el crédito', { type: 'date' })}
                 </div>
                 <div className="info-box primary" style={{ marginTop: '1.25rem', fontSize: 12 }}>

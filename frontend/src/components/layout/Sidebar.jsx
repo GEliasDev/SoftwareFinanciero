@@ -89,7 +89,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
 
           <div className="nav-divider" />
           <NavItem to="/income" icon={Wallet} label="Ingresos" onClick={close} />
-          <NavItem to="/personal-debts" icon={Handshake} label="Deudas Personales" onClick={close} />
+          <NavItem to="/personal-debts" icon={Handshake} label="Gastos" onClick={close} />
           <NavItem to="/savings" icon={Target} label="Metas de Ahorro" onClick={close} />
           <NavItem to="/budget" icon={PieChart} label="Presupuesto" onClick={close} />
 

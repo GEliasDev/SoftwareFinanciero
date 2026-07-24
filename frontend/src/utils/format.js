@@ -33,6 +33,36 @@ export const capFirst = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 /* ── Fechas LOCALES (nunca toISOString: en UTC-5 cambia de día después de las 7 p. m.) ── */
 
+/**
+ * Parsea a Date SIEMPRE en hora local.
+ *
+ * `new Date('2026-07-01')` parsea en UTC y, leído en UTC-5, muestra el 30 de
+ * junio — un día menos en TODA fecha, y en un 1 de enero cambia hasta el año
+ * ("31 de dic de 2025"). Los campos DATEONLY de Sequelize llegan como
+ * 'YYYY-MM-DD' exacto y por eso se construyen a mano.
+ *
+ * Los timestamps CON hora ('...T10:30:00Z') sí representan un instante real:
+ * esos se dejan a `new Date()`, que los convierte correctamente a hora local.
+ */
+export const parseLocalDate = (x) => {
+  if (!x) return null;
+  if (x instanceof Date) return x;
+  const s = String(x);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);
+};
+
+/**
+ * Día real de un ciclo mensual dentro de un mes concreto: recorta 29/30/31 a
+ * los días que ese mes tenga. Espejo de `backend/src/utils/cycleDay.js`.
+ */
+export const effectiveDayInMonth = (day, year, monthIndex) => {
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  const d = Number(day);
+  if (!Number.isFinite(d) || d < 1) return 1;
+  return Math.min(d, lastDay);
+};
+
 // Date -> "YYYY-MM-DD" en hora local
 export const localISODate = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -47,19 +77,23 @@ export const addMonths = (mKey, delta) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
-// Fecha desde un Date o string ISO ("2026-05-30T…") -> "30 may 2026"
+// Fecha desde un Date, un DATEONLY ("2026-05-30") o un ISO con hora -> "30 may 2026"
 export const fmtDateLong = (x) => {
-  if (!x) return '—';
-  return new Date(x).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+  const d = parseLocalDate(x);
+  if (!d) return '—';
+  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 /* ── Fechas de corte / pago y urgencia (genérico, usado por varios módulos) ── */
+// Próxima vez que cae un día de ciclo. Recorta 29/30/31 al último día real del
+// mes: sin eso `new Date(2026, 5, 31)` desbordaba a julio y "próximo cobro"
+// mostraba el 1 de julio en vez del 30 de junio.
 export const nextOccurrence = (dayOfMonth) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const d = new Date(today.getFullYear(), today.getMonth(), Number(dayOfMonth));
-  if (d <= today) d.setMonth(d.getMonth() + 1);
-  return d;
+  const enMes = (y, m) => new Date(y, m, effectiveDayInMonth(dayOfMonth, y, m));
+  const d = enMes(today.getFullYear(), today.getMonth());
+  return d <= today ? enMes(today.getFullYear(), today.getMonth() + 1) : d;
 };
 
 export const daysUntil = (date) => {
@@ -76,7 +110,9 @@ export const urgencyStyle = (days) =>
 // Si la fecha cae sábado o domingo, devuelve el viernes anterior (días hábiles).
 export const weekendToFriday = (date) => {
   if (!date) return date;
-  const d = new Date(date);
+  // parseLocalDate: si llega un DATEONLY como string, `new Date(str)` lo leería
+  // en UTC y podría caer en otro día — cambiando qué día de la semana es.
+  const d = new Date(parseLocalDate(date));
   const day = d.getDay();              // 0 = domingo, 6 = sábado
   if (day === 6) d.setDate(d.getDate() - 1);
   else if (day === 0) d.setDate(d.getDate() - 2);

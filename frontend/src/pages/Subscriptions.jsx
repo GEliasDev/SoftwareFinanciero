@@ -5,35 +5,52 @@ import { Plus, Repeat, ChevronRight, Wallet, CalendarRange, CalendarClock, Credi
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
+import { LoadError } from '../components/ui/LoadError';
 import { CobrosCalendar } from '../components/subscriptions/CobrosCalendar';
 import { fmt, nextOccurrence, daysUntil } from '../utils/format';
+import { subMonthlyCOP, subAnnualCOP } from '../utils/currency';
 
 const FREQ_BADGE = {
   mensual: { label: 'Mensual', cls: 'badge badge-primary' },
   anual: { label: 'Anual', cls: 'badge badge-warning' },
 };
 
-const monthlyEquiv = (s) => (s.frecuencia === 'anual' ? (s.monto ?? 0) / 12 : (s.monto ?? 0));
-const annualEquiv = (s) => (s.frecuencia === 'anual' ? (s.monto ?? 0) : (s.monto ?? 0) * 12);
+const STATUS_BADGE = {
+  activa:    { label: 'Activa',    cls: 'badge badge-success' },
+  pausada:   { label: 'Pausada',   cls: 'badge badge-warning' },
+  cancelada: { label: 'Cancelada', cls: 'badge badge-neutral' },
+};
+
+// En COP: una suscripción en USD/EUR no se puede sumar cruda con las de COP.
+const annualEquiv = (s) => subAnnualCOP(s);
 
 export const Subscriptions = () => {
   const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(false);
     SubscriptionService.getAll()
       .then(setSubscriptions)
-      .catch(console.error)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  const totalMensual = subscriptions.reduce((acc, s) => acc + monthlyEquiv(s), 0);
+  useEffect(() => { load(); }, []);
+
+  // Los totales cuentan SOLO las activas: una suscripción cancelada o pausada
+  // ya no se cobra, incluirla inflaba el costo mensual del usuario.
+  const activas = subscriptions.filter(s => s.status === 'activa');
+  const totalMensual = activas.reduce((acc, s) => acc + subMonthlyCOP(s), 0);
   const totalAnual = totalMensual * 12;
 
   const proximo = useMemo(() => {
-    if (subscriptions.length === 0) return null;
-    return subscriptions
+    const act = subscriptions.filter(s => s.status === 'activa');
+    if (act.length === 0) return null;
+    return act
       .map(s => ({ sub: s, date: nextOccurrence(s.diaCobro), dias: daysUntil(nextOccurrence(s.diaCobro)) }))
       .sort((a, b) => a.dias - b.dias)[0];
   }, [subscriptions]);
@@ -50,12 +67,14 @@ export const Subscriptions = () => {
         }
       />
 
-      {!loading && subscriptions.length > 0 && (
+      {error && !loading && <LoadError onRetry={load} title="No se pudieron cargar tus suscripciones" />}
+
+      {!loading && !error && subscriptions.length > 0 && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
-            <StatCard label="Costo mensual" value={fmt(totalMensual)} delta="Equivalente por mes" icon={Wallet} tone="brand" />
+          <div className="kpi-grid" style={{ marginBottom: 16 }}>
+            <StatCard label="Costo mensual" value={fmt(totalMensual)} delta="Solo suscripciones activas" icon={Wallet} tone="brand" />
             <StatCard label="Costo anual" value={fmt(totalAnual)} delta="Lo que gastas al año" icon={CalendarRange} tone="neutral" />
-            <StatCard label="Suscripciones" value={`${subscriptions.length}`} delta="en seguimiento" icon={Repeat} tone="neutral" />
+            <StatCard label="Suscripciones" value={`${activas.length}`} delta={`activas de ${subscriptions.length} en total`} icon={Repeat} tone="neutral" />
             <StatCard
               label="Próximo cobro"
               value={proximo ? (proximo.dias === 0 ? 'Hoy' : proximo.dias === 1 ? 'Mañana' : `En ${proximo.dias} días`) : '—'}
@@ -73,7 +92,7 @@ export const Subscriptions = () => {
         </>
       )}
 
-      <SectionCard>
+      {!error && <SectionCard>
         {loading ? (
           <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 20, borderRadius: 'var(--radius-sm)' }} />)}
@@ -93,10 +112,12 @@ export const Subscriptions = () => {
               <thead>
                 <tr>
                   <th>Nombre</th>
+                  <th>Estado</th>
                   <th>Monto</th>
                   <th>Frecuencia</th>
                   <th>Costo anual</th>
                   <th>Día de cobro</th>
+                  <th>Cobro</th>
                   <th />
                 </tr>
               </thead>
@@ -112,25 +133,25 @@ export const Subscriptions = () => {
                             {sub.nombre.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--text)' }}>
-                              {sub.nombre}
-                              {sub.creditCardId && (
-                                <span title="Cobro automático" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--pos-600)' }}>
-                                  <CreditCard size={12} />
-                                </span>
-                              )}
-                            </div>
+                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>{sub.nombre}</div>
                             {sub.descripcion && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{sub.descripcion}</div>}
                           </div>
                         </div>
+                      </td>
+                      <td data-label="Estado">
+                        <span className={STATUS_BADGE[sub.status]?.cls || 'badge badge-neutral'}>
+                          {STATUS_BADGE[sub.status]?.label || sub.status}
+                        </span>
                       </td>
                       <td data-label="Monto">
                         <span className="tabular" style={{ fontWeight: 700, color: 'var(--text)' }}>{fmt(sub.monto, sub.moneda)}</span>
                         <span style={{ marginLeft: 4, fontSize: 12, color: 'var(--text-3)' }}>{sub.moneda}</span>
                       </td>
                       <td data-label="Frecuencia"><span className={FREQ_BADGE[sub.frecuencia]?.cls || 'badge badge-neutral'}>{FREQ_BADGE[sub.frecuencia]?.label || sub.frecuencia}</span></td>
-                      <td data-label="Costo anual"><span className="tabular" style={{ color: 'var(--text-2)', fontWeight: 600 }}>{fmt(annualEquiv(sub), sub.moneda)}</span></td>
-                      <td data-label="Cobro">
+                      {/* annualEquiv ya devuelve COP: formatear con la moneda
+                          original mostraría "US$" sobre un valor en pesos. */}
+                      <td data-label="Costo anual"><span className="tabular" style={{ color: 'var(--text-2)', fontWeight: 600 }}>{fmt(annualEquiv(sub))}</span></td>
+                      <td data-label="Día de cobro">
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                           <span style={{ color: 'var(--text-2)' }}>Día {sub.diaCobro}</span>
                           {urgente && (
@@ -140,6 +161,15 @@ export const Subscriptions = () => {
                           )}
                         </span>
                       </td>
+                      <td data-label="Cobro">
+                        {sub.CreditCard ? (
+                          <span className="badge badge-success" title={`Se cobra automáticamente en ${sub.CreditCard.nombre}`}>
+                            <CreditCard size={11} /> {sub.CreditCard.nombre}
+                          </span>
+                        ) : (
+                          <span className="badge badge-neutral">Manual</span>
+                        )}
+                      </td>
                       <td data-label="" style={{ width: 32 }}><ChevronRight size={14} style={{ color: 'var(--text-3)' }} /></td>
                     </tr>
                   );
@@ -148,7 +178,7 @@ export const Subscriptions = () => {
             </table>
           </div>
         )}
-      </SectionCard>
+      </SectionCard>}
     </div>
   );
 };

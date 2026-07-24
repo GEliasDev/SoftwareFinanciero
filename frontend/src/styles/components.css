@@ -1102,6 +1102,73 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
 .search-shortcut-label { display: inline; }
 @media (max-width: 640px) { .search-shortcut-label { display: none; } }
 
+/* ── Selector de día del mes (ciclos de cobro/corte/pago) ── */
+.dom-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.dom-day {
+  aspect-ratio: 1;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.dom-day:hover {
+  background: var(--surface-2);
+  border-color: var(--brand-600);
+}
+
+/* Días 29-31: no existen en todos los meses. */
+.dom-day.edge {
+  border-style: dashed;
+  color: var(--text-3);
+}
+
+.dom-day.selected,
+.dom-day.selected.edge {
+  background: var(--brand-600);
+  border-color: var(--brand-600);
+  border-style: solid;
+  color: #fff;
+  font-weight: 700;
+}
+
+.dom-next,
+.dom-warn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.dom-warn {
+  color: var(--warn-600);
+  margin-top: 4px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+/* Área táctil cómoda en móvil (mínimo 44px recomendado). */
+@media (max-width: 640px) {
+  .dom-day { min-height: 40px; font-size: 13px; }
+  .dom-grid { gap: 5px; }
+}
+
 /* ── Distribution chart (Dashboard — ¿A dónde va tu dinero?) ── */
 .dist-layout {
   display: flex;
@@ -1129,6 +1196,62 @@ table tbody tr.clickable:hover td { background-color: var(--color-primary-light)
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Fila de categoría clicable: muestra el total y despliega el detalle por ítem. */
+.dist-legend-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 3px 4px;
+  margin: 0 -4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.dist-legend-toggle:hover { background: var(--surface-2); }
+
+.dist-legend-caret {
+  color: var(--text-3);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.dist-legend-caret.open { transform: rotate(90deg); }
+
+/* Detalle por ítem, indentado bajo su categoría. */
+.dist-sublist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0 6px 16px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+
+.dist-subrow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.dist-subrow-name {
+  font-size: 11.5px;
+  color: var(--text-3);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dist-subrow-amount {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  flex-shrink: 0;
+  text-align: right;
 }
 
 .dist-legend-name {

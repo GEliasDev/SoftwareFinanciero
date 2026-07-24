@@ -21,6 +21,13 @@ export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
   const totalIntereses = rows.reduce((a, r) => a + r.interes, 0);
   const totalCapital   = rows.reduce((a, r) => a + r.capital, 0);
   const totalPagado    = rows.slice(0, pagadas).reduce((a, r) => a + r.totalMes, 0);
+  // Admin + seguro van dentro de `totalMes`; se totalizan aparte para que la
+  // fila Total cuadre con la suma real de la columna Cuota (antes sumaba solo
+  // capital + intereses y quedaba corta por los cargos de todos los meses).
+  const cargosMes    = (rows[0]?.admin ?? 0) + (rows[0]?.seguro ?? 0);
+  const hayCargos    = cargosMes > 0;
+  const totalCargos  = cargosMes * rows.length;
+  const totalCuotas  = rows.reduce((a, r) => a + r.totalMes, 0);
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1rem' }}>
@@ -121,7 +128,7 @@ export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  {['#', 'Fecha', 'Cuota', 'Capital', 'Interés', 'Saldo'].map(h => (
+                  {['#', 'Fecha', 'Cuota', 'Capital', 'Interés', ...(hayCargos ? ['Cargos'] : []), 'Saldo'].map(h => (
                     <th key={h} style={{ padding: '6px 10px', textAlign: h === '#' ? 'center' : 'right', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                       {h}
                     </th>
@@ -153,6 +160,9 @@ export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
                       <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{fmt(r.totalMes)}</td>
                       <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--pos-600)' }}>{fmt(r.capital)}</td>
                       <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--neg-600)' }}>{fmt(r.interes)}</td>
+                      {hayCargos && (
+                        <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-3)' }}>{fmt(r.admin + r.seguro)}</td>
+                      )}
                       <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-2)' }}>{fmt(r.saldo)}</td>
                     </tr>
                   );
@@ -161,9 +171,12 @@ export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
               <tfoot>
                 <tr style={{ borderTop: '2px solid var(--border)', background: 'var(--surface-2)' }}>
                   <td colSpan={2} style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</td>
-                  <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--text)' }}>{fmt(totalCapital + totalIntereses)}</td>
+                  <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--text)' }}>{fmt(totalCuotas)}</td>
                   <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--pos-600)' }}>{fmt(totalCapital)}</td>
                   <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--neg-600)' }}>{fmt(totalIntereses)}</td>
+                  {hayCargos && (
+                    <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--text-3)' }}>{fmt(totalCargos)}</td>
+                  )}
                   <td style={{ padding: '8px 10px' }} />
                 </tr>
               </tfoot>

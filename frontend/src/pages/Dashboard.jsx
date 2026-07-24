@@ -7,7 +7,7 @@ import { ReminderService } from '../services/reminderService';
 import {
   Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus,
   PieChart as PieIcon, TrendingUp, TrendingDown, Target, Handshake,
-  Lightbulb, AlertTriangle, CheckCircle, Info, XCircle, Flag,
+  Lightbulb, AlertTriangle, CheckCircle, Info, XCircle, Flag, ChevronRight,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -65,6 +65,8 @@ export const Dashboard = () => {
   const [freedom,   setFreedom]   = useState(null);
   const [reminders, setReminders] = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [openCat,   setOpenCat]   = useState(null);
+  const [openDebt,  setOpenDebt]  = useState(null);
 
   useEffect(() => {
     Promise.allSettled([
@@ -97,18 +99,30 @@ export const Dashboard = () => {
   const health       = summary?.health;
   const healthTone   = health ? (HEALTH_TONE[health.label] ?? HEALTH_TONE['Regular']) : null;
 
+  // Cada categoría lleva su desglose por ítem (`items`): el total va arriba en
+  // la fila y el detalle se despliega debajo. La suma de items === value.
+  const bd = summary?.breakdown ?? {};
   const dist = [
-    { name: 'Tarjetas de crédito', value: obl.creditCards   ?? 0, color: DIST_COLORS.creditCards   },
-    { name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits   },
-    { name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions },
-    { name: 'Deudas personales',   value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts },
-    { name: 'Metas de ahorro',     value: obl.savings       ?? 0, color: DIST_COLORS.savings       },
+    { key: 'creditCards',   name: 'Tarjetas de crédito', value: obl.creditCards   ?? 0, color: DIST_COLORS.creditCards,   items: bd.creditCards   ?? [] },
+    { key: 'bankCredits',   name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: bd.bankCredits   ?? [] },
+    { key: 'subscriptions', name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions, items: bd.subscriptions ?? [] },
+    { key: 'personalDebts', name: 'Gastos',              value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts, items: bd.personalDebts ?? [] },
+    { key: 'savings',       name: 'Metas de ahorro',     value: obl.savings       ?? 0, color: DIST_COLORS.savings,       items: bd.savings       ?? [] },
   ].filter(d => d.value > 0);
 
   const totalDist    = dist.reduce((a, d) => a + d.value, 0);
   const upcoming     = (summary?.upcoming ?? []).slice(0, 8);
   const activeCredits = credits.filter(c => c.status === 'activo');
   const totalDebt    = summary?.debt?.total ?? 0;
+
+  // Desglose de SALDOS adeudados (no cuotas): mismo patrón total + detalle.
+  const dbt  = summary?.debt ?? {};
+  const dbtB = summary?.debtBreakdown ?? {};
+  const debtRows = [
+    { key: 'creditCards',   name: 'Tarjetas de crédito', value: dbt.creditCards   ?? 0, color: DIST_COLORS.creditCards,   items: dbtB.creditCards   ?? [] },
+    { key: 'bankCredits',   name: 'Créditos bancarios',  value: dbt.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: dbtB.bankCredits   ?? [] },
+    { key: 'personalDebts', name: 'Deudas personales',   value: dbt.personalDebts ?? 0, color: DIST_COLORS.personalDebts, items: dbtB.personalDebts ?? [] },
+  ].filter(d => d.value > 0);
 
   const hoy = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -226,7 +240,7 @@ export const Dashboard = () => {
             <StatCard
               label="Compromisos mensuales"
               value={fmt(totalObl)}
-              delta="Tarjetas + créditos + suscripciones + deudas"
+              delta="Tarjetas + créditos + suscripciones + gastos"
               icon={TrendingDown}
               tone="warn"
               onClick={() => navigate('/personal-debts')}
@@ -286,16 +300,41 @@ export const Dashboard = () => {
                       <span className="tabular" style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{fmt(totalDist)}</span>
                     </div>
                   </div>
-                  {/* Leyenda */}
+                  {/* Leyenda — cada fila abre su desglose por ítem */}
                   <div className="dist-legend">
                     {dist.map(d => {
-                      const pct = totalDist > 0 ? (d.value / totalDist) * 100 : 0;
+                      const pct  = totalDist > 0 ? (d.value / totalDist) * 100 : 0;
+                      const open = openCat === d.key;
+                      const expandable = d.items.length > 0;
                       return (
-                        <div key={d.name} className="dist-legend-row">
-                          <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                          <span className="dist-legend-name">{d.name}</span>
-                          <span className="dist-legend-pct">{pct.toFixed(0)}%</span>
-                          <span className="tabular dist-legend-amount">{fmt(d.value)}</span>
+                        <div key={d.key}>
+                          <button
+                            type="button"
+                            className="dist-legend-row dist-legend-toggle"
+                            onClick={() => expandable && setOpenCat(open ? null : d.key)}
+                            aria-expanded={expandable ? open : undefined}
+                            style={{ cursor: expandable ? 'pointer' : 'default' }}
+                          >
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                            <span className="dist-legend-name">{d.name}</span>
+                            <span className="dist-legend-pct">{pct.toFixed(0)}%</span>
+                            <span className="tabular dist-legend-amount">{fmt(d.value)}</span>
+                            {expandable
+                              ? <ChevronRight size={13} className={`dist-legend-caret${open ? ' open' : ''}`} />
+                              : <span style={{ width: 13, flexShrink: 0 }} />}
+                          </button>
+                          {open && (
+                            <div className="dist-sublist">
+                              {d.items.map(it => (
+                                <div key={it.id} className="dist-subrow">
+                                  <span className="dist-subrow-name">
+                                    {it.nombre}{it.detalle ? ` · ${it.detalle}` : ''}
+                                  </span>
+                                  <span className="tabular dist-subrow-amount">{fmt(it.monto)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -355,6 +394,65 @@ export const Dashboard = () => {
               )}
             </SectionCard>
           </div>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              DEUDA TOTAL — total arriba, detalle por ítem al desplegar
+          ═══════════════════════════════════════════════════════════════ */}
+          {debtRows.length > 0 && (
+            <SectionCard
+              title="Deuda total"
+              subtitle="Saldos pendientes por pagar"
+              icon={Landmark}
+              style={{ marginBottom: 16 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--color-border)' }}>
+                <span className="tabular" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--neg-600)', letterSpacing: '-0.02em' }}>
+                  {fmt(totalDebt)}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  en {debtRows.length} {debtRows.length === 1 ? 'categoría' : 'categorías'}
+                </span>
+              </div>
+              <div className="dist-legend">
+                {debtRows.map(d => {
+                  const pct  = totalDebt > 0 ? (d.value / totalDebt) * 100 : 0;
+                  const open = openDebt === d.key;
+                  const expandable = d.items.length > 0;
+                  return (
+                    <div key={d.key}>
+                      <button
+                        type="button"
+                        className="dist-legend-row dist-legend-toggle"
+                        onClick={() => expandable && setOpenDebt(open ? null : d.key)}
+                        aria-expanded={expandable ? open : undefined}
+                        style={{ cursor: expandable ? 'pointer' : 'default' }}
+                      >
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                        <span className="dist-legend-name">{d.name}</span>
+                        <span className="dist-legend-pct">{pct.toFixed(0)}%</span>
+                        <span className="tabular dist-legend-amount">{fmt(d.value)}</span>
+                        {expandable
+                          ? <ChevronRight size={13} className={`dist-legend-caret${open ? ' open' : ''}`} />
+                          : <span style={{ width: 13, flexShrink: 0 }} />}
+                      </button>
+                      {open && (
+                        <div className="dist-sublist">
+                          {d.items.map(it => (
+                            <div key={it.id} className="dist-subrow">
+                              <span className="dist-subrow-name">
+                                {it.nombre}{it.detalle ? ` · ${it.detalle}` : ''}
+                              </span>
+                              <span className="tabular dist-subrow-amount">{fmt(it.monto)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          )}
 
           {/* ═══════════════════════════════════════════════════════════════
               RECOMENDACIONES FINANCIERAS
@@ -566,7 +664,7 @@ export const Dashboard = () => {
               <div className="quick-actions-grid">
                 {[
                   { Icon: Wallet,     label: 'Ingreso',     path: '/income/new' },
-                  { Icon: Handshake,  label: 'Deuda',       path: '/personal-debts/new' },
+                  { Icon: Handshake,  label: 'Gasto',       path: '/personal-debts/new' },
                   { Icon: Target,     label: 'Meta',        path: '/savings/new' },
                   { Icon: Repeat,     label: 'Suscripción', path: '/subscriptions/new' },
                   { Icon: CreditCard, label: 'Tarjeta',     path: '/credit-cards/new' },

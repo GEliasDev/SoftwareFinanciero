@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, AlertCircle, Wallet, Repeat, Zap } from 'lucide-react';
+import { ArrowLeft, Check, AlertCircle, Wallet, Zap } from 'lucide-react';
 import { IncomeService } from '../services/incomeService';
 import { PageHeader } from '../components/ui/PageHeader';
+import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
 
@@ -54,9 +55,9 @@ export const IncomeForm = () => {
 
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
-      <label className="form-label">{label}</label>
+      <label className="form-label" htmlFor={name}>{label}</label>
       <input
-        className={`form-input ${showErr(name) ? 'error' : ''}`}
+        id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
         value={form[name]}
         onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
         onBlur={() => mark(name)}
@@ -200,10 +201,17 @@ export const IncomeForm = () => {
               {field('nombre', 'Nombre *', null, {
                 placeholder: form.tipo === 'extra' ? 'Ej: Proyecto freelance, Regalo' : 'Ej: Salario Bancolombia',
               })}
-              <div className="form-row-2">
+              <div style={{ maxWidth: 300 }}>
                 {field('monto', form.tipo === 'extra' ? 'Monto (COP) *' : 'Monto mensual (COP) *', null, { type: 'number', min: '1', placeholder: '500 000' })}
-                {field('diaCobro', form.tipo === 'extra' ? 'Día en que lo recibiste *' : 'Día en que llega *', 'Día del mes (1–31)', { type: 'number', min: '1', max: '31', placeholder: '15' })}
               </div>
+              <DayOfMonthPicker
+                label={form.tipo === 'extra' ? 'Día en que lo recibiste' : 'Día en que llega'}
+                required
+                nombreEvento="ingreso"
+                value={form.diaCobro}
+                onChange={d => { setForm(f => ({ ...f, diaCobro: String(d) })); mark('diaCobro'); }}
+                error={showErr('diaCobro') ? errors.diaCobro : null}
+              />
               {isEdit && (
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Estado</label>

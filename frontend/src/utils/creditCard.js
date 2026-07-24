@@ -4,6 +4,12 @@ import {
 } from 'lucide-react';
 import { nextOccurrence as _nextOccurrence } from './format';
 
+// Tasa de usura de referencia (E.A.) para Colombia. Fuente única — antes estaba
+// copiada a mano como 28.5 en 4 sitios. Es un valor de referencia orientativo
+// (la Superfinanciera la fija por trimestre); si se quiere exactitud habría que
+// consultarla en línea, pero para "tu tasa está alta" este umbral basta.
+export const TASA_USURA_EA = 28.5;
+
 /* ── Formato ──────────────────────────────────────────────────────────── */
 export const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
@@ -59,7 +65,7 @@ export const getMovimientoVisual = (tipo, categoria) => {
 /* ── Fechas de corte / pago y urgencia ────────────────────────────────── */
 // Helpers genéricos centralizados en format.js; se re-exportan aquí por
 // compatibilidad con los consumidores existentes del módulo de tarjetas.
-export { nextOccurrence, daysUntil, urgencyStyle, weekendToFriday } from './format';
+export { nextOccurrence, daysUntil, urgencyStyle, weekendToFriday, effectiveDayInMonth, parseLocalDate } from './format';
 
 // Índice absoluto de mes (año*12 + mes, 0-based) del PRIMER corte en que una
 // compra empieza a facturar. Regla: si la compra se hizo el día de corte o

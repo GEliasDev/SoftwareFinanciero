@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SavingsGoalService } from '../services/savingsGoalService';
 import { PageHeader } from '../components/ui/PageHeader';
+import { LoadError } from '../components/ui/LoadError';
 import { Plus, Target, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
@@ -16,9 +17,12 @@ export const Savings = () => {
   const navigate = useNavigate();
   const [goals, setGoals]     = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(false);
 
   const load = () => {
-    SavingsGoalService.getAll().then(setGoals).catch(console.error).finally(() => setLoading(false));
+    setLoading(true);
+    setError(false);
+    SavingsGoalService.getAll().then(setGoals).catch(() => setError(true)).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
@@ -54,6 +58,8 @@ export const Savings = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 110, borderRadius: 'var(--radius-md)' }} />)}
         </div>
+      ) : error ? (
+        <LoadError onRetry={load} title="No se pudieron cargar tus metas" />
       ) : goals.length === 0 ? (
         <div className="card">
           <div className="empty-state">

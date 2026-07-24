@@ -5,6 +5,7 @@ import {
     calcularFechaRecordatorio,
     debeEnviarse,
 } from './utils/reminderCalculation.js';
+import { effectiveDayInMonth } from '../../utils/cycleDay.js';
 import { BankCredit } from '../bankCredit/bankCredit.model.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { Subscription } from '../suscription/subscription.model.js';
@@ -115,7 +116,9 @@ export const ReminderService = {
 
     // Usado por el cron job — busca recordatorios que deben enviarse hoy
     getPendingReminders: async () => {
-        const hoy = new Date().toISOString().split('T')[0];
+        // Hoy en hora local (no toISOString, que da el día UTC).
+        const d = new Date();
+        const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         return Reminder.findAll({
             where: {
                 fechaRecordatorio: hoy,
@@ -137,11 +140,15 @@ export const ReminderService = {
 
         const diaPago = getDiaPago[reminder.debtType](debt);
 
-        // Avanzar un mes desde la próxima fecha de pago actual
-        const proximaFecha = new Date(reminder.proximaFechaPago);
-        proximaFecha.setMonth(proximaFecha.getMonth() + 1);
-        proximaFecha.setDate(diaPago);
-        const nuevaProximaFechaPago = proximaFecha.toISOString().split('T')[0];
+        // Avanzar un mes desde la próxima fecha de pago actual. Parseo local
+        // (no new Date(str), que es UTC) y día recortado al mes destino: antes
+        // `setDate(31)` en un mes de 30 desbordaba y reprogramaba mal cada ciclo.
+        const [py, pm] = String(reminder.proximaFechaPago).split('-').map(Number);
+        const destino = new Date(py, pm, 1); // pm (1-based) como índice 0-based = mes siguiente
+        const y = destino.getFullYear();
+        const m = destino.getMonth();
+        const nuevaProximaFechaPago =
+            `${y}-${String(m + 1).padStart(2, '0')}-${String(effectiveDayInMonth(diaPago, y, m)).padStart(2, '0')}`;
         const nuevaFechaRecordatorio = calcularFechaRecordatorio(
             nuevaProximaFechaPago,
             reminder.diasAnticipacion

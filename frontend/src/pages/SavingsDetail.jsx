@@ -4,6 +4,7 @@ import { SavingsGoalService } from '../services/savingsGoalService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
+import { LoadError } from '../components/ui/LoadError';
 import { Target, Wallet, Calendar, Pencil, Plus, CheckCircle } from 'lucide-react';
 import { fmt, fmtDateLong } from '../utils/format';
 import Swal from 'sweetalert2';
@@ -13,8 +14,13 @@ export const SavingsDetail = () => {
   const navigate = useNavigate();
   const [goal, setGoal] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const load = () => SavingsGoalService.getById(id).then(setGoal).catch(console.error).finally(() => setLoading(false));
+  const load = () => {
+    setLoading(true);
+    setError(false);
+    return SavingsGoalService.getById(id).then(setGoal).catch(() => setError(true)).finally(() => setLoading(false));
+  };
   useEffect(() => { load(); }, [id]);
 
   const handleAporte = async () => {
@@ -41,7 +47,11 @@ export const SavingsDetail = () => {
   };
 
   if (loading) return <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-md)', margin: 24 }} />;
-  if (!goal) return null;
+  if (error || !goal) return (
+    <div className="animate-fade-in" style={{ padding: 24 }}>
+      <LoadError onRetry={load} title="No se pudo cargar esta meta" />
+    </div>
+  );
 
   const pct = parseFloat(goal.montoMeta) > 0
     ? Math.min(100, (parseFloat(goal.montoAcumulado) / parseFloat(goal.montoMeta)) * 100)

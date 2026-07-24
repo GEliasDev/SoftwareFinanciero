@@ -5,6 +5,7 @@ import { AppError } from '../../middlewares/appError.js';
 import { ActivityLogService } from '../activityLog/activityLog.service.js';
 import { ReminderService } from '../reminder/reminder.service.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
+import { toCOP } from '../../utils/currency.js';
 import logger from '../../utils/logger.js';
 
 const assertCardOwnership = async (creditCardId, userId) => {
@@ -83,8 +84,12 @@ export const SubscriptionService = {
             where: { userId, status: 'activa' },
         });
 
-        const totalMensual = subscriptions.reduce(
-            (acc, s) => acc + parseFloat(s.montoMensual),
+        // Total único convertido a COP. Se calculaba desde antes pero nunca se
+        // retornaba (código muerto) y además sumaba montoMensual crudo, con lo
+        // que US$15 entraba como $15. `porMoneda` mantiene el detalle en la
+        // moneda original de cada suscripción.
+        const totalMensualCOP = subscriptions.reduce(
+            (acc, s) => acc + toCOP(parseFloat(s.montoMensual), s.moneda),
             0
         );
 
@@ -101,6 +106,7 @@ export const SubscriptionService = {
         }, {});
 
         return {
+            totalMensualCOP: parseFloat(totalMensualCOP.toFixed(2)),
             totalSuscripciones: subscriptions.length,
             porMoneda,
         };

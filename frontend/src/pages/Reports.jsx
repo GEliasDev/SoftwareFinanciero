@@ -14,6 +14,7 @@ import { SavingsGoalService } from '../services/savingsGoalService';
 import { StatCard } from '../components/ui/StatCard';
 import { buildSchedule } from '../utils/creditCard';
 import { localISODate } from '../utils/format';
+import { subMonthlyCOP } from '../utils/currency';
 import {
   Download, FileText, TrendingUp, Calendar, Shield,
   Repeat, CreditCard, Landmark, Sliders, Wallet, Zap, Handshake, TrendingDown,
@@ -42,11 +43,10 @@ const TYPE_COLORS = { subscription: '#047857', bank_credit: '#DC2626', credit_ca
 const TYPE_LABEL  = { subscription: 'Suscripción', bank_credit: 'Crédito bancario', credit_card: 'Tarjeta' };
 const DIST_COLORS = ['#1565C0', '#DC2626', '#D97706', '#7C3AED', '#059669'];
 
-const conversionRate = 4000;
-const getMonthlyCostInCOP = (s) => {
-  const amount = parseFloat(s.monto ?? s.cost ?? 0);
-  return (s.moneda ?? s.currency ?? 'COP') === 'USD' ? amount * conversionRate : amount;
-};
+// Nota: se usa el helper compartido `subMonthlyCOP` (utils/currency.js), que
+// parte de `montoMensual` y contempla EUR. El helper local anterior usaba el
+// `monto` por cobro sin dividir las anuales entre 12 (las contaba 12× de más)
+// y solo convertía USD.
 
 // ── Sub-componentes ───────────────────────
 const CustomTooltip = ({ active, payload, label }) => {
@@ -120,7 +120,7 @@ export const Reports = () => {
     { name: 'Suscripciones',       value: summary.obligations.subscriptions, color: DIST_COLORS[0] },
     { name: 'Créditos bancarios',  value: summary.obligations.bankCredits,   color: DIST_COLORS[1] },
     { name: 'Tarjetas de crédito', value: summary.obligations.creditCards,   color: DIST_COLORS[2] },
-    { name: 'Deudas pers.',        value: summary.obligations.personalDebts, color: DIST_COLORS[3] },
+    { name: 'Gastos',               value: summary.obligations.personalDebts, color: DIST_COLORS[3] },
     { name: 'Metas de ahorro',     value: summary.obligations.savings,       color: DIST_COLORS[4] },
   ].filter(d => d.value > 0) : [];
 
@@ -132,9 +132,13 @@ export const Reports = () => {
     const today = new Date();
 
     // Constantes (no varían mes a mes)
+    // OJO: el enum de Subscription es 'activa' (femenino), no 'activo' — con
+    // 'activo' el filtro no casaba nunca y la columna Suscripciones salía en 0.
+    // Las que tienen creditCardId se excluyen: su cargo ya viene por la columna
+    // Tarjetas (subscriptionChargeJob crea un CreditCardPurchase real).
     const totalSubs = subs
-      .filter(s => s.status === 'activo')
-      .reduce((acc, s) => acc + getMonthlyCostInCOP(s), 0);
+      .filter(s => s.status === 'activa' && !s.creditCardId)
+      .reduce((acc, s) => acc + subMonthlyCOP(s), 0);
 
     const totalPersonalDebts = debts
       .filter(d => d.status === 'activo')
@@ -205,7 +209,7 @@ export const Reports = () => {
         ['Suscripciones',       summary?.obligations?.subscriptions ?? 0, ''],
         ['Créditos bancarios',  summary?.obligations?.bankCredits   ?? 0, ''],
         ['Tarjetas de crédito', summary?.obligations?.creditCards   ?? 0, ''],
-        ['Deudas pers.',        summary?.obligations?.personalDebts ?? 0, ''],
+        ['Gastos',               summary?.obligations?.personalDebts ?? 0, ''],
         ['Metas de ahorro',     summary?.obligations?.savings       ?? 0, ''],
         ['Total compromisos',   summary?.obligations?.total         ?? 0, ''],
         ['', '', ''],
@@ -578,7 +582,7 @@ export const Reports = () => {
             <div className="card" style={{ padding: '20px 24px' }}>
               <div className="card-header" style={{ marginBottom: 16, paddingBottom: 10 }}>
                 <div>
-                  <h3 className="card-title">Deudas Personales</h3>
+                  <h3 className="card-title">Gastos y deudas</h3>
                   <p className="card-subtitle">Avance de deudas y compromisos mensuales</p>
                 </div>
                 <Handshake size={16} style={{ color: 'var(--color-primary)' }} />
@@ -723,7 +727,7 @@ export const Reports = () => {
                   <Area type="monotone" dataKey="Suscripciones"                      stackId="a" stroke="#047857" fill="url(#gProjSub)"  strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Tarjetas"                           stackId="a" stroke="#D97706" fill="url(#gProjCard)" strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Créditos"                           stackId="a" stroke="#DC2626" fill="url(#gProjCred)" strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="ObligacionesPers" name="Deudas pers." stackId="a" stroke="#7C3AED" fill="url(#gProjDebt)" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="ObligacionesPers" name="Gastos" stackId="a" stroke="#7C3AED" fill="url(#gProjDebt)" strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Metas"            name="Metas"      stackId="a" stroke="#059669" fill="url(#gProjMeta)" strokeWidth={1.5} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -741,7 +745,7 @@ export const Reports = () => {
                     <th style={{ textAlign: 'right' }}>Suscripciones</th>
                     <th style={{ textAlign: 'right' }}>Tarjetas</th>
                     <th style={{ textAlign: 'right' }}>Créditos</th>
-                    <th style={{ textAlign: 'right' }}>Deudas pers.</th>
+                    <th style={{ textAlign: 'right' }}>Gastos</th>
                     <th style={{ textAlign: 'right' }}>Metas</th>
                     <th style={{ textAlign: 'right' }}>Total</th>
                     <th style={{ textAlign: 'right' }}>Flujo Libre</th>
@@ -754,7 +758,7 @@ export const Reports = () => {
                       <td className="tabular" data-label="Suscripciones" style={{ textAlign: 'right' }}>{fmt(m.Suscripciones)}</td>
                       <td className="tabular" data-label="Tarjetas"      style={{ textAlign: 'right' }}>{fmt(m.Tarjetas)}</td>
                       <td className="tabular" data-label="Créditos"      style={{ textAlign: 'right' }}>{fmt(m.Créditos)}</td>
-                      <td className="tabular" data-label="Deudas pers."  style={{ textAlign: 'right' }}>{fmt(m.ObligacionesPers)}</td>
+                      <td className="tabular" data-label="Gastos"  style={{ textAlign: 'right' }}>{fmt(m.ObligacionesPers)}</td>
                       <td className="tabular" data-label="Metas"         style={{ textAlign: 'right' }}>{fmt(m.Metas)}</td>
                       <td className="tabular" data-label="Total"         style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(m.Obligaciones)}</td>
                       <td className="tabular" data-label="Flujo Libre"   style={{ textAlign: 'right', fontWeight: 700, color: m.FlujoLibre >= 0 ? 'var(--color-success)' : 'var(--neg-600)' }}>

@@ -78,3 +78,22 @@ describe('bankCreditCalculation — sistema francés', () => {
     );
   });
 });
+
+describe('fechaFin con día de pago 29-31', () => {
+    it('no desborda al mes siguiente (bug: día 31 daba el 1 del mes siguiente)', () => {
+        // Inicio 31-ene-2026, 1 cuota → fin debe caer en febrero (28), no en marzo.
+        const r = bankCreditCalculation({
+            montoTotal: 1000000, numeroCuotas: 1, tasaInteres: 2,
+            tipoTasa: 'mensual', diaPago: 31, fechaInicio: '2026-01-31',
+        });
+        expect(r.fechaFin).toBe('2026-02-28');
+    });
+
+    it('respeta el día cuando el mes sí lo tiene', () => {
+        const r = bankCreditCalculation({
+            montoTotal: 1000000, numeroCuotas: 2, tasaInteres: 2,
+            tipoTasa: 'mensual', diaPago: 15, fechaInicio: '2026-01-15',
+        });
+        expect(r.fechaFin).toBe('2026-03-15');
+    });
+});

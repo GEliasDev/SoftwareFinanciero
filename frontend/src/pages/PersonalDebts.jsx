@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PersonalDebtService } from '../services/personalDebtService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
+import { LoadError } from '../components/ui/LoadError';
 import { Plus, Handshake, ChevronRight, TrendingDown, Repeat, Pencil, Trash2 } from 'lucide-react';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
@@ -17,9 +18,12 @@ export const PersonalDebts = () => {
   const navigate = useNavigate();
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = () => {
-    PersonalDebtService.getAll().then(setDebts).catch(console.error).finally(() => setLoading(false));
+    setLoading(true);
+    setError(false);
+    PersonalDebtService.getAll().then(setDebts).catch(() => setError(true)).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
@@ -112,22 +116,22 @@ export const PersonalDebts = () => {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Deudas"
-        subtitle="Deudas personales y gastos mensuales recurrentes"
+        title="Gastos"
+        subtitle="Gastos mensuales recurrentes y deudas personales"
         actions={
           <button className="btn btn-primary" onClick={() => navigate('/personal-debts/new')}>
-            <Plus size={15} /> Nueva deuda
+            <Plus size={15} /> Nuevo gasto
           </button>
         }
       />
 
-      {!loading && debts.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
-          <StatCard label="Comprometido mensual" value={fmt(totalCuota)} delta="Todos los gastos fijos mensuales activas" icon={Handshake} tone="warn" />
+      {!loading && !error && debts.length > 0 && (
+        <div className="kpi-grid" style={{ marginBottom: 18 }}>
+          <StatCard label="Gastos mensuales" value={fmt(totalCuota)} delta={`${gastos.length} gasto${gastos.length !== 1 ? 's' : ''} recurrente${gastos.length !== 1 ? 's' : ''}`} icon={Repeat} tone="warn" />
           {deudas.length > 0 && (
-            <StatCard label="Saldo en deudas" value={fmt(totalSaldo)} delta="Por pagar en cuotas" icon={TrendingDown} tone="neg" />
+            <StatCard label="Saldo en deudas" value={fmt(totalSaldo)} delta={`${deudas.length} deuda${deudas.length !== 1 ? 's' : ''} por saldar`} icon={TrendingDown} tone="neg" />
           )}
-          <StatCard label="Activas" value={`${activas.length}`} delta={`de ${debts.length} total`} icon={Handshake} tone="brand" />
+          <StatCard label="Activas" value={`${activas.length}`} delta={`de ${debts.length} en total`} icon={Handshake} tone="brand" />
         </div>
       )}
 
@@ -135,6 +139,8 @@ export const PersonalDebts = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 100, borderRadius: 'var(--radius-md)' }} />)}
         </div>
+      ) : error ? (
+        <LoadError onRetry={load} title="No se pudieron cargar tus gastos" />
       ) : debts.length === 0 ? (
         <div className="card">
           <div className="empty-state">
@@ -148,19 +154,19 @@ export const PersonalDebts = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {hasMixed && deudas.length > 0 && (
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
-              Deudas
-            </p>
-          )}
-          {(debts.filter(d => d.tipo === 'deuda' || !d.tipo)).map(debt => <DeudaCard key={debt.id} debt={debt} />)}
-
           {hasMixed && gastos.length > 0 && (
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0.25rem 0 0' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
               Gastos mensuales
             </p>
           )}
           {debts.filter(d => d.tipo === 'gasto').map(debt => <GastoRow key={debt.id} debt={debt} />)}
+
+          {hasMixed && deudas.length > 0 && (
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0.25rem 0 0' }}>
+              Deudas por saldar
+            </p>
+          )}
+          {(debts.filter(d => d.tipo === 'deuda' || !d.tipo)).map(debt => <DeudaCard key={debt.id} debt={debt} />)}
         </div>
       )}
     </div>

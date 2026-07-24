@@ -7,32 +7,7 @@ import { CreditCardService } from '../services/creditCardService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { fmt } from '../utils/format';
 import { CATEGORIES } from '../utils/creditCard';
-
-// Parser CSV manual (no XLSX.read): SheetJS intenta "adivinar" tipos en CSV
-// (números, fechas) usando SUS PROPIAS heurísticas de formato antes de que
-// nuestro parseFecha/parseMonto vean el texto — con un extracto en formato
-// es-CO ("150.000,50", "05/07/2026") eso corrompe el valor silenciosamente.
-// Para .csv leemos el texto crudo nosotros; XLSX.read solo se usa para
-// .xlsx/.xls reales, donde si hace falta interpretar tipos de celda.
-function parseCSV(text) {
-  const rows = [];
-  let row = [], field = '', inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (c === '"') { inQuotes = false; }
-      else { field += c; }
-    } else if (c === '"') { inQuotes = true; }
-    else if (c === ',') { row.push(field); field = ''; }
-    else if (c === '\n' || c === '\r') {
-      if (c === '\r' && text[i + 1] === '\n') i++;
-      row.push(field); field = ''; rows.push(row); row = [];
-    } else { field += c; }
-  }
-  if (field !== '' || row.length) { row.push(field); rows.push(row); }
-  return rows.filter(r => r.length > 1 || r[0] !== '');
-}
+import { parseCSV, parseFecha, parseMonto } from '../utils/csvImport';
 
 const FIELDS = [
   { key: 'fecha', label: 'Fecha de compra', required: true, guesses: ['fecha', 'date', 'fecha de compra', 'fecha transaccion', 'fecha transacción'] },
@@ -41,46 +16,6 @@ const FIELDS = [
   { key: 'categoria', label: 'Categoría (opcional)', required: false, guesses: ['categoria', 'categoría', 'category'] },
 ];
 
-// Convierte una celda de fecha (Date de Excel o texto DD/MM/YYYY, común en
-// extractos colombianos) a 'YYYY-MM-DD'. Nunca toISOString() — mismo gotcha
-// de zona horaria de siempre (ver CLAUDE.md).
-// Valida rangos reales (mes 1-12, día 1-31) — un regex solo de dígitos deja
-// pasar cosas como "99/99/9999" como si fuera una fecha válida.
-const validYMD = (y, mo, d) => mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && y >= 1900 && y <= 2100
-  ? `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-  : null;
-
-function parseFecha(value) {
-  if (value instanceof Date && !isNaN(value)) {
-    return validYMD(value.getFullYear(), value.getMonth() + 1, value.getDate());
-  }
-  const str = String(value ?? '').trim();
-  let m = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/); // DD/MM/YYYY
-  if (m) return validYMD(+m[3], +m[2], +m[1]);
-  m = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/); // YYYY-MM-DD
-  if (m) return validYMD(+m[1], +m[2], +m[3]);
-  return null;
-}
-
-// Normaliza un monto en texto ("$1.500.000,50", "1500000", "1,234.56") a
-// número. Si ambos separadores aparecen, el ÚLTIMO es el decimal.
-function parseMonto(value) {
-  if (typeof value === 'number') return value;
-  let str = String(value ?? '').replace(/[^0-9,.-]/g, '');
-  if (!str) return NaN;
-  const lastComma = str.lastIndexOf(',');
-  const lastDot = str.lastIndexOf('.');
-  if (lastComma > -1 && lastDot > -1) {
-    str = lastComma > lastDot
-      ? str.replace(/\./g, '').replace(',', '.')
-      : str.replace(/,/g, '');
-  } else if (lastComma > -1) {
-    str = /,\d{1,2}$/.test(str) ? str.replace(',', '.') : str.replace(/,/g, '');
-  } else if (lastDot > -1) {
-    str = /\.\d{1,2}$/.test(str) ? str : str.replace(/\./g, '');
-  }
-  return parseFloat(str);
-}
 
 function guessColumn(headers, guesses) {
   const norm = (s) => String(s).toLowerCase().trim();

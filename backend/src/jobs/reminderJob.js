@@ -14,7 +14,7 @@ export const startReminderJob = () => {
 
             for (const reminder of pending) {
                 try {
-                    if (process.env.VAPID_PUBLIC_KEY) {
+                    if (PushSubscriptionService.isEnabled()) {
                         await PushSubscriptionService.sendToUser(
                             reminder.userId,
                             `Pago próximo: ${reminder.nombre}`,

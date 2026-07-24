@@ -1,6 +1,7 @@
 import { UserService } from './user.service.js';
 import logger from '../../utils/logger.js';
 import { AppError } from '../../middlewares/appError.js';
+import { localToday } from '../../utils/localDate.js';
 
 export const UserController = {
     login: async (req, res, next) => {
@@ -87,7 +88,7 @@ export const UserController = {
     exportData: async (req, res, next) => {
         try {
             const data = await UserService.exportAllData(req.user.id);
-            const fecha = new Date().toISOString().slice(0, 10);
+            const fecha = localToday();
             res.setHeader('Content-Disposition', `attachment; filename="debti-datos-${fecha}.json"`);
             res.setHeader('Content-Type', 'application/json');
             res.status(200).send(JSON.stringify(data, null, 2));

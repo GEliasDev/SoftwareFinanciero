@@ -2,6 +2,7 @@ import { PersonalDebt } from './personalDebt.model.js';
 import { PersonalDebtAbono } from './personalDebtAbono.model.js';
 import { personalDebtCreateSchema, personalDebtUpdateSchema, abonoSchema } from './personalDebt.schema.js';
 import { AppError } from '../../middlewares/appError.js';
+import { localToday } from '../../utils/localDate.js';
 
 export const PersonalDebtService = {
     getAll: async (userId) => PersonalDebt.findAll({ where: { userId } }),
@@ -84,7 +85,7 @@ export const PersonalDebtService = {
             monto,
             saldoAntes,
             saldoDespues,
-            fecha: fecha ?? new Date().toISOString().slice(0, 10),
+            fecha: fecha ?? localToday(),
         });
 
         return debt.update({ saldoPendiente: saldoDespues, status: nuevoStatus });

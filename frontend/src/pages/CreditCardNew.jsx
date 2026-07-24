@@ -7,7 +7,9 @@ import {
 } from 'lucide-react';
 import { CARD_COLORS, getCardGradient, darkenHex } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
+import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { fmt } from '../utils/format';
+import { TASA_USURA_EA } from '../utils/creditCard';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
 const STEP_FIELDS = [['nombre', 'entidad', 'ultimos4'], ['cupoTotal', 'tasaInteresMensual'], ['fechaCorte', 'fechaPago']];
@@ -99,7 +101,7 @@ export const CreditCardNew = () => {
 
   const tasaMensual = parseFloat(formData.tasaInteresMensual) || 0;
   const tasaEA = tasaMensual ? ((Math.pow(1 + tasaMensual / 100, 12) - 1) * 100).toFixed(2) : null;
-  const isHighRate = tasaEA && parseFloat(tasaEA) > 28.5;
+  const isHighRate = tasaEA && parseFloat(tasaEA) > TASA_USURA_EA;
   const cupoNum = parseFloat(formData.cupoTotal) || 0;
   const cuotaSim = cupoNum && tasaMensual ? calcCuota(cupoNum, simCuotas, tasaMensual) : null;
   const gradient = getCardGradient(formData.color);
@@ -107,9 +109,9 @@ export const CreditCardNew = () => {
   // Función (no componente) para no remontar el input y perder el foco al teclear.
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
-      <label className="form-label">{label}</label>
+      <label className="form-label" htmlFor={name}>{label}</label>
       <input
-        className={`form-input ${showErr(name) ? 'error' : ''}`}
+        id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
         name={name}
         value={formData[name]}
         onChange={handleChange}
@@ -206,7 +208,7 @@ export const CreditCardNew = () => {
               {isHighRate ? <AlertTriangle size={14} /> : <Percent size={14} />}
               <div>
                 <strong>Tasa E.A.: {tasaEA}%</strong>
-                <p style={{ margin: '2px 0 0', fontSize: 11, lineHeight: 1.5 }}>{isHighRate ? 'Supera la tasa de usura referencial (28.5% E.A.). Verifica con tu banco.' : 'Dentro del rango habitual para tarjetas en Colombia.'}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, lineHeight: 1.5 }}>{isHighRate ? `Supera la tasa de usura referencial (${TASA_USURA_EA}% E.A.). Verifica con tu banco.` : 'Dentro del rango habitual para tarjetas en Colombia.'}</p>
               </div>
             </div>
           )}
@@ -302,9 +304,25 @@ export const CreditCardNew = () => {
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Fechas de ciclo</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Días de corte y de pago de tu tarjeta</p>
-                <div className="form-row-2">
-                  {field('fechaCorte', 'Día de corte * (1–31)', 'Cierre del periodo de facturación', { type: 'number', min: '1', max: '31', placeholder: 'Ej: 20' })}
-                  {field('fechaPago', 'Día de pago * (1–31)', 'Fecha límite de pago mensual', { type: 'number', min: '1', max: '31', placeholder: 'Ej: 5' })}
+                <DayOfMonthPicker
+                  label="Día de corte"
+                  required
+                  nombreEvento="corte"
+                  value={formData.fechaCorte}
+                  onChange={d => { setFormData(p => ({ ...p, fechaCorte: String(d) })); markTouched('fechaCorte'); }}
+                  error={showErr('fechaCorte') ? errors.fechaCorte : null}
+                  hint="Cierre del periodo de facturación"
+                />
+                <div style={{ marginTop: '1rem' }}>
+                  <DayOfMonthPicker
+                    label="Día de pago"
+                    required
+                    nombreEvento="pago"
+                    value={formData.fechaPago}
+                    onChange={d => { setFormData(p => ({ ...p, fechaPago: String(d) })); markTouched('fechaPago'); }}
+                    error={showErr('fechaPago') ? errors.fechaPago : null}
+                    hint="Fecha límite de pago mensual"
+                  />
                 </div>
                 <div className="info-box primary" style={{ marginTop: '1.25rem', fontSize: 12 }}>
                   <Info size={13} style={{ flexShrink: 0 }} />

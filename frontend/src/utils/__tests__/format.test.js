@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmt, fmtK, fmtDate, daysUntil, urgencyStyle, weekendToFriday, nextOccurrence } from '../format';
+import { fmt, fmtK, fmtDate, daysUntil, urgencyStyle, weekendToFriday, nextOccurrence, parseLocalDate, fmtDateLong, effectiveDayInMonth } from '../format';
 
 describe('fmt', () => {
   it('formats positive COP amount', () => {
@@ -161,5 +161,66 @@ describe('addMonths', () => {
 describe('capFirst', () => {
   it('capitaliza solo la primera letra', () => {
     expect(capFirst('junio de 2026')).toBe('Junio de 2026');
+  });
+});
+
+/* ── Regresiones de zona horaria y días de ciclo (2026-07-23) ── */
+
+describe('parseLocalDate', () => {
+  it('parsea un DATEONLY en hora LOCAL, no UTC', () => {
+    // new Date('2026-07-01') daba 30-jun en UTC-5: un día menos en toda la app.
+    const d = parseLocalDate('2026-07-01');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6); // julio
+    expect(d.getDate()).toBe(1);
+  });
+
+  it('no cambia el año en un 1 de enero', () => {
+    const d = parseLocalDate('2026-01-01');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(0);
+  });
+
+  it('deja pasar Date y nulos', () => {
+    const orig = new Date(2026, 5, 15);
+    expect(parseLocalDate(orig)).toBe(orig);
+    expect(parseLocalDate(null)).toBeNull();
+    expect(parseLocalDate('')).toBeNull();
+  });
+});
+
+describe('fmtDateLong', () => {
+  it('muestra el día correcto de un DATEONLY', () => {
+    expect(fmtDateLong('2026-07-01')).toMatch(/01.*jul.*2026/);
+    expect(fmtDateLong('2026-12-25')).toMatch(/25.*dic.*2026/);
+  });
+
+  it('devuelve — si no hay fecha', () => {
+    expect(fmtDateLong(null)).toBe('—');
+  });
+});
+
+describe('effectiveDayInMonth', () => {
+  it('recorta el 31 a los meses que no lo tienen', () => {
+    expect(effectiveDayInMonth(31, 2026, 5)).toBe(30);  // junio
+    expect(effectiveDayInMonth(31, 2026, 1)).toBe(28);  // febrero
+    expect(effectiveDayInMonth(31, 2028, 1)).toBe(29);  // febrero bisiesto
+    expect(effectiveDayInMonth(15, 2026, 5)).toBe(15);  // sin cambios
+  });
+});
+
+describe('nextOccurrence con días 29-31', () => {
+  it('no desborda al mes siguiente', () => {
+    // Antes: new Date(2026, 5, 31) -> 1 de julio.
+    const d = nextOccurrence(31);
+    const ultimoDia = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    expect(d.getDate()).toBeLessThanOrEqual(ultimoDia);
+  });
+
+  it('siempre devuelve una fecha futura o de hoy', () => {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    for (const dia of [1, 15, 28, 29, 30, 31]) {
+      expect(nextOccurrence(dia).getTime()).toBeGreaterThanOrEqual(hoy.getTime());
+    }
   });
 });
