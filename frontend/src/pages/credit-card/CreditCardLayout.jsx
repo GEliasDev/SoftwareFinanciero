@@ -5,7 +5,7 @@ import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, PieChart }
 import { CreditCardService } from '../../services/creditCardService';
 import { TabNav } from '../../components/ui/TabNav';
 import { fmt, nextOccurrence, daysUntil } from '../../utils/format';
-import { CATEGORIES, buildSchedule, TASA_USURA_EA } from '../../utils/creditCard';
+import { CATEGORIES, buildSchedule, TASA_USURA_EA, attachAdvanceCommission } from '../../utils/creditCard';
 
 // Re-exportada para no romper imports existentes; la fuente vive en utils/creditCard.
 export { TASA_USURA_EA };
@@ -16,6 +16,8 @@ export const CreditCardLayout = () => {
   const [card, setCard]           = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading]     = useState(true);
+
+  const normalizedPurchases = useMemo(() => attachAdvanceCommission(purchases), [purchases]);
 
   const load = async () => {
     setLoading(true);
@@ -35,16 +37,16 @@ export const CreditCardLayout = () => {
 
   useEffect(() => { load(); }, [id]);
 
-  const activePurchases = useMemo(() => purchases.filter(p => p.status === 'activa'), [purchases]);
+  const activePurchases = useMemo(() => normalizedPurchases.filter(p => p.status === 'activa'), [normalizedPurchases]);
 
   // Corte cuyo pago está vigente: el corte más antiguo CERRADO (pasado) que tenga cuotas pendientes.
   // No exigimos el pago del corte vigente (isCurrent) hasta que este cierre físicamente.
   const payableSlot = useMemo(() => {
     if (!card) return null;
-    const schedule = buildSchedule(purchases, card);
+    const schedule = buildSchedule(normalizedPurchases, card);
     const oldestUnpaidPast = schedule.find(s => s.isPast && s.lines.some(l => !l.wasPaid));
     return oldestUnpaidPast ?? null;
-  }, [purchases, card]);
+  }, [normalizedPurchases, card]);
 
   // Solo las compras con una cuota PENDIENTE en ese corte (no todas las activas).
   const payableLines = useMemo(
@@ -59,10 +61,10 @@ export const CreditCardLayout = () => {
   // Obligación original facturada en el ciclo vigente (para KPIs y comparaciones)
   const monthlyObligation = useMemo(() => {
     if (!card) return 0;
-    const schedule = buildSchedule(purchases, card);
+    const schedule = buildSchedule(normalizedPurchases, card);
     const current = schedule.find(s => s.isCurrent);
     return current?.total ?? 0;
-  }, [purchases, card]);
+  }, [normalizedPurchases, card]);
   const totalCapital      = useMemo(() => activePurchases.reduce((s, p) => s + parseFloat(p.montoTotal ?? 0), 0), [activePurchases]);
   const totalConIntereses = useMemo(() => activePurchases.reduce((s, p) => s + parseFloat(p.totalAPagar ?? 0), 0), [activePurchases]);
   const totalYaPagado     = useMemo(() => activePurchases.reduce((s, p) => s + Number(p.cuotasPagadas) * parseFloat(p.valorCuotaMensual ?? 0), 0), [activePurchases]);
@@ -161,7 +163,7 @@ export const CreditCardLayout = () => {
   ];
 
   const ctx = {
-    card, purchases, activePurchases, id, reload: load,
+    card, purchases: normalizedPurchases, activePurchases, id, reload: load,
     monthlyObligation, totalCapital, totalConIntereses, totalYaPagado, totalRestante, maxMesesRestantes,
     cupoUsado, usagePct, barColor, tasaMensual, tasaEA, isHighRate,
     nextCorte, nextPago, daysCorte, daysPago, categoryData, handlePayAll,

@@ -62,6 +62,26 @@ export const getMovimientoVisual = (tipo, categoria) => {
   }
 };
 
+export const attachAdvanceCommission = (purchases = []) => {
+  const commissionByAdvance = new Map();
+
+  purchases.forEach((purchase) => {
+    if (purchase?.tipo === 'comision' && purchase?.avanceId != null) {
+      commissionByAdvance.set(Number(purchase.avanceId), purchase);
+    }
+  });
+
+  return purchases
+    .filter((purchase) => !(purchase?.tipo === 'comision' && purchase?.avanceId != null))
+    .map((purchase) => {
+      if (purchase?.tipo === 'avance') {
+        const commission = commissionByAdvance.get(Number(purchase.id));
+        return commission ? { ...purchase, commission } : purchase;
+      }
+      return purchase;
+    });
+};
+
 /* ── Fechas de corte / pago y urgencia ────────────────────────────────── */
 // Helpers genéricos centralizados en format.js; se re-exportan aquí por
 // compatibilidad con los consumidores existentes del módulo de tarjetas.

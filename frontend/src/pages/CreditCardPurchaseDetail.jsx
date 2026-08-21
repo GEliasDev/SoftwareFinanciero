@@ -91,6 +91,7 @@ export const CreditCardPurchaseDetail = () => {
   const progress      = isPaid ? 100 : numeroCuotas > 0 ? (cuotasPagadas / numeroCuotas) * 100 : 0;
   const tasaMensual   = card ? parseFloat(card.tasaInteresMensual) : 0;
   const totalIntereses = purchase ? parseFloat(purchase.totalIntereses ?? 0) : 0;
+  const avanceComision = purchase?.commission ? parseFloat(purchase.commission.montoTotal ?? 0) : 0;
   const pendienteTotal = cuotasRestantes * parseFloat(purchase?.valorCuotaMensual ?? 0);
 
   const amortRows = useMemo(
@@ -277,7 +278,7 @@ export const CreditCardPurchaseDetail = () => {
           { label: 'Monto original',      value: fmt(purchase.montoTotal),        accent: 'var(--color-text-secondary)', bg: 'var(--color-bg)',          border: 'var(--color-border)' },
           { label: 'Cuota mensual',        value: fmt(purchase.valorCuotaMensual), accent: 'var(--color-primary)',        bg: 'var(--color-primary-light)', border: 'rgba(21,101,192,0.15)' },
           { label: 'Total con intereses',  value: fmt(purchase.totalAPagar),       accent: '#dc2626',                     bg: '#fef2f2',                    border: 'rgba(220,38,38,0.15)' },
-          { label: 'Intereses generados',  value: fmt(totalIntereses),             accent: 'var(--color-warning)',        bg: 'var(--color-warning-bg)',    border: 'rgba(217,119,6,0.15)' },
+          { label: purchase?.tipo === 'avance' && avanceComision > 0 ? 'Comisión del avance' : 'Intereses generados', value: purchase?.tipo === 'avance' && avanceComision > 0 ? fmt(avanceComision) : fmt(totalIntereses), accent: purchase?.tipo === 'avance' && avanceComision > 0 ? 'var(--color-warning)' : 'var(--color-warning)', bg: purchase?.tipo === 'avance' && avanceComision > 0 ? 'var(--color-warning-bg)' : 'var(--color-warning-bg)', border: 'rgba(217,119,6,0.15)' },
         ].map(kpi => (
           <div key={kpi.label} style={{ background: kpi.bg, border: `1px solid ${kpi.border}`, borderRadius: 'var(--radius-md)', padding: '1rem 1.125rem', boxShadow: 'var(--shadow-sm)' }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', margin: '0 0 0.35rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{kpi.label}</p>
@@ -535,7 +536,7 @@ export const CreditCardPurchaseDetail = () => {
               {[
                 { label: 'Capital financiado', value: fmt(purchase.montoTotal), color: 'var(--color-text-primary)', bold: true },
                 { label: 'Total con intereses', value: fmt(purchase.totalAPagar), color: '#dc2626' },
-                { label: 'Costo total intereses', value: fmt(totalIntereses), color: 'var(--color-warning)' },
+                { label: purchase?.tipo === 'avance' && avanceComision > 0 ? 'Comisión del avance' : 'Costo total intereses', value: purchase?.tipo === 'avance' && avanceComision > 0 ? fmt(avanceComision) : fmt(totalIntereses), color: 'var(--color-warning)' },
                 { label: 'Ya pagado (cuotas)', value: fmt(cuotasPagadas * parseFloat(purchase.valorCuotaMensual ?? 0)), color: '#15803d' },
                 { label: 'Saldo pendiente', value: fmt(pendienteTotal), color: 'var(--color-primary)', bold: true },
               ].map(row => (

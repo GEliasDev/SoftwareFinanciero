@@ -123,6 +123,7 @@ export const CardPurchases = () => {
                       const numeroCuotas = Number(p.numeroCuotas);
                       const progress = isPaid ? 100 : numeroCuotas > 0 ? (cuotasPagadas / numeroCuotas) * 100 : 0;
                       const pgColor = isPaid ? 'var(--pos-600)' : cuotasPagadas > 0 ? 'var(--brand-600)' : 'var(--text-3)';
+                      const commission = p.commission;
                       return (
                         <div key={p.id} onClick={() => navigate(`/credit-cards/${id}/purchases/${p.id}`)}
                           className={`purchase-row ${isPaid ? 'paid' : ''}`}>
@@ -147,7 +148,15 @@ export const CardPurchases = () => {
                               <span className="tabular">{fmt(p.valorCuotaMensual)}/cuota</span>
                               <span>{isPaid ? 'Completada' : `${cuotasPagadas}/${numeroCuotas} cuotas`}</span>
                             </div>
-                            <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden' }}>
+                            {commission && (
+                              <div style={{ marginTop: '0.35rem', padding: '0.45rem 0.6rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.25)', background: 'rgba(245, 158, 11, 0.06)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', fontSize: 11 }}>
+                                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Comisión del avance</span>
+                                  <span className="tabular" style={{ color: 'var(--color-warning)', fontWeight: 700 }}>{fmt(commission.montoTotal)}</span>
+                                </div>
+                              </div>
+                            )}
+                            <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden', marginTop: '0.4rem' }}>
                               <div style={{ height: 4, width: '100%', background: pgColor, borderRadius: 99, transition: 'transform 0.4s ease', transformOrigin: 'left', transform: `scaleX(${progress / 100})` }} />
                             </div>
                           </div>
