@@ -172,9 +172,10 @@ return card;
         const parsed = advanceCreateSchema.parse(data);
         const comision = parseFloat(card.comisionAvance ?? 0);
 
-        if (parsed.montoTotal + comision > parseFloat(card.cupoDisponible)) {
+        // La comisión es cupo-neutral: solo el capital del avance ocupa cupo.
+        if (parsed.montoTotal > parseFloat(card.cupoDisponible)) {
             throw new AppError(
-                `Cupo insuficiente. Disponible: $${card.cupoDisponible} (avance + comisión: $${(parsed.montoTotal + comision).toFixed(2)})`,
+                `Cupo insuficiente. Disponible: $${card.cupoDisponible} (avance: $${parsed.montoTotal.toFixed(2)})`,
                 400
             );
         }
@@ -213,9 +214,9 @@ return card;
             });
         }
 
-        // El avance y la comisión ocupan cupo (su principal).
+        // Solo el avance ocupa cupo; la comisión es cupo-neutral.
         await card.update({
-            cupoDisponible: parseFloat((parseFloat(card.cupoDisponible) - parsed.montoTotal - comision).toFixed(2)),
+            cupoDisponible: parseFloat((parseFloat(card.cupoDisponible) - parsed.montoTotal).toFixed(2)),
         });
 
         logger.info(`Advance ${avance.id} created for credit card ${creditCardId} by user ${userId}`);
@@ -244,10 +245,10 @@ return card;
         const cuotasRestantes = purchase.numeroCuotas - nuevasCuotasPagadas;
         const pagada = cuotasRestantes === 0;
 
-        // Restaurar cupo solo por la porción de capital (cuota incluye interés que no ocupa cupo)
+        // Restaurar cupo solo por la porción de capital (cuota incluye interés que no ocupa cupo).
         const card = purchase.CreditCard;
-        // La cuota de manejo es cupo-neutral: no restaura cupo al pagarse.
-        if (purchase.tipo !== 'cuota_manejo') {
+        // Cuota de manejo y comisiones son cupo-neutral: no restaura cupo al pagarse.
+        if (purchase.tipo !== 'cuota_manejo' && purchase.tipo !== 'comision') {
             const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
             // Incremento atómico en SQL: "Pagar corte" dispara varios pagos en
             // paralelo y un read-modify-write en JS pierde los incrementos
@@ -255,6 +256,16 @@ return card;
             await CreditCard.update(
                 { cupoDisponible: literal(`LEAST("cupoTotal", "cupoDisponible" + ${Number(capitalPorCuota).toFixed(2)})`) },
                 { where: { id: card.id } }
+            );
+        }
+
+        // La comisión de un avance se paga automáticamente junto con la PRIMERA
+        // cuota del avance (es un cargo único de ese ciclo). Es cupo-neutral:
+        // solo se marca pagada, sin tocar el cupo disponible.
+        if (purchase.tipo === 'avance' && nuevasCuotasPagadas === 1) {
+            await CreditCardPurchase.update(
+                { status: 'pagada', cuotasPagadas: 1 },
+                { where: { avanceId: purchase.id, tipo: 'comision' } }
             );
         }
 
@@ -283,23 +294,20 @@ return card;
         let cupoARestaurar = 0;
 
         // Restaurar cupo proporcional al capital no pagado (no intereses).
-        // La cuota de manejo es cupo-neutral: no restaura cupo.
+        // Cuota de manejo y comisiones son cupo-neutral: no restauran cupo.
         const cuotasRestantes = purchase.numeroCuotas - purchase.cuotasPagadas;
-        if (cuotasRestantes > 0 && purchase.tipo !== 'cuota_manejo') {
+        if (cuotasRestantes > 0 && purchase.tipo !== 'cuota_manejo' && purchase.tipo !== 'comision') {
             const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
             cupoARestaurar += cuotasRestantes * capitalPorCuota;
         }
 
-        // Si es un avance, eliminar la comisión dependiente y restaurar su cupo.
+        // Si es un avance, eliminar la comisión dependiente. La comisión es
+        // cupo-neutral, así que su eliminación no afecta el cupo disponible.
         if (purchase.tipo === 'avance') {
             const comision = await CreditCardPurchase.findOne({
                 where: { avanceId: purchaseId, tipo: 'comision' },
             });
             if (comision) {
-                const cuotasComisionRestantes = comision.numeroCuotas - comision.cuotasPagadas;
-                if (cuotasComisionRestantes > 0) {
-                    cupoARestaurar += parseFloat(comision.montoTotal);
-                }
                 await comision.destroy();
             }
         }
@@ -376,13 +384,22 @@ return card;
         const nuevasCuotasPagadas = purchase.cuotasPagadas - 1;
         const card = purchase.CreditCard;
 
-        // La cuota de manejo es cupo-neutral: no revierte cupo.
-        if (purchase.tipo !== 'cuota_manejo') {
+        // Cuota de manejo y comisiones son cupo-neutral: no revierten cupo.
+        if (purchase.tipo !== 'cuota_manejo' && purchase.tipo !== 'comision') {
             const capitalPorCuota = parseFloat(purchase.montoTotal) / purchase.numeroCuotas;
             // Decremento atómico (mismo motivo que en registerPurchasePayment).
             await CreditCard.update(
                 { cupoDisponible: literal(`GREATEST(0, "cupoDisponible" - ${Number(capitalPorCuota).toFixed(2)})`) },
                 { where: { id: card.id } }
+            );
+        }
+
+        // Si se deshace la PRIMERA cuota pagada de un avance, su comisión vuelve
+        // a quedar pendiente (fue pagada de forma automática junto con esa cuota).
+        if (purchase.tipo === 'avance' && nuevasCuotasPagadas === 0) {
+            await CreditCardPurchase.update(
+                { status: 'activa', cuotasPagadas: 0 },
+                { where: { avanceId: purchase.id, tipo: 'comision' } }
             );
         }
 
@@ -416,6 +433,15 @@ return card;
                 (parseFloat(card.cupoDisponible) + capitalPendiente).toFixed(2)
             );
             await card.update({ cupoDisponible: Math.min(nuevoCupo, parseFloat(card.cupoTotal)) });
+
+            // Si se cancela un avance por completo, su comisión queda pagada.
+            if (purchase.tipo === 'avance') {
+                await CreditCardPurchase.update(
+                    { status: 'pagada', cuotasPagadas: 1 },
+                    { where: { avanceId: purchase.id, tipo: 'comision' } }
+                );
+            }
+
             return purchase.update({ cuotasPagadas: purchase.numeroCuotas, status: 'pagada' });
         }
 

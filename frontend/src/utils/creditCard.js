@@ -133,10 +133,25 @@ export const buildSchedule = (purchases, card, monthsAhead = 12, monthsBack = 3)
       const total       = Number(p.numeroCuotas);
       const cuotaActual = (cutIdx - firstCutMonthIndex(p.fechaCompra, cutDay)) + 1;
       const validCuota  = cuotaActual >= 1 && cuotaActual <= total;
-      const isPending   = cuotaActual > pagadas;
+      let isPending     = cuotaActual > pagadas;
+
+      // Comisión de avance en formato crudo (depende del avance padre). Si ese
+      // avance ya pagó su PRIMERA cuota, la comisión NO cuenta como pendiente,
+      // aunque su status siga siendo 'activa' (dato histórico corrupto por el
+      // bug previo a 2026-09-07: quedaba sin pagar al "Pagar este corte").
+      if (p?.tipo === 'comision' && p?.avanceId != null) {
+        const avance = purchases.find(a => a.id === Number(p.avanceId));
+        // Si el avance falta en la lista (getAllCreditCards solo trae 'activa'),
+        // significa que ya no está activo (pagada/cancelada) → la comisión no es pendiente.
+        const avancePagado = !avance || Number(avance.cuotasPagadas) >= 1 || avance.status === 'pagada';
+        if (avancePagado) {
+          isPending = false;
+        }
+      }
 
       // Pasados: mostrar todas las cuotas válidas (historial). Vigente/futuros: solo pendientes.
       if (validCuota && (isPast || isPending)) {
+        const autoPaid = p?.tipo === 'comision' && p?.avanceId != null && !isPending;
         acc.push({
           id: p.id,
           descripcion: p.descripcion,
@@ -146,9 +161,37 @@ export const buildSchedule = (purchases, card, monthsAhead = 12, monthsBack = 3)
           cuotaActual,
           numeroCuotas: total,
           isLast: cuotaActual === total,
-          wasPaid: !isPending,
+          wasPaid: autoPaid ? true : !isPending,
         });
       }
+
+      // Comisión de un avance: se paga junto con la PRIMERA cuota del avance.
+      // Aparece en el extracto como línea informativa (suma al total del corte)
+      // pero NO es una compra pagable aparte — la paga el avance al registrar
+      // su primera cuota. `isCommission` permite excluirla del pago individual.
+      // Si el avance ya pagó su primera cuota, la comisión se considera pagada
+      // aunque su status siga 'activa' (dato histórico corrupto del bug anterior).
+      if (p?.tipo === 'avance' && p?.commission && cuotaActual === 1) {
+        const c           = p.commission;
+        const avancePago1 = Number(p.cuotasPagadas) >= 1;
+        const pagadasC    = avancePago1 ? 1 : Number(c.cuotasPagadas ?? 0);
+        const pendienteC  = pagadasC < 1;
+        if (isPast || pendienteC) {
+          acc.push({
+            id: c.id,
+            descripcion: c.descripcion || 'Comisión por avance',
+            categoria: c.categoria || 'otros',
+            tipo: 'comision',
+            isCommission: true,
+            valorCuota: parseFloat(c.valorCuotaMensual ?? c.montoTotal ?? 0),
+            cuotaActual: 1,
+            numeroCuotas: 1,
+            isLast: true,
+            wasPaid: !pendienteC,
+          });
+        }
+      }
+
       return acc;
     }, []);
 

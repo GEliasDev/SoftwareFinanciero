@@ -42,7 +42,7 @@ export const CreditCardAdvanceNew = () => {
     ? calcCuota(Number(form.montoTotal), Number(form.numeroCuotas), tasaMensual)
     : 0;
   const totalPreview = cuotaPreview * Number(form.numeroCuotas || 1);
-  const totalConCupo = Number(form.montoTotal || 0) + comision;
+  const montoAvance  = Number(form.montoTotal || 0);
 
   const errs = {};
   if (!form.descripcion.trim())           errs.descripcion  = 'Ingresa una descripción';
@@ -59,8 +59,8 @@ export const CreditCardAdvanceNew = () => {
     setTouched({ descripcion: true, montoTotal: true, numeroCuotas: true, fechaCompra: true });
     if (Object.keys(errs).length) return;
     if (!card) return;
-    if (totalConCupo > parseFloat(card.cupoDisponible)) {
-      Swal.fire({ icon: 'warning', title: 'Cupo insuficiente', text: `Avance + comisión (${fmt(totalConCupo)}) supera el cupo disponible (${fmt(card.cupoDisponible)}).` });
+    if (montoAvance > parseFloat(card.cupoDisponible)) {
+      Swal.fire({ icon: 'warning', title: 'Cupo insuficiente', text: `El avance (${fmt(montoAvance)}) supera el cupo disponible (${fmt(card.cupoDisponible)}).` });
       return;
     }
     setSaving(true);
@@ -146,7 +146,8 @@ export const CreditCardAdvanceNew = () => {
                 {[
                   { label: 'Total del avance', value: fmt(totalPreview), color: '#dc2626' },
                   { label: 'Comisión (este corte)', value: comision > 0 ? fmt(comision) : '—', color: 'var(--color-warning)' },
-                  { label: 'Ocupa cupo', value: fmt(totalConCupo), color: 'var(--color-text-secondary)' },
+                  { label: 'Ocupa cupo', value: fmt(montoAvance), color: 'var(--color-text-secondary)' },
+                  { label: 'Comisión no ocupa cupo', value: comision > 0 ? '✓' : '—', color: comision > 0 ? 'var(--color-success)' : 'var(--color-text-muted)' },
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.275rem 0', borderBottom: '1px solid var(--color-border)' }}>
                     <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{row.label}</span>
@@ -194,8 +195,8 @@ export const CreditCardAdvanceNew = () => {
                   aria-describedby={showErr('montoTotal') ? 'adv-monto-err' : undefined}
                 />
                 {showErr('montoTotal') && <p className="form-error" id="adv-monto-err"><AlertCircle size={11} /> {errs.montoTotal}</p>}
-                {!showErr('montoTotal') && card && totalConCupo > parseFloat(card.cupoDisponible) && (
-                  <p className="form-error"><AlertCircle size={11} /> Avance + comisión supera el cupo</p>
+                {!showErr('montoTotal') && card && montoAvance > parseFloat(card.cupoDisponible) && (
+                  <p className="form-error"><AlertCircle size={11} /> El avance supera el cupo</p>
                 )}
               </div>
               <div className="form-group">
@@ -230,7 +231,7 @@ export const CreditCardAdvanceNew = () => {
             {comision > 0 && (
               <div className="info-box primary" style={{ marginBottom: '1.25rem', fontSize: 12 }}>
                 <DollarSign size={13} />
-                Se cobrará una comisión fija de <strong>{fmt(comision)}</strong> en el corte vigente, además de las cuotas del avance.
+                Se cobrará una comisión fija de <strong>{fmt(comision)}</strong> en el corte vigente, además de las cuotas del avance. Se paga junto con la primera cuota del avance y no consume cupo.
               </div>
             )}
 

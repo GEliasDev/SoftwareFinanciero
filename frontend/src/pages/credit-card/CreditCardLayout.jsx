@@ -125,21 +125,25 @@ export const CreditCardLayout = () => {
 
   const handlePayAll = async () => {
     if (payableLines.length === 0) return;
+    // Las comisiones de avance se pagan automáticamente con la primera cuota de
+    // su avance, así que NO se envían como pago individual — se cuentan en el
+    // total mostrado pero se excluyen de los registros a pagar.
+    const payItems = payableLines.filter(l => !l.isCommission);
     const result = await Swal.fire({
       title: 'Pagar este corte',
-      html: `Se registrará <b>1 cuota</b> de las <b>${payableLines.length} compra${payableLines.length !== 1 ? 's' : ''}</b> de este corte.<br/><span style="color:#64748b;font-size:0.85rem">Total: <b>${fmt(payableTotal)}</b></span>`,
+      html: `Se registrará <b>1 cuota</b> de las <b>${payItems.length} compra${payItems.length !== 1 ? 's' : ''}</b> de este corte.<br/><span style="color:#64748b;font-size:0.85rem">Total a pagar: <b>${fmt(payableTotal)}</b></span>`,
       icon: 'question', showCancelButton: true,
       confirmButtonColor: '#5B4DF1', cancelButtonColor: '#64748B',
       confirmButtonText: 'Pagar corte', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
     let errors = 0;
-    await Promise.all(payableLines.map(l => CreditCardService.registerPurchasePayment(id, l.id).catch(() => { errors++; })));
+    await Promise.all(payItems.map(l => CreditCardService.registerPurchasePayment(id, l.id).catch(() => { errors++; })));
     await load();
     if (errors === 0) {
-      Swal.fire({ icon: 'success', title: '¡Corte pagado!', text: `${payableLines.length} cuota${payableLines.length !== 1 ? 's' : ''} registrada${payableLines.length !== 1 ? 's' : ''}.`, timer: 2000, showConfirmButton: false });
+      Swal.fire({ icon: 'success', title: '¡Corte pagado!', text: `${payItems.length} cuota${payItems.length !== 1 ? 's' : ''} registrada${payItems.length !== 1 ? 's' : ''}.`, timer: 2000, showConfirmButton: false });
     } else {
-      Swal.fire({ icon: 'warning', title: 'Parcialmente completado', text: `${payableLines.length - errors} pagos ok, ${errors} fallaron.` });
+      Swal.fire({ icon: 'warning', title: 'Parcialmente completado', text: `${payItems.length - errors} pagos ok, ${errors} fallaron.` });
     }
   };
 

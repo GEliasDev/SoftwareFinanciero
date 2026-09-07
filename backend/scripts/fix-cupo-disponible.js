@@ -18,8 +18,8 @@ for (const card of cards) {
   const purchases = card.CreditCardPurchases || [];
   let capitalPendiente = 0;
   for (const p of purchases) {
-    // La cuota de manejo es cupo-neutral (nunca ocupa cupo).
-    if (p.tipo === 'cuota_manejo') continue;
+    // Cuota de manejo y comisiones son cupo-neutral (nunca ocupan cupo).
+    if (p.tipo === 'cuota_manejo' || p.tipo === 'comision') continue;
     if (p.status === 'pagada') continue;
     const restantes = p.numeroCuotas - p.cuotasPagadas;
     if (restantes <= 0) continue;

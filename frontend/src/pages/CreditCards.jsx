@@ -11,11 +11,6 @@ const usageColor = (pct) =>
 
 const STATUS_LABEL = { activa: null, bloqueada: 'Bloqueada', cancelada: 'Cancelada' };
 
-const activeObl = (card) =>
-  (card.CreditCardPurchases || [])
-    .filter(p => p.status === 'activa')
-    .reduce((a, p) => a + parseFloat(p.valorCuotaMensual ?? 0), 0);
-
 export const CreditCards = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState([]);
@@ -37,7 +32,6 @@ export const CreditCards = () => {
   const totalUsado = cards.reduce((s, c) => s + (parseFloat(c.cupoTotal ?? 0) - parseFloat(c.cupoDisponible ?? c.cupoTotal ?? 0)), 0);
   const totalDisp = totalCupo - totalUsado;
   const usoGlobalPct = totalCupo > 0 ? (totalUsado / totalCupo) * 100 : 0;
-  const cardsConDeuda = cards.filter(c => activeObl(c) > 0);
 
   // Pre-cálculo dinámico de estadísticas de pago de cada tarjeta para evitar desfases.
   const cardStats = useMemo(() => {
@@ -89,6 +83,15 @@ export const CreditCards = () => {
       };
     });
   }, [cards]);
+
+  // Tarjetas con algo pendiente de pago en su ciclo activo (ya ignora comisiones
+  // de avances pagados, que podrían quedar colgadas como 'activa' por datos viejos).
+  const cardsConDeuda = useMemo(() => {
+    return cards.filter(c => {
+      const s = cardStats.find(cs => cs.cardId === c.id);
+      return s && s.cardOblMes > 0;
+    });
+  }, [cards, cardStats]);
 
   // Suma lo que realmente vence en el ciclo activo de cada tarjeta
   const totalOblMes = useMemo(() =>

@@ -4,6 +4,8 @@ import { UserCircle, LogOut, CalendarClock, Sun, Moon, Search } from 'lucide-rea
 import { AuthService } from '../../services/authService';
 import { CreditCardService } from '../../services/creditCardService';
 import { GlobalSearch } from '../ui/GlobalSearch';
+import { buildSchedule } from '../../utils/creditCard';
+import { daysUntil, effectiveDayInMonth } from '../../utils/format';
 
 const getStoredTheme = () => localStorage.getItem('debti-theme') || 'light';
 const applyTheme = (theme) => {
@@ -16,7 +18,7 @@ export const Navbar = () => {
   const user = AuthService.getCurrentUser();
 
   const [menuOpen,    setMenuOpen]    = useState(false);
-  const [overview,    setOverview]    = useState(null);
+  const [payBadge,    setPayBadge]    = useState(null);
   const [theme,       setTheme]       = useState(getStoredTheme);
   const [searchOpen,  setSearchOpen]  = useState(false);
   const menuRef = useRef(null);
@@ -37,9 +39,26 @@ export const Navbar = () => {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   useEffect(() => {
-    CreditCardService.getOverview()
-      .then(setOverview)
-      .catch(() => setOverview(null)); // no bloquear UI si falla; badge simplemente no aparece
+    CreditCardService.getAll()
+      .then(cards => {
+        // Misma lógica que CreditCards.jsx: el badge de pago solo aparece si
+        // hay algo realmente pendiente en el ciclo activo (no si ya se pagó todo).
+        let best = null;
+        for (const c of cards) {
+          const schedule = buildSchedule(c.CreditCardPurchases || [], c);
+          const activeSlot = schedule.find(s => s.lines.some(l => !l.wasPaid));
+          if (!activeSlot || !activeSlot.lines.some(l => !l.wasPaid)) continue;
+
+          const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
+          const payYear  = activeSlot.date.getFullYear();
+          const payMonth = activeSlot.date.getMonth() + payMonthOffset;
+          const date = new Date(payYear, payMonth, effectiveDayInMonth(c.fechaPago, payYear, payMonth));
+          const d = daysUntil(date);
+          if (best === null || d < best.dias) best = { dias: d, date };
+        }
+        setPayBadge(best);
+      })
+      .catch(() => setPayBadge(null)); // no bloquear UI si falla; badge simplemente no aparece
   }, []);
 
   // Cerrar el menú al hacer click fuera.
@@ -57,8 +76,8 @@ export const Navbar = () => {
     ? `${user.primerNombre} ${user.primerApellido || ''}`.trim()
     : user?.name || 'Usuario';
 
-  const dias = overview?.nextPaymentDays;
-  const urgente = dias !== null && dias !== undefined && dias <= 3 && (overview?.totalObligacionMensual ?? 0) > 0;
+  const dias = payBadge?.dias;
+  const urgente = dias !== null && dias !== undefined && dias <= 3;
 
   const handleLogout = () => {
     AuthService.logout();

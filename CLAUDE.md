@@ -303,7 +303,9 @@ El campo `tipo` distingue el origen del cargo:
 | `comision` | comisión por avance (generada automáticamente) | **sí** |
 | `cuota_manejo` | cargo mensual por cuota de manejo | **sí** |
 
-Los tipos cupo-neutral (`comision`, `cuota_manejo`) **nunca** deben afectar `cupoDisponible` al crearse, pagarse ni borrarse. Cualquier lógica de cupo debe respetar esta distinción.
+Los tipos cupo-neutral (`comision`, `cuota_manejo`) **nunca** deben afectar `cupoDisponible` al crearse, pagarse ni borrarse. Cualquier lógica de cupo debe respetar esta distinción. (Descuento del cupo en `createAdvance` solo por `montoTotal`, no comisión; restauración/reversión/borrado/abono de cupo excluyen `comision` y `cuota_manejo` en `creditCard.service.js` y en el script `fix-cupo-disponible.js`.)
+
+**Comisión de avance → pagada automáticamente:** la comisión (`creditCardId` compra tipo `comision`, `avanceId` → avance) se paga junto con la **primera cuota** de su avance: en `registerPurchasePayment`, si `tipo==='avance' && nuevasCuotasPagadas===1` se marca la comisión `{status:'pagada', cuotasPagadas:1}` (y se revierte al deshacer esa primera cuota en `undoPurchasePayment`, y al cancelar el avance completo por abono). La comisión NO es una cuota pagable aparte. En el frontend, `buildSchedule` la suma como línea `isCommission` (para que el total del extracto incluya compras + avances + comisiones y el desglose cuadre) pero `CreditCardLayout.handlePayAll` la **excluye** del pago individual (`payItems = payableLines.filter(l => !l.isCommission)`), porque la paga el avance.
 
 ## Nomenclatura: "Gastos" (antes "Deudas Personales")
 El módulo `personalDebt` se presenta al usuario como **"Gastos"** (sidebar, Dashboard,
@@ -467,6 +469,12 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   capital de ~1). Ver `registerPurchasePayment`/`undoPurchasePayment`.
   Si un cupo queda inconsistente: `node backend/scripts/fix-cupo-disponible.js`
   (dry-run; `--apply` para corregir) lo recalcula desde las compras.
+- **Datos históricos con comisiones de avance pendientes (bug 2026-09-07)**:
+  los avances creados antes del fix de pago automático pueden tener la comisión
+  aún `activa` (saldo fantasma) y el cupo descontado por comisión. Reparar con
+  `node backend/scripts/fix-comisiones-avances.js` (dry-run; `--apply`):
+  marca pagadas las comisiones de avances que ya pagaron su primera cuota y
+  recalcula `cupoDisponible` excluyendo cupo-neutral.
 - **Las FKs NO tienen `ON DELETE CASCADE`**: borrar un padre (p. ej. tarjeta)
   exige borrar sus hijos primero en el service (error 23503 si no).
 - **`sequelize.sync({ alter: true })` duplicaba constraints UNIQUE en cada
@@ -547,6 +555,14 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
 
 ## Mantenimiento de este archivo
 **Actualizar este CLAUDE.md con cada cambio relevante** al proyecto: nuevos módulos, rutas, convenciones, gotchas descubiertos, decisiones de arquitectura o cambios al sistema de diseño. El objetivo es que siempre refleje el estado actual del repositorio.
+
+## Documentación técnica
+
+Existe una documentación técnica completa del proyecto (arquitectura, base de datos, despliegue, seguridad, métricas) en:
+
+`C:\Users\GabrielEliasValdelam\Desktop\Documentaciones\Documentacion-Tecnica-SoftwareFinanciero-Debti.md`
+
+**Mantenla actualizada automáticamente**: cuando hagas un cambio significativo en el código de este repositorio (nuevo módulo o funcionalidad, endpoint nuevo, cambio de schema/migración, variable de entorno nueva, cambio de arquitectura o del proceso de despliegue), actualiza en ese mismo cambio la(s) sección(es) correspondientes de ese documento -- no esperes a que te lo pidan aparte. No hace falta regenerar el documento completo por cada edición menor, solo mantener sincronizadas las partes que dejen de reflejar la realidad del código.
 
 ## Documentos
 - Spec de rediseño: `docs/superpowers/specs/2026-05-30-solventa-redesign-design.md` (histórico, cuando se llamaba Solventa).
