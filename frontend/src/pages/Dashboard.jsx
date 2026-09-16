@@ -3,11 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { BankCreditService } from '../services/bankCreditService';
 import { AuthService } from '../services/authService';
 import { AnalyticsService } from '../services/analyticsService';
-import { ReminderService } from '../services/reminderService';
 import {
   Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus,
-  PieChart as PieIcon, TrendingUp, TrendingDown, Target, Handshake,
-  Lightbulb, AlertTriangle, CheckCircle, Info, XCircle, Flag, ChevronRight,
+  PieChart as PieIcon, TrendingUp, TrendingDown, Target, Handshake, ChevronRight,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -61,9 +59,6 @@ export const Dashboard = () => {
 
   const [summary,   setSummary]   = useState(null);
   const [credits,   setCredits]   = useState([]);
-  const [recs,      setRecs]      = useState([]);
-  const [freedom,   setFreedom]   = useState(null);
-  const [reminders, setReminders] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [openCat,   setOpenCat]   = useState(null);
   const [openDebt,  setOpenDebt]  = useState(null);
@@ -72,21 +67,9 @@ export const Dashboard = () => {
     Promise.allSettled([
       AnalyticsService.getSummary(),
       BankCreditService.getAll(),
-      AnalyticsService.getRecommendations(),
-      AnalyticsService.getDebtFreedom(),
-      ReminderService.getAll(),
-    ]).then(([sRes, cRes, rRes, fRes, remRes]) => {
+    ]).then(([sRes, cRes]) => {
       if (sRes.status === 'fulfilled') setSummary(sRes.value);
       if (cRes.status === 'fulfilled') setCredits(cRes.value);
-      if (rRes.status === 'fulfilled') setRecs(rRes.value);
-      if (fRes.status === 'fulfilled') setFreedom(fRes.value);
-      if (remRes.status === 'fulfilled') {
-        const active = (remRes.value ?? [])
-          .filter(r => r.status === 'activo')
-          .sort((a, b) => new Date(a.proximaFechaPago) - new Date(b.proximaFechaPago))
-          .slice(0, 5);
-        setReminders(active);
-      }
     }).finally(() => setLoading(false));
   }, []);
 
@@ -450,150 +433,6 @@ export const Dashboard = () => {
                     </div>
                   );
                 })}
-              </div>
-            </SectionCard>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════
-              RECOMENDACIONES FINANCIERAS
-          ═══════════════════════════════════════════════════════════════ */}
-          {recs.length > 0 && (
-            <SectionCard
-              title="Recomendaciones"
-              subtitle="Basadas en tu situación actual"
-              icon={Lightbulb}
-              style={{ marginBottom: 16 }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {recs.map((rec, i) => {
-                  const styles = {
-                    danger:  { bg: 'var(--neg-50)',  border: 'var(--neg-600)',  icon: XCircle,       color: 'var(--neg-600)'  },
-                    warning: { bg: 'var(--warn-50)', border: 'var(--warn-600)', icon: AlertTriangle,  color: 'var(--warn-600)' },
-                    info:    { bg: 'var(--brand-50)',border: 'var(--brand-600)',icon: Info,           color: 'var(--brand-600)'},
-                    success: { bg: 'var(--pos-50)',  border: 'var(--pos-600)',  icon: CheckCircle,    color: 'var(--pos-600)'  },
-                  }[rec.type] ?? {};
-                  const RecIcon = styles.icon;
-                  return (
-                    <div key={i} style={{
-                      display: 'flex', gap: 12, alignItems: 'flex-start',
-                      padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                      background: styles.bg, borderLeft: `3px solid ${styles.border}`,
-                    }}>
-                      <RecIcon size={16} style={{ color: styles.color, flexShrink: 0, marginTop: 1 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', margin: '0 0 2px' }}>{rec.title}</p>
-                        <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0, lineHeight: 1.5 }}>{rec.description}</p>
-                      </div>
-                      {rec.action && (
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          style={{ flexShrink: 0, fontSize: 11 }}
-                          onClick={() => navigate(rec.action)}
-                        >
-                          Ver <ArrowRight size={11} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </SectionCard>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════
-              PRÓXIMOS RECORDATORIOS
-          ═══════════════════════════════════════════════════════════════ */}
-          {reminders.length > 0 && (
-            <SectionCard
-              title="Recordatorios activos"
-              subtitle="Tus próximas fechas de pago programadas"
-              icon={Bell}
-              action={
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/reminders')}>
-                  Ver todos <ArrowRight size={12} />
-                </button>
-              }
-              style={{ marginBottom: 16 }}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.625rem' }}>
-                {reminders.map(r => {
-                  const d = daysUntil(r.proximaFechaPago);
-                  const color = d <= 0 ? 'var(--neg-600)' : d <= 3 ? 'var(--warn-600)' : d <= 7 ? 'var(--brand-600)' : 'var(--pos-600)';
-                  const bg    = d <= 0 ? 'var(--neg-50)'  : d <= 3 ? 'var(--warn-50)'  : d <= 7 ? 'var(--brand-50)'  : 'var(--surface-2)';
-                  const border = d <= 0 ? 'var(--neg-600)' : d <= 3 ? 'var(--warn-600)' : d <= 7 ? 'var(--brand-600)' : 'var(--border)';
-                  return (
-                    <div key={r.id} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 'var(--radius-md)', padding: '0.75rem 1rem' }}>
-                      <p className="truncate" style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', margin: '0 0 0.2rem' }}>{r.nombre}</p>
-                      {r.debtType && <p style={{ fontSize: 10, color: 'var(--text-3)', margin: '0 0 0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{r.debtType.replace('_', ' ')}</p>}
-                      <p style={{ fontSize: 13, fontWeight: 700, color, margin: 0 }}>{dayLabel(d)}</p>
-                      <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '2px 0 0' }}>
-                        {new Date(r.proximaFechaPago + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </SectionCard>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════
-              LIBERTAD DE DEUDAS
-          ═══════════════════════════════════════════════════════════════ */}
-          {freedom?.hasDebts && (
-            <SectionCard title="¿Cuándo te liberas de deudas?" subtitle="Basado en tus cuotas restantes actuales" icon={Flag} style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Summary row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                  {[
-                    { label: 'Deuda total', value: fmt(freedom.totalDebt), color: 'var(--neg-600)' },
-                    { label: 'Cuota este mes', value: fmt(freedom.monthlyPayments), color: 'var(--text)' },
-                    { label: 'Meses restantes', value: `${freedom.estimatedMonths}`, color: 'var(--brand-600)' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
-                      <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>{label}</p>
-                      <p className="tabular" style={{ fontSize: 16, fontWeight: 700, color, margin: 0 }}>{value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Estimated date */}
-                {freedom.estimatedDate && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--pos-50, rgba(5,150,105,0.06))', border: '1px solid var(--pos-600)' }}>
-                    <CheckCircle size={16} style={{ color: 'var(--pos-600)', flexShrink: 0 }} />
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 1px' }}>
-                        Libre de deudas en{' '}
-                        <span style={{ color: 'var(--pos-600)' }}>
-                          {new Date(freedom.estimatedDate + '-01').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
-                        </span>
-                      </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>Si mantienes el ritmo actual de pagos sin nuevas deudas</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Breakdown */}
-                {freedom.breakdown.length > 1 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {freedom.breakdown.map((item, i) => {
-                      const pct = freedom.estimatedMonths > 0 ? Math.min(100, (item.monthsLeft / freedom.estimatedMonths) * 100) : 0;
-                      return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          {item.type === 'bank_credit'
-                            ? <Landmark size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
-                            : item.type === 'personal_debt'
-                              ? <Handshake size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
-                              : <CreditCard size={13} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}
-                          <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{item.nombre}</span>
-                          <div style={{ width: 80, height: 6, borderRadius: 99, background: 'var(--surface-2)', flexShrink: 0, overflow: 'hidden' }}>
-                            <div style={{ width: `${pct}%`, height: '100%', background: 'var(--brand-600)', borderRadius: 99 }} />
-                          </div>
-                          <span className="tabular" style={{ fontSize: 11, color: 'var(--text-3)', minWidth: 55, textAlign: 'right', flexShrink: 0 }}>{item.monthsLeft} meses</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             </SectionCard>
           )}

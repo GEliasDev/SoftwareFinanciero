@@ -2,11 +2,8 @@ import { Subscription } from './subscription.model.js';
 import { subscriptionCreateSchema, subscriptionUpdateSchema } from './subscription.schema.js';
 import { calcularMontoMensual, calcularTotalAnual } from './utils/subscriptionCalculation.js';
 import { AppError } from '../../middlewares/appError.js';
-import { ActivityLogService } from '../activityLog/activityLog.service.js';
-import { ReminderService } from '../reminder/reminder.service.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { toCOP } from '../../utils/currency.js';
-import logger from '../../utils/logger.js';
 
 const assertCardOwnership = async (creditCardId, userId) => {
     if (!creditCardId) return;
@@ -29,18 +26,6 @@ export const SubscriptionService = {
             montoMensual,
             userId: data.userId,
         });
-        ActivityLogService.log(data.userId, 'created', 'subscription', sub.nombre, { monto: montoMensual });
-        try {
-            await ReminderService.createReminder({
-                userId: data.userId,
-                debtType: 'subscription',
-                debtId: sub.id,
-                nombre: sub.nombre,
-                diasAnticipacion: 3,
-            });
-        } catch (err) {
-            logger.error(`No se pudo auto-crear recordatorio para suscripción ${sub.id}: ${err.message}`);
-        }
         return sub;
     },
 
@@ -74,7 +59,6 @@ export const SubscriptionService = {
         if (!isAdmin && subscription.userId !== userId) {
             throw new AppError('Acceso no autorizado a suscripción', 403);
         }
-        ActivityLogService.log(userId, 'deleted', 'subscription', subscription.nombre);
         return subscription.destroy();
     },
 

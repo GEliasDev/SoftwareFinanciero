@@ -1,74 +1,74 @@
-# 💳 DebtTracker API
+# ðŸ’³ DebtTracker API
 
-API REST para la gestión personal de deudas. Permite registrar créditos bancarios, tarjetas de crédito y suscripciones, con cálculo automático de cuotas, intereses y resúmenes financieros.
+API REST para la gestiÃ³n personal de deudas. Permite registrar crÃ©ditos bancarios, tarjetas de crÃ©dito y suscripciones, con cÃ¡lculo automÃ¡tico de cuotas, intereses y resÃºmenes financieros.
 
 ---
 
-## 🚀 Tecnologías
+## ðŸš€ TecnologÃ­as
 
 - **Runtime:** Node.js
 - **Framework:** Express.js
 - **ORM:** Sequelize
 - **Base de datos:** MySQL / PostgreSQL
-- **Autenticación:** JWT (jsonwebtoken)
-- **Validación:** Zod
+- **AutenticaciÃ³n:** JWT (jsonwebtoken)
+- **ValidaciÃ³n:** Zod
 - **Seguridad:** bcrypt
 - **Variables de entorno:** dotenv
 
 ---
 
-## 📁 Estructura del proyecto
+## ðŸ“ Estructura del proyecto
 
 ```
 src/
-├── main.js                          # Punto de entrada, configuración de Express
-├── db/
-│   └── client.js                    # Conexión a la base de datos con Sequelize
-├── middlewares/
-│   ├── AppError.js                  # Clase de error personalizada
-│   └── errorHandler.js              # Middleware global de manejo de errores
-├── core/
-│   └── middleware/
-│       └── jwtMiddleware.js         # Middleware de autenticación JWT
-└── modules/
-    ├── user/
-    │   ├── user.model.js
-    │   ├── user.schema.js
-    │   ├── user.service.js
-    │   ├── user.controller.js
-    │   ├── user.routes.js
-    │   └── utils/
-    │       └── generateToken.js
-    ├── bankCredit/
-    │   ├── bankCredit.model.js
-    │   ├── bankCredit.schema.js
-    │   ├── bankCredit.service.js
-    │   ├── bankCredit.controller.js
-    │   ├── bankCredit.routes.js
-    │   └── utils/
-    │       └── bankCreditCalculation.js
-    ├── creditCard/
-    │   ├── creditCard.model.js
-    │   ├── creditCardPurchase.model.js
-    │   ├── creditCard.schema.js
-    │   ├── creditCard.service.js
-    │   ├── creditCard.controller.js
-    │   ├── creditCard.routes.js
-    │   └── utils/
-    │       └── creditCardCalculation.js
-    └── subscription/
-        ├── subscription.model.js
-        ├── subscription.schema.js
-        ├── subscription.service.js
-        ├── subscription.controller.js
-        ├── subscription.routes.js
-        └── utils/
-            └── subscriptionCalculation.js
+â”œâ”€â”€ main.js                          # Punto de entrada, configuraciÃ³n de Express
+â”œâ”€â”€ db/
+â”‚   â””â”€â”€ client.js                    # ConexiÃ³n a la base de datos con Sequelize
+â”œâ”€â”€ middlewares/
+â”‚   â”œâ”€â”€ AppError.js                  # Clase de error personalizada
+â”‚   â””â”€â”€ errorHandler.js              # Middleware global de manejo de errores
+â”œâ”€â”€ core/
+â”‚   â””â”€â”€ middleware/
+â”‚       â””â”€â”€ jwtMiddleware.js         # Middleware de autenticaciÃ³n JWT
+â””â”€â”€ modules/
+    â”œâ”€â”€ user/
+    â”‚   â”œâ”€â”€ user.model.js
+    â”‚   â”œâ”€â”€ user.schema.js
+    â”‚   â”œâ”€â”€ user.service.js
+    â”‚   â”œâ”€â”€ user.controller.js
+    â”‚   â”œâ”€â”€ user.routes.js
+    â”‚   â””â”€â”€ utils/
+    â”‚       â””â”€â”€ generateToken.js
+    â”œâ”€â”€ bankCredit/
+    â”‚   â”œâ”€â”€ bankCredit.model.js
+    â”‚   â”œâ”€â”€ bankCredit.schema.js
+    â”‚   â”œâ”€â”€ bankCredit.service.js
+    â”‚   â”œâ”€â”€ bankCredit.controller.js
+    â”‚   â”œâ”€â”€ bankCredit.routes.js
+    â”‚   â””â”€â”€ utils/
+    â”‚       â””â”€â”€ bankCreditCalculation.js
+    â”œâ”€â”€ creditCard/
+    â”‚   â”œâ”€â”€ creditCard.model.js
+    â”‚   â”œâ”€â”€ creditCardPurchase.model.js
+    â”‚   â”œâ”€â”€ creditCard.schema.js
+    â”‚   â”œâ”€â”€ creditCard.service.js
+    â”‚   â”œâ”€â”€ creditCard.controller.js
+    â”‚   â”œâ”€â”€ creditCard.routes.js
+    â”‚   â””â”€â”€ utils/
+    â”‚       â””â”€â”€ creditCardCalculation.js
+    â””â”€â”€ subscription/
+        â”œâ”€â”€ subscription.model.js
+        â”œâ”€â”€ subscription.schema.js
+        â”œâ”€â”€ subscription.service.js
+        â”œâ”€â”€ subscription.controller.js
+        â”œâ”€â”€ subscription.routes.js
+        â””â”€â”€ utils/
+            â””â”€â”€ subscriptionCalculation.js
 ```
 
 ---
 
-## ⚙️ Instalación
+## âš™ï¸ InstalaciÃ³n
 
 ```bash
 # 1. Clonar el repositorio
@@ -88,9 +88,9 @@ npm run dev
 
 ---
 
-## 🔐 Variables de entorno
+## ðŸ” Variables de entorno
 
-Crear un archivo `.env` en la raíz del proyecto con los siguientes valores:
+Crear un archivo `.env` en la raÃ­z del proyecto con los siguientes valores:
 
 ```env
 PORT=3000
@@ -106,9 +106,9 @@ DB_PASSWORD=tu_password
 
 ---
 
-## 🔒 Autenticación
+## ðŸ”’ AutenticaciÃ³n
 
-La API usa **JWT (JSON Web Token)**. Para acceder a los endpoints protegidos, incluye el token en el header de cada petición:
+La API usa **JWT (JSON Web Token)**. Para acceder a los endpoints protegidos, incluye el token en el header de cada peticiÃ³n:
 
 ```
 Authorization: Bearer <token>
@@ -118,19 +118,19 @@ El token se obtiene al hacer login en `POST /users/login`.
 
 ---
 
-## 📖 Endpoints
+## ðŸ“– Endpoints
 
-### 👤 Usuarios — `/users`
+### ðŸ‘¤ Usuarios â€” `/users`
 
-| Método | Ruta | Descripción | Auth |
+| MÃ©todo | Ruta | DescripciÃ³n | Auth |
 |--------|------|-------------|------|
-| `POST` | `/users/login` | Iniciar sesión | ❌ |
-| `POST` | `/users` | Registrar usuario | ❌ |
-| `GET` | `/users` | Listar usuarios (paginado) | ✅ |
-| `GET` | `/users/:id` | Obtener usuario por ID | ✅ |
-| `PATCH` | `/users/:id` | Actualizar datos del usuario | ✅ |
-| `PATCH` | `/users/:id/password` | Cambiar contraseña | ✅ |
-| `DELETE` | `/users/:id` | Eliminar usuario | ✅ |
+| `POST` | `/users/login` | Iniciar sesiÃ³n | âŒ |
+| `POST` | `/users` | Registrar usuario | âŒ |
+| `GET` | `/users` | Listar usuarios (paginado) | âœ… |
+| `GET` | `/users/:id` | Obtener usuario por ID | âœ… |
+| `PATCH` | `/users/:id` | Actualizar datos del usuario | âœ… |
+| `PATCH` | `/users/:id/password` | Cambiar contraseÃ±a | âœ… |
+| `DELETE` | `/users/:id` | Eliminar usuario | âœ… |
 
 #### POST `/users/login`
 ```json
@@ -142,7 +142,7 @@ El token se obtiene al hacer login en `POST /users/login`.
 
 // Response 200
 {
-  "message": "Inicio de sesión exitoso",
+  "message": "Inicio de sesiÃ³n exitoso",
   "token": "eyJhbGciOiJIUzI1...",
   "user": {
     "id": 1,
@@ -157,9 +157,9 @@ El token se obtiene al hacer login en `POST /users/login`.
 // Request
 {
   "primerNombre": "Gabriel",
-  "segundoNombre": "Andrés",
-  "primerApellido": "López",
-  "segundoApellido": "García",
+  "segundoNombre": "AndrÃ©s",
+  "primerApellido": "LÃ³pez",
+  "segundoApellido": "GarcÃ­a",
   "email": "gabriel@gmail.com",
   "telefono": "3001234567",
   "pais": "Colombia",
@@ -190,22 +190,22 @@ El token se obtiene al hacer login en `POST /users/login`.
 
 ---
 
-### 🏦 Créditos Bancarios — `/bank-credits`
+### ðŸ¦ CrÃ©ditos Bancarios â€” `/bank-credits`
 
-| Método | Ruta | Descripción | Auth |
+| MÃ©todo | Ruta | DescripciÃ³n | Auth |
 |--------|------|-------------|------|
-| `POST` | `/bank-credits` | Registrar crédito bancario | ✅ |
-| `GET` | `/bank-credits` | Listar créditos del usuario | ✅ |
-| `GET` | `/bank-credits/:id` | Obtener crédito por ID | ✅ |
-| `PATCH` | `/bank-credits/:id` | Actualizar crédito | ✅ |
-| `PATCH` | `/bank-credits/:id/pay` | Registrar cuota pagada | ✅ |
-| `DELETE` | `/bank-credits/:id` | Eliminar crédito | ✅ |
+| `POST` | `/bank-credits` | Registrar crÃ©dito bancario | âœ… |
+| `GET` | `/bank-credits` | Listar crÃ©ditos del usuario | âœ… |
+| `GET` | `/bank-credits/:id` | Obtener crÃ©dito por ID | âœ… |
+| `PATCH` | `/bank-credits/:id` | Actualizar crÃ©dito | âœ… |
+| `PATCH` | `/bank-credits/:id/pay` | Registrar cuota pagada | âœ… |
+| `DELETE` | `/bank-credits/:id` | Eliminar crÃ©dito | âœ… |
 
 #### POST `/bank-credits`
 ```json
 // Request
 {
-  "nombre": "Crédito Addi",
+  "nombre": "CrÃ©dito Addi",
   "entidad": "Addi",
   "montoTotal": 5000000,
   "numeroCuotas": 12,
@@ -216,10 +216,10 @@ El token se obtiene al hacer login en `POST /users/login`.
   "fechaInicio": "2026-04-01"
 }
 
-// Response 201 — campos calculados automáticamente
+// Response 201 â€” campos calculados automÃ¡ticamente
 {
   "id": 1,
-  "nombre": "Crédito Addi",
+  "nombre": "CrÃ©dito Addi",
   "montoTotal": 5000000,
   "valorCuota": 474694.56,
   "totalAPagar": 5696334.72,
@@ -231,8 +231,8 @@ El token se obtiene al hacer login en `POST /users/login`.
 }
 ```
 
-> **Nota:** Los campos `valorCuota`, `totalAPagar`, `totalIntereses`, `tasaMensual`, `saldoPendiente` y `fechaFin` son calculados automáticamente usando el sistema de amortización francés.
-> La tasa puede ingresarse como **anual (EA)** o **mensual** — el sistema convierte automáticamente.
+> **Nota:** Los campos `valorCuota`, `totalAPagar`, `totalIntereses`, `tasaMensual`, `saldoPendiente` y `fechaFin` son calculados automÃ¡ticamente usando el sistema de amortizaciÃ³n francÃ©s.
+> La tasa puede ingresarse como **anual (EA)** o **mensual** â€” el sistema convierte automÃ¡ticamente.
 
 #### PATCH `/bank-credits/:id/pay`
 ```json
@@ -248,27 +248,27 @@ El token se obtiene al hacer login en `POST /users/login`.
 
 ---
 
-### 💳 Tarjetas de Crédito — `/credit-cards`
+### ðŸ’³ Tarjetas de CrÃ©dito â€” `/credit-cards`
 
 #### Tarjeta
 
-| Método | Ruta | Descripción | Auth |
+| MÃ©todo | Ruta | DescripciÃ³n | Auth |
 |--------|------|-------------|------|
-| `POST` | `/credit-cards` | Registrar tarjeta | ✅ |
-| `GET` | `/credit-cards` | Listar tarjetas del usuario | ✅ |
-| `GET` | `/credit-cards/:id` | Obtener tarjeta con compras activas | ✅ |
-| `GET` | `/credit-cards/:id/summary` | Resumen mensual de la tarjeta | ✅ |
-| `PATCH` | `/credit-cards/:id` | Actualizar tarjeta | ✅ |
-| `DELETE` | `/credit-cards/:id` | Eliminar tarjeta | ✅ |
+| `POST` | `/credit-cards` | Registrar tarjeta | âœ… |
+| `GET` | `/credit-cards` | Listar tarjetas del usuario | âœ… |
+| `GET` | `/credit-cards/:id` | Obtener tarjeta con compras activas | âœ… |
+| `GET` | `/credit-cards/:id/summary` | Resumen mensual de la tarjeta | âœ… |
+| `PATCH` | `/credit-cards/:id` | Actualizar tarjeta | âœ… |
+| `DELETE` | `/credit-cards/:id` | Eliminar tarjeta | âœ… |
 
 #### Compras
 
-| Método | Ruta | Descripción | Auth |
+| MÃ©todo | Ruta | DescripciÃ³n | Auth |
 |--------|------|-------------|------|
-| `POST` | `/credit-cards/:creditCardId/purchases` | Registrar compra | ✅ |
-| `GET` | `/credit-cards/:creditCardId/purchases` | Listar compras de la tarjeta | ✅ |
-| `PATCH` | `/credit-cards/:creditCardId/purchases/:purchaseId/pay` | Registrar cuota pagada | ✅ |
-| `DELETE` | `/credit-cards/:creditCardId/purchases/:purchaseId` | Eliminar compra | ✅ |
+| `POST` | `/credit-cards/:creditCardId/purchases` | Registrar compra | âœ… |
+| `GET` | `/credit-cards/:creditCardId/purchases` | Listar compras de la tarjeta | âœ… |
+| `PATCH` | `/credit-cards/:creditCardId/purchases/:purchaseId/pay` | Registrar cuota pagada | âœ… |
+| `DELETE` | `/credit-cards/:creditCardId/purchases/:purchaseId` | Eliminar compra | âœ… |
 
 #### POST `/credit-cards`
 ```json
@@ -302,7 +302,7 @@ El token se obtiene al hacer login en `POST /users/login`.
   "fechaCompra": "2026-04-01"
 }
 
-// Response 201 — cuota calculada con interés compuesto
+// Response 201 â€” cuota calculada con interÃ©s compuesto
 {
   "id": 1,
   "descripcion": "iPhone 16",
@@ -334,16 +334,16 @@ El token se obtiene al hacer login en `POST /users/login`.
 
 ---
 
-### 🔄 Suscripciones — `/subscriptions`
+### ðŸ”„ Suscripciones â€” `/subscriptions`
 
-| Método | Ruta | Descripción | Auth |
+| MÃ©todo | Ruta | DescripciÃ³n | Auth |
 |--------|------|-------------|------|
-| `POST` | `/subscriptions` | Registrar suscripción | ✅ |
-| `GET` | `/subscriptions` | Listar suscripciones del usuario | ✅ |
-| `GET` | `/subscriptions/summary` | Resumen total de suscripciones | ✅ |
-| `GET` | `/subscriptions/:id` | Obtener suscripción por ID | ✅ |
-| `PATCH` | `/subscriptions/:id` | Actualizar suscripción | ✅ |
-| `DELETE` | `/subscriptions/:id` | Eliminar suscripción | ✅ |
+| `POST` | `/subscriptions` | Registrar suscripciÃ³n | âœ… |
+| `GET` | `/subscriptions` | Listar suscripciones del usuario | âœ… |
+| `GET` | `/subscriptions/summary` | Resumen total de suscripciones | âœ… |
+| `GET` | `/subscriptions/:id` | Obtener suscripciÃ³n por ID | âœ… |
+| `PATCH` | `/subscriptions/:id` | Actualizar suscripciÃ³n | âœ… |
+| `DELETE` | `/subscriptions/:id` | Eliminar suscripciÃ³n | âœ… |
 
 #### POST `/subscriptions`
 ```json
@@ -357,7 +357,7 @@ El token se obtiene al hacer login en `POST /users/login`.
   "fechaInicio": "2026-01-15"
 }
 
-// Request — suscripción anual
+// Request â€” suscripciÃ³n anual
 {
   "nombre": "iCloud 200GB",
   "monto": 35900,
@@ -367,7 +367,7 @@ El token se obtiene al hacer login en `POST /users/login`.
   "fechaInicio": "2026-01-10"
 }
 
-// Response 201 — montoMensual calculado automáticamente
+// Response 201 â€” montoMensual calculado automÃ¡ticamente
 {
   "id": 2,
   "nombre": "iCloud 200GB",
@@ -400,22 +400,22 @@ El token se obtiene al hacer login en `POST /users/login`.
 
 ---
 
-## ⚠️ Manejo de errores
+## âš ï¸ Manejo de errores
 
 Todos los errores siguen el mismo formato:
 
 ```json
 {
   "status": "error",
-  "message": "Descripción del error"
+  "message": "DescripciÃ³n del error"
 }
 ```
 
-Errores de validación (Zod):
+Errores de validaciÃ³n (Zod):
 ```json
 {
   "status": "error",
-  "message": "Datos inválidos",
+  "message": "Datos invÃ¡lidos",
   "errors": [
     {
       "field": "montoTotal",
@@ -425,72 +425,71 @@ Errores de validación (Zod):
 }
 ```
 
-| Código | Significado |
+| CÃ³digo | Significado |
 |--------|-------------|
-| `400` | Datos inválidos o lógica de negocio |
+| `400` | Datos invÃ¡lidos o lÃ³gica de negocio |
 | `401` | No autenticado (token ausente o credenciales incorrectas) |
-| `403` | Token inválido o expirado |
+| `403` | Token invÃ¡lido o expirado |
 | `404` | Recurso no encontrado |
 | `500` | Error interno del servidor |
 
 ---
 
-## 🧮 Lógica de cálculo
+## ðŸ§® LÃ³gica de cÃ¡lculo
 
-### Crédito bancario — Sistema francés (cuota fija)
+### CrÃ©dito bancario â€” Sistema francÃ©s (cuota fija)
 
 ```
-C = P × [i(1+i)^n] / [(1+i)^n - 1]
+C = P Ã— [i(1+i)^n] / [(1+i)^n - 1]
 ```
 
 Donde:
 - `C` = cuota mensual
-- `P` = monto del crédito
+- `P` = monto del crÃ©dito
 - `i` = tasa mensual
-- `n` = número de cuotas
+- `n` = nÃºmero de cuotas
 
 Si la tasa ingresada es **anual efectiva (EA)**, se convierte a mensual:
 ```
 i_mensual = (1 + i_anual)^(1/12) - 1
 ```
 
-### Tarjeta de crédito — Cuota por compra
+### Tarjeta de crÃ©dito â€” Cuota por compra
 
-Usa la misma fórmula de sistema francés, aplicada por compra individual con la tasa mensual de la tarjeta. Las compras a 1 cuota no generan interés.
+Usa la misma fÃ³rmula de sistema francÃ©s, aplicada por compra individual con la tasa mensual de la tarjeta. Las compras a 1 cuota no generan interÃ©s.
 
-### Pago mínimo tarjeta
-
-```
-pagoMinimo = max(saldoUsado × 2%, $50.000 COP)
-```
-
-### Suscripciones — Equivalente mensual
+### Pago mÃ­nimo tarjeta
 
 ```
-// Suscripción anual
+pagoMinimo = max(saldoUsado Ã— 2%, $50.000 COP)
+```
+
+### Suscripciones â€” Equivalente mensual
+
+```
+// SuscripciÃ³n anual
 montoMensual = montoAnual / 12
 
-// Suscripción mensual
+// SuscripciÃ³n mensual
 montoMensual = monto
 ```
 
 ---
 
-## 🗺️ Roadmap
+## ðŸ—ºï¸ Roadmap
 
-- [x] Módulo de usuarios con autenticación JWT
-- [x] Créditos bancarios con amortización francesa
-- [x] Tarjetas de crédito con compras individuales
+- [x] MÃ³dulo de usuarios con autenticaciÃ³n JWT
+- [x] CrÃ©ditos bancarios con amortizaciÃ³n francesa
+- [x] Tarjetas de crÃ©dito con compras individuales
 - [x] Suscripciones con equivalente mensual
 - [x] Manejo centralizado de errores
-- [ ] Módulo de recordatorios (Web Push)
 - [ ] Notificaciones por email
 - [ ] Dashboard financiero general
-- [ ] Soporte para más tipos de deuda
-- [ ] App móvil
+- [ ] Soporte para mÃ¡s tipos de deuda
+- [ ] App mÃ³vil
 
 ---
 
-## 📄 Licencia
+## ðŸ“„ Licencia
 
 MIT

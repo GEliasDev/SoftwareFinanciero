@@ -18,9 +18,7 @@ import { Subscription } from '../suscription/subscription.model.js';
 import { Income } from '../income/income.model.js';
 import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
 import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
-import { Reminder } from '../reminder/reminder.model.js';
 import { Budget, BudgetExpense } from '../budget/budget.model.js';
-import { ActivityLog } from '../activityLog/activityLog.model.js';
 import { NetWorthSnapshot } from '../netWorth/netWorth.model.js';
 
 const SALT_ROUNDS = 10;
@@ -184,7 +182,7 @@ export const UserService = {
 
         const [
             creditCards, bankCredits, subscriptions, incomes, personalDebts,
-            savingsGoals, reminders, budgets, budgetExpenses, activityLog, netWorthHistory,
+            savingsGoals, budgets, budgetExpenses, netWorthHistory,
         ] = await Promise.all([
             CreditCard.findAll({ where: { userId }, include: [CreditCardPurchase] }),
             BankCredit.findAll({ where: { userId } }),
@@ -192,10 +190,8 @@ export const UserService = {
             Income.findAll({ where: { userId } }),
             PersonalDebt.findAll({ where: { userId } }),
             SavingsGoal.findAll({ where: { userId } }),
-            Reminder.findAll({ where: { userId } }),
             Budget.findAll({ where: { userId } }),
             BudgetExpense.findAll({ where: { userId } }),
-            ActivityLog.findAll({ where: { userId }, order: [['createdAt', 'DESC']] }),
             NetWorthSnapshot.findAll({ where: { userId }, order: [['mes', 'ASC']] }),
         ]);
 
@@ -209,9 +205,7 @@ export const UserService = {
             ingresos: incomes,
             deudasPersonales: personalDebts,
             metasAhorro: savingsGoals,
-            recordatorios: reminders,
             presupuesto: { categorias: budgets, gastos: budgetExpenses },
-            historialActividad: activityLog,
             patrimonioNeto: netWorthHistory,
         };
     },

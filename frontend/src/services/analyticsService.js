@@ -13,12 +13,4 @@ export const AnalyticsService = {
     const response = await api.get('/analytics/distribution');
     return response.data;
   },
-  getRecommendations: async () => {
-    const response = await api.get('/analytics/recommendations');
-    return response.data;
-  },
-  getDebtFreedom: async () => {
-    const response = await api.get('/analytics/debt-freedom');
-    return response.data;
-  },
 };

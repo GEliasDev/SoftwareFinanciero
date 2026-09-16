@@ -7,7 +7,7 @@ import logger from '../utils/logger.js';
 const sendDigestForUser = async (user) => {
   try {
     const summary = await AnalyticsService.getSummary(user.id);
-    const proximosRecordatorios = (summary.upcoming || [])
+    const proximosPagos = (summary.upcoming || [])
       .slice(0, 7)
       .map(u => ({
         titulo: u.name,
@@ -20,7 +20,7 @@ const sendDigestForUser = async (user) => {
       dineroLibre: summary.dineroLibre,
       totalIngresos: summary.income.total,
       obligacionesMensuales: summary.obligations.total,
-      proximosRecordatorios,
+      proximosPagos,
     });
   } catch (err) {
     logger.error(`[weeklyDigestJob] Error for user ${user.id}: ${err.message}`);

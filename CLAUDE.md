@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Debti — guía para Claude
 
 App de **finanzas personales**. Gestiona tarjetas de crédito,
-créditos bancarios, suscripciones, recordatorios y reportes. Español (es-CO, COP).
+créditos bancarios, suscripciones y reportes. Español (es-CO, COP).
 
 ## Stack
 - **Frontend:** React 19 + Vite 8, react-router-dom 7, recharts, sweetalert2, xlsx.
@@ -62,7 +62,7 @@ utils/                 — Cálculos puros (sin efectos secundarios)
 El service lanza `throw new AppError('mensaje', statusCode)` para errores esperados; el middleware `errorHandler` en `main.js` los captura y los convierte en JSON.
 
 ### Módulos existentes
-`user | creditCard | bankCredit | suscription | reminder | analytics | income | personalDebt | savingsGoal | budget | activityLog | search | pushSubscription | netWorth`
+`user | creditCard | bankCredit | suscription | analytics | income | personalDebt | savingsGoal | budget | search | pushSubscription | netWorth`
 
 > El módulo de suscripciones tiene un typo histórico: la carpeta es `suscription` (sin "b"), no `subscription`.
 
@@ -106,8 +106,8 @@ como obligación solo informativa:
 - Cupo descontado de forma atómica (`literal` con `GREATEST`, mismo patrón que
   `registerPurchasePayment`/`undoPurchasePayment`), no read-modify-write.
 - **Evitar doble conteo**: las suscripciones con `creditCardId` se excluyen de la suma
-  directa de `Subscription.montoMensual` en **cuatro** sitios (los tres de
-  `analytics.service.js`: `getSummary`, `getRecommendations` y `getMonthlyTrend`; más la
+  directa de `Subscription.montoMensual` en **tres** sitios de
+  `analytics.service.js`: `getSummary` y `getMonthlyTrend` (más la
   proyección de `Reports.jsx`), porque su obligación ya entra por
   `CreditCardPurchase.valorCuotaMensual`. Si se agrega otro cálculo que sume
   suscripciones y compras de tarjeta a la vez, aplicar el mismo filtro. `SubscriptionService.getSummary`
@@ -115,8 +115,9 @@ como obligación solo informativa:
   alimenta dineroLibre.
 
 ### Cron jobs (`backend/src/jobs/`)
-- `reminderJob.js` — se inicia en `main.js` al arrancar el servidor; en el mismo tick
-  diario (8 AM) también dispara `cuotaManejoJob` y `subscriptionChargeJob`.
+- `dailyChargesJob.js` — se inicia en `main.js` al arrancar el servidor; tick diario
+  (8 AM) que dispara `cuotaManejoJob` y `subscriptionChargeJob` (antes vivían dentro
+  de `reminderJob`, eliminado junto con el módulo de recordatorios el 2026-09-07).
 - `cuotaManejoJob.js` — genera cargos `cuota_manejo` idempotentemente al llegar la fecha de corte de cada tarjeta activa.
 - `subscriptionChargeJob.js` — genera el cargo automático de suscripciones con tarjeta vinculada (ver arriba).
 - `bankCreditMoraJob.js` — marca créditos en mora.
@@ -148,13 +149,11 @@ como obligación solo informativa:
   /schedule                → BankCreditSchedule
   /analysis                → BankCreditAnalysis
 /bank-credits/:id/edit
-/reminders                 → lista | /new
 /income                    → lista | /new | /:id/edit
 /personal-debts            → lista | /new | /:id | /:id/edit
 /savings                   → lista | /new | /:id | /:id/edit
 /budget                    → Presupuesto mensual por categorías
 /reports
-/activity                  → ActivityLog
 /profile
 /onboarding                → tras registro
 /login /register /forgot-password /reset-password (públicas)
@@ -186,8 +185,8 @@ y fechas**, que es donde han salido todos los bugs reales:
 - Frontend (`src/utils/__tests__/`): `format.test.js` (fechas, `parseLocalDate`,
   `effectiveDayInMonth`, `nextOccurrence`), `currency.test.js` (conversión USD/EUR,
   mensual vs anual), `bankCredit.test.js`.
-- Backend (`src/**/__tests__/`): `cycleDay.test.js`, `reminderCalculation.test.js`
-  (usa `vi.useFakeTimers()` para congelar el reloj en casos de febrero, meses de 30,
+- Backend (`src/**/__tests__/`): `cycleDay.test.js`, `localDate.test.js` (ambos usan
+  `vi.useFakeTimers()` para congelar el reloj en casos de febrero, meses de 30,
   cruces de año y horas nocturnas), `bankCreditCalculation.test.js`.
 - Al corregir un bug de cálculo, **agregar el test de regresión** que lo habría
   atrapado (patrón seguido en toda la auditoría de julio 2026).
@@ -362,16 +361,8 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   febrero (cuota perdida, dinero real), y `new Date(2026, 5, 31)` desbordaba a julio
   rompiendo la comprobación de idempotencia. Usar
   `effectiveDayInMonth(dia, año, mesIndex)` de `backend/src/utils/cycleDay.js` en
-  cualquier job o cálculo con ciclo mensual (aplicado en `subscriptionChargeJob`,
-  `cuotaManejoJob` y `reminderCalculation.js`). Cubierto por tests en
-  `utils/__tests__/cycleDay.test.js` y `reminder/utils/__tests__/`.
-- **Recordatorios de pago (`reminderCalculation.js` + `reminder.service.js`)**: todo
-  el cálculo de fechas usa día local + `effectiveDayInMonth`, NO `toISOString()` ni
-  `new Date(str)`. Antes `calcularProximaFechaPago(31)` agendaba el pago el 1 o 3 del
-  mes siguiente, y `markAsSentAndReschedule` reprogramaba mal cada ciclo con
-  `setDate(31)`. Los DATEONLY con hora local a medianoche + toISOString eran seguros
-  (misma fecha en UTC), pero se unificó a formateo local para no depender de eso.
-  Cubierto por 11 tests con `vi.useFakeTimers()`.
+  cualquier job o cálculo con ciclo mensual (aplicado en `subscriptionChargeJob` y
+  `cuotaManejoJob`). Cubierto por tests en `utils/__tests__/cycleDay.test.js`.
 - **`budget.controller.js` calculaba el mes por defecto con `toISOString()`** (UTC):
   después de las ~7pm del último día del mes mostraba el mes siguiente. Ahora usa
   hora local, igual que `budget.service.js`.
@@ -409,8 +400,7 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
 - **Para MOSTRAR o comparar un DATEONLY, usar `parseLocalDate()`/`fmtDateLong()`, nunca
   `new Date(str)` directo.** `new Date('2026-07-01')` parsea en UTC y, leído en UTC-5,
   retrocede al 30 de junio: TODA fecha salía un día antes y un 1 de enero mostraba
-  "31 dic del año anterior" (bug encontrado 2026-07-23 en 11 pantallas, incl. el
-  "próximo pago" de Recordatorios). `parseLocalDate` (en `utils/format.js`) construye
+  "31 dic del año anterior" (bug encontrado 2026-07-23 en 11 pantallas). `parseLocalDate` (en `utils/format.js`) construye
   el Date en hora local desde 'YYYY-MM-DD' y deja pasar los timestamps con hora (que sí
   son instantes reales). `fmtDateLong` ya lo usa. Cubierto por tests en
   `utils/__tests__/format.test.js`.
@@ -436,7 +426,7 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
 - **Los `<select>` devuelven STRING.** El backend valida con Zod `z.number()` (sin
   coerción): convertir con `Number()` antes de enviar IDs/numéricos.
 - **`Subscription.status` es `'activa'` (femenino), NO `'activo'`.** Los demás
-  módulos usan masculino (`BankCredit`/`PersonalDebt`/`Income`/`Reminder` →
+  módulos usan masculino (`BankCredit`/`PersonalDebt`/`Income` →
   `'activo'`; `CreditCardPurchase` → `'activa'`). Un filtro `s.status === 'activo'`
   sobre suscripciones no casa nunca y devuelve 0 sin error: pasó en la proyección de
   `Reports.jsx`, donde la columna "Suscripciones" mostró $0 durante mucho tiempo
@@ -501,7 +491,8 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   - `webpush.setVapidDetails()` se llamaba en el nivel del módulo y **lanza si faltan
     las llaves VAPID**, así que sin ellas el servidor entero no arrancaba — pese a que
     el push es opcional. Ahora se llama solo si existen; `isEnabled()` es la fuente
-    única (el `reminderJob` ya no comprueba la env por su cuenta).
+    única (y el único emisor de push era el `reminderJob`, ya eliminado — hoy el
+    endpoint `/api/push/*` sigue existiendo pero nada dispara notificaciones).
   - `subscribe` no validaba el body: un `keys` ausente daba TypeError 500 en vez de 400.
   - **Import CSV: el delimitador se detecta** (`,`, `;` o tab). Excel en español exporta
     con `;` —porque aquí la coma es el separador decimal— y el archivo entero se

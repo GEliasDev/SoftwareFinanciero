@@ -18,7 +18,7 @@ const fmt = (n) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
 
 export const emailService = {
-  sendWeeklyDigest: async ({ to, nombre, dineroLibre, totalIngresos, obligacionesMensuales, proximosRecordatorios }) => {
+  sendWeeklyDigest: async ({ to, nombre, dineroLibre, totalIngresos, obligacionesMensuales, proximosPagos }) => {
     if (!isConfigured()) {
       logger.warn('[emailService] SMTP not configured — skipping weekly digest');
       return;
@@ -28,7 +28,7 @@ export const emailService = {
     const libreColor = libre >= 0 ? '#059669' : '#DC2626';
     const libreLabel = libre >= 0 ? 'Dinero libre este mes' : 'Déficit este mes';
 
-    const reminderRows = (proximosRecordatorios || [])
+    const upcomingRows = (proximosPagos || [])
       .slice(0, 5)
       .map(r => `
         <tr>
@@ -63,11 +63,11 @@ export const emailService = {
         <p style="margin:6px 0 0;font-size:12px;color:#94a3b8;">Ingresos ${fmt(totalIngresos)} — Obligaciones ${fmt(obligacionesMensuales)}</p>
       </div>
 
-      ${reminderRows ? `
-      <!-- Próximos recordatorios -->
-      <h2 style="margin:0 0 12px;font-size:14px;font-weight:600;color:#0f172a;">Recordatorios próximos</h2>
+      ${upcomingRows ? `
+      <!-- Próximos pagos -->
+      <h2 style="margin:0 0 12px;font-size:14px;font-weight:600;color:#0f172a;">Próximos pagos</h2>
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-        <tbody>${reminderRows}</tbody>
+        <tbody>${upcomingRows}</tbody>
       </table>` : ''}
 
       <a href="${process.env.APP_URL || 'https://debti.app'}"

@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
-import { ActivityLogService } from '../services/activityLogService';
 import { PushService } from '../services/pushService';
 import { TwoFactorService } from '../services/twoFactorService';
-import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Activity, CreditCard, Landmark, Repeat, Wallet, Handshake, Target, PlusCircle, Pencil, XCircle, Bell, BellOff, Mail, MailX, ShieldCheck, Shield, Download } from 'lucide-react';
+import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Bell, BellOff, Mail, MailX, ShieldCheck, Shield, Download } from 'lucide-react';
 
 const Alert = ({ type, message, onClose }) => (
   <div className={`info-box ${type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -40,7 +39,6 @@ export const Profile = () => {
     confirmPassword: '',
   });
 
-  const [activityLogs, setActivityLogs] = useState([]);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushAlert, setPushAlert] = useState(null);
@@ -177,7 +175,6 @@ export const Profile = () => {
 
   useEffect(() => {
     if (!userId) return;
-    ActivityLogService.getRecent(20).then(setActivityLogs).catch(() => {});
     UserService.getById(userId)
       .then(data => {
         setProfile({
@@ -529,42 +526,7 @@ export const Profile = () => {
           )}
         </div>
       </div>
-      {/* ── Actividad reciente ── */}
-      {activityLogs.length > 0 && (
-        <div className="card" style={{ marginTop: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <Activity size={18} style={{ color: 'var(--brand-600)' }} />
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Actividad reciente</h2>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {activityLogs.map((log, i) => {
-              const IconMap = { income: Wallet, bank_credit: Landmark, subscription: Repeat, credit_card: CreditCard, personal_debt: Handshake, savings_goal: Target };
-              const EntityIcon = IconMap[log.entityType] ?? Activity;
-              const actionLabel = { created: 'Registró', updated: 'Actualizó', deleted: 'Eliminó', paid: 'Pagó completamente', payment: 'Pagó cuota de' }[log.action] ?? log.action;
-              const dateStr = new Date(log.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-              return (
-                <div key={log.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '8px 0',
-                  borderBottom: i < activityLogs.length - 1 ? '1px solid var(--border)' : 'none',
-                }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <EntityIcon size={14} style={{ color: 'var(--brand-600)' }} />
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', margin: 0 }} className="truncate">
-                      <span style={{ color: 'var(--text-2)', fontWeight: 400 }}>{actionLabel} </span>{log.entityName}
-                    </p>
-                  </div>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{dateStr}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Notificaciones push */}
+      {/* ── Notificaciones push ── */}
       {PushService.isSupported() && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -572,7 +534,7 @@ export const Profile = () => {
             <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Notificaciones push</h2>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-            Recibe alertas en tu dispositivo antes de que venzan tus pagos y recordatorios.
+            Recibe alertas en tu dispositivo antes de que venzan tus pagos.
           </p>
           {pushAlert && (
             <Alert type={pushAlert.type} message={pushAlert.message} onClose={() => setPushAlert(null)} />
@@ -658,7 +620,7 @@ export const Profile = () => {
           onClick={async () => {
             const result = await Swal.fire({
               title: '¿Eliminar tu cuenta?',
-              html: 'Se borrarán <b>todos tus datos</b>: tarjetas, créditos, suscripciones y recordatorios.<br/><br/>Esta acción <b>no se puede deshacer</b>.',
+              html: 'Se borrarán <b>todos tus datos</b>: tarjetas, créditos, suscripciones y más.<br/><br/>Esta acción <b>no se puede deshacer</b>.',
               icon: 'warning',
               showCancelButton: true,
               confirmButtonColor: '#DC2626',

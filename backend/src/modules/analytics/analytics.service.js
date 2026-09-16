@@ -26,6 +26,73 @@ const nextPaymentDate = (dayOfMonth) => {
     return d;
 };
 
+// Índice absoluto de mes (año*12 + mes, 0-based) del PRIMER corte en que una
+// compra empieza a facturar. Espejo de `firstCutMonthIndex` del frontend.
+const firstCutMonthIndex = (fechaCompra, cutDay) => {
+    const [y, m, d] = String(fechaCompra).split('-').map(Number);
+    const pIdx = y * 12 + (m - 1);
+    return (d >= cutDay) ? pIdx + 1 : pIdx;
+};
+
+// Próximo corte (hoy o futuro). Espejo de `nextOccurrence` del frontend.
+const nextCutDate = (cutDay) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const enMes = (y, m) => new Date(y, m, effectiveDayInMonth(cutDay, y, m));
+    const d = enMes(today.getFullYear(), today.getMonth());
+    return d <= today ? enMes(today.getFullYear(), today.getMonth() + 1) : d;
+};
+
+// Próximo pago de tarjeta con algo REALMENTE pendiente, mismo criterio que
+// `buildSchedule` del frontend: el corte facturado pagado ya no cuenta (se salta
+// al siguiente ciclo), y las comisiones de avances que ya pagaron su primera
+// cuota no suman (dato histórico corrupto). Devuelve { date, amount } o null.
+const nextCardPayment = (card, purchases) => {
+    const cutDay = Number(card.fechaCorte || 1);
+    const anchor = nextCutDate(cutDay);
+    const anchorIdx = anchor.getFullYear() * 12 + anchor.getMonth();
+    const active = (purchases || []).filter(p => p.status === 'activa');
+
+    for (let mOff = -2; mOff <= 2; mOff++) {
+        const cutIdx = anchorIdx + mOff;
+        let amount = 0;
+        for (const p of active) {
+            const pagadas = Number(p.cuotasPagadas);
+            const total = Number(p.numeroCuotas);
+            const cuotaActual = (cutIdx - firstCutMonthIndex(p.fechaCompra, cutDay)) + 1;
+            if (!(cuotaActual >= 1 && cuotaActual <= total)) continue;
+            let isPending = cuotaActual > pagadas;
+            if (p.tipo === 'comision' && p.avanceId != null) {
+                const avance = active.find(a => a.id === Number(p.avanceId));
+                // Avance ya no activo (pagado/cancelado) en la lista = comisión pagada.
+                const avancePagado = !avance || Number(avance.cuotasPagadas) >= 1 || avance.status === 'pagada';
+                if (avancePagado) isPending = false;
+            }
+            if (isPending) amount += toNum(p.valorCuotaMensual);
+        }
+        if (amount <= 0) continue;
+
+        // Fecha de pago después del corte del ciclo pendiente (efectiva al mes).
+        const payDay = Number(card.fechaPago || cutDay);
+        const payIdx = cutIdx + (payDay < cutDay ? 1 : 0);
+        const py = Math.floor(payIdx / 12), pm = payIdx % 12;
+        return { date: new Date(py, pm, effectiveDayInMonth(payDay, py, pm)), amount };
+    }
+    return null;
+};
+
+// Una compra cuenta como obligación real salvo comisiones de avance cuyo avance
+// ya pagó su PRIMERA cuota (se pagan automáticamente junto con ella). Esas
+// comisiones quedaron colgadas como 'activa' por el bug previo a 2026-09-07 y
+// sumarlas inflaba "Compromisos", "¿A dónde va tu dinero?", dineroLibre, etc.
+const esCompraPendiente = (p, cardPurchases) => {
+    if (p.tipo === 'comision' && p.avanceId != null) {
+        const avance = (cardPurchases || []).find(a => a.id === Number(p.avanceId));
+        const avancePagado = !avance || Number(avance.cuotasPagadas) >= 1 || avance.status === 'pagada';
+        if (avancePagado) return false;
+    }
+    return true;
+};
+
 const computeHealthScore = (subscriptions, creditCards, bankCredits) => {
     let score = 100;
     const details = [];
@@ -115,7 +182,10 @@ export const AnalyticsService = {
         const activePurchases = creditCards.flatMap(c =>
             (c.CreditCardPurchases || []).filter(p => p.status === 'activa')
         );
-        const monthlyCreditCards = activePurchases.reduce((a, p) => a + toNum(p.valorCuotaMensual), 0);
+        // Excluye comisiones de avances ya pagadas: inflaban las obligaciones.
+        const monthlyCreditCards = creditCards.reduce((sum, c) => sum + (c.CreditCardPurchases || [])
+            .filter(p => p.status === 'activa' && esCompraPendiente(p, c.CreditCardPurchases))
+            .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0), 0);
 
         const totalDebtCredits = bankCredits
             .filter(c => c.status !== 'pagado')
@@ -178,18 +248,21 @@ export const AnalyticsService = {
         });
 
         creditCards.filter(c => c.status === 'activa').forEach(c => {
-            const d = nextPaymentDate(c.fechaPago);
-            const amount = (c.CreditCardPurchases || [])
-                .filter(p => p.status === 'activa')
-                .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0);
-            // Sin cuotas activas no hay nada que pagar: listarla como "pago
-            // próximo" con monto vacío ("—") hacía pensar que se debe algo.
-            if (amount <= 0) return;
-            if (d <= in30) upcoming.push({
-                date: d.toISOString().slice(0, 10),
+            // Solo cuenta el corte con algo REALMENTE pendiente (misma lógica que
+            // buildSchedule del frontend): si el ciclo ya se pagó, salta al
+            // siguiente. Excluye comisiones de avances ya pagadas. Sin cuotas
+            // pendientes no hay nada que pagar y la tarjeta no sale en la lista.
+            const pay = nextCardPayment(c, c.CreditCardPurchases);
+            if (!pay || pay.amount <= 0) return;
+            // Solo vencimientos FUTUROS dentro de la ventana: los ciclos previos
+            // sin pagar ya vencieron (no son "próximos") — se ven en la vista de
+            // tarjeta como deuda. Un corte pagado simplemente salta al siguiente.
+            if (pay.date < today || pay.date > in30) return;
+            upcoming.push({
+                date: pay.date.toISOString().slice(0, 10),
                 name: c.nombre,
                 type: 'credit_card',
-                amount,
+                amount: Math.round(pay.amount * 100) / 100,
                 moneda: 'COP',
             });
         });
@@ -208,7 +281,7 @@ export const AnalyticsService = {
                     nombre: c.nombre,
                     detalle: c.entidad,
                     monto: (c.CreditCardPurchases || [])
-                        .filter(p => p.status === 'activa')
+                        .filter(p => p.status === 'activa' && esCompraPendiente(p, c.CreditCardPurchases))
                         .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0),
                 }))
                 .filter(c => c.monto > 0)
@@ -316,7 +389,7 @@ export const AnalyticsService = {
             const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
             const label = d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
 
-            // Igual que en getSummary/getRecommendations: las suscripciones con
+            // Igual que en getSummary: las suscripciones con
             // tarjeta vinculada NO se suman aquí, su cargo ya viene por
             // `cardTotal` (subscriptionChargeJob crea un CreditCardPurchase real).
             const subTotal = subscriptions
@@ -360,150 +433,6 @@ export const AnalyticsService = {
         return result;
     },
 
-    getRecommendations: async (userId) => {
-        const [subscriptions, bankCredits, creditCards, incomes, personalDebts, savingsGoals] = await Promise.all([
-            Subscription.findAll({ where: { userId } }),
-            BankCredit.findAll({ where: { userId } }),
-            CreditCard.findAll({
-                where: { userId },
-                include: [{ model: CreditCardPurchase, as: 'CreditCardPurchases', where: { status: 'activa' }, required: false }],
-            }),
-            Income.findAll({ where: { userId, status: 'activo' } }),
-            PersonalDebt.findAll({ where: { userId, status: 'activo' } }),
-            SavingsGoal.findAll({ where: { userId, status: 'activo' } }),
-        ]);
-
-        const recs = [];
-
-        const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo').reduce((a, i) => a + toNum(i.monto), 0);
-        const activeSubs = subscriptions.filter(s => s.status === 'activa');
-        const activeCredits = bankCredits.filter(c => c.status === 'activo');
-        const creditsInMora = bankCredits.filter(c => c.status === 'en_mora' || c.status === 'atrasado');
-        const totalCupo = creditCards.reduce((a, c) => a + toNum(c.cupoTotal), 0);
-        const totalUsed = creditCards.reduce((a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0);
-        const utilization = totalCupo > 0 ? (totalUsed / totalCupo) * 100 : 0;
-        // Igual que en getSummary: las suscripciones con tarjeta vinculada ya
-        // entran por creditCards.flatMap(...).valorCuotaMensual, no sumarlas
-        // aparte o quedarían dobles en monthlyObl/dineroLibre.
-        const monthlyObl = activeCredits.reduce((a, c) => a + toNum(c.valorCuota) + toNum(c.cuotaAdministracion), 0)
-            + activeSubs.filter(s => !s.creditCardId).reduce((a, s) => a + subMonthlyCOP(s), 0)
-            + creditCards.flatMap(c => c.CreditCardPurchases || []).reduce((a, p) => a + toNum(p.valorCuotaMensual), 0)
-            + personalDebts.filter(d => d.status === 'activo').reduce((a, d) => a + toNum(d.montoCuota), 0);
-        const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
-        const dineroLibre = totalIncome - monthlyObl - monthlySavings;
-        const oblRatio = totalIncome > 0 ? (monthlyObl / totalIncome) * 100 : 0;
-        const subsTotal = activeSubs.reduce((a, s) => a + subMonthlyCOP(s), 0);
-
-        if (!totalIncome) {
-            recs.push({ type: 'info', title: 'Registra tus ingresos', description: 'Sin ingresos registrados no podemos calcular tu dinero libre ni darte consejos personalizados.', action: '/income/new' });
-        }
-
-        if (creditsInMora.length > 0) {
-            recs.push({ type: 'danger', title: `${creditsInMora.length} crédito(s) en mora`, description: `Tienes ${creditsInMora.length} crédito(s) con pagos atrasados. Regulariza tu situación cuanto antes para evitar intereses de mora y daño a tu historial.`, action: '/bank-credits' });
-        }
-
-        if (utilization > 80) {
-            recs.push({ type: 'danger', title: 'Cupo de tarjetas al límite', description: `Estás usando el ${Math.round(utilization)}% de tu cupo total. Se recomienda mantenerlo por debajo del 30% para no afectar tu perfil crediticio.`, action: '/credit-cards' });
-        } else if (utilization > 50) {
-            recs.push({ type: 'warning', title: 'Utilización de cupo elevada', description: `Usas el ${Math.round(utilization)}% de tu cupo disponible. Intenta reducirlo por debajo del 50% para mejorar tu salud financiera.`, action: '/credit-cards' });
-        }
-
-        if (dineroLibre < 0 && totalIncome > 0) {
-            recs.push({ type: 'danger', title: 'Gastos mayores que ingresos', description: `Tus obligaciones superan tus ingresos en ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.abs(dineroLibre))} al mes. Revisa qué puedes reducir.`, action: '/reports' });
-        } else if (oblRatio > 40 && totalIncome > 0) {
-            recs.push({ type: 'warning', title: 'Obligaciones por encima del 40%', description: `Tus compromisos mensuales representan el ${Math.round(oblRatio)}% de tus ingresos. La regla general es no superar el 40%. Considera renegociar o reducir deudas.`, action: '/reports' });
-        }
-
-        if (savingsGoals.length === 0 && totalIncome > 0) {
-            recs.push({ type: 'info', title: 'Crea tu primera meta de ahorro', description: 'No tienes metas de ahorro activas. Empieza con un fondo de emergencia equivalente a 3 meses de gastos.', action: '/savings/new' });
-        } else if (savingsGoals.length > 0 && monthlySavings / totalIncome < 0.1 && totalIncome > 0) {
-            recs.push({ type: 'info', title: 'Aumenta tu tasa de ahorro', description: `Destinas el ${Math.round((monthlySavings / totalIncome) * 100)}% de tus ingresos al ahorro. Se recomienda al menos el 10-20%.`, action: '/savings' });
-        }
-
-        if (activeSubs.length > 7) {
-            recs.push({ type: 'warning', title: `${activeSubs.length} suscripciones activas`, description: `Tienes ${activeSubs.length} suscripciones que suman ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(subsTotal)}/mes. Revisa cuáles realmente usas y cancela las que no.`, action: '/subscriptions' });
-        }
-
-        if (recs.length === 0) {
-            recs.push({ type: 'success', title: '¡Finanzas en orden!', description: 'No encontramos áreas de riesgo en tu situación actual. Sigue así y considera diversificar tus inversiones para hacer crecer tu patrimonio.', action: null });
-        }
-
-        return recs;
-    },
-
-    getDebtFreedom: async (userId) => {
-        const [bankCredits, creditCards, personalDebts] = await Promise.all([
-            BankCredit.findAll({ where: { userId } }),
-            CreditCard.findAll({
-                where: { userId },
-                include: [{ model: CreditCardPurchase, as: 'CreditCardPurchases', where: { status: 'activa' }, required: false }],
-            }),
-            PersonalDebt.findAll({ where: { userId } }),
-        ]);
-
-        const activeCredits = bankCredits.filter(c => c.status === 'activo' || c.status === 'en_mora' || c.status === 'atrasado');
-
-        // Bank credits: use actual remaining cuotas
-        const creditItems = activeCredits.map(c => {
-            const remaining = Number(c.numeroCuotas) - Number(c.cuotasPagadas);
-            const monthlyPayment = toNum(c.valorCuota) + toNum(c.cuotaAdministracion);
-            return { nombre: c.nombre, type: 'bank_credit', saldo: toNum(c.saldoPendiente), monthlyPayment, monthsLeft: remaining };
-        });
-
-        // Credit cards: use actual remaining installments per purchase, same logic as bank credits
-        const cardItems = creditCards.map(c => {
-            const purchases = (c.CreditCardPurchases || []).filter(p =>
-                p.status === 'activa' && p.tipo !== 'comision' && p.tipo !== 'cuota_manejo'
-            );
-            if (purchases.length === 0) return null;
-            const monthlyPayment = purchases.reduce((a, p) => a + toNum(p.valorCuotaMensual), 0);
-            if (monthlyPayment <= 0) return null;
-            // Max remaining installments across all active purchases
-            const monthsLeft = Math.max(...purchases.map(p => Math.max(0, Number(p.numeroCuotas) - Number(p.cuotasPagadas))));
-            const saldo = purchases.reduce((a, p) => {
-                const remaining = Math.max(0, Number(p.numeroCuotas) - Number(p.cuotasPagadas));
-                return a + toNum(p.valorCuotaMensual) * remaining;
-            }, 0);
-            return { nombre: c.nombre, type: 'credit_card', saldo, monthlyPayment, monthsLeft };
-        }).filter(Boolean);
-
-        // Deudas personales en cuotas (tipo 'deuda' activas con saldo)
-        const personalItems = personalDebts
-            .filter(d => d.tipo === 'deuda' && d.status === 'activo' && toNum(d.saldoPendiente) > 0)
-            .map(d => {
-                const monthlyPayment = toNum(d.montoCuota);
-                const monthsLeft = d.numeroCuotas
-                    ? Math.max(0, Number(d.numeroCuotas) - Number(d.cuotasPagadas))
-                    : (monthlyPayment > 0 ? Math.ceil(toNum(d.saldoPendiente) / monthlyPayment) : 0);
-                return { nombre: d.nombre, type: 'personal_debt', saldo: toNum(d.saldoPendiente), monthlyPayment, monthsLeft };
-            });
-
-        const allItems = [...creditItems, ...cardItems, ...personalItems];
-        if (allItems.length === 0) return { hasDebts: false, totalDebt: 0, monthlyPayments: 0, estimatedMonths: 0, estimatedDate: null, breakdown: [] };
-
-        const totalDebt = allItems.reduce((a, i) => a + i.saldo, 0);
-        const monthlyPayments = allItems.reduce((a, i) => a + i.monthlyPayment, 0);
-        const maxMonths = Math.max(...allItems.map(i => i.monthsLeft || 0));
-
-        const estimatedDate = new Date();
-        estimatedDate.setMonth(estimatedDate.getMonth() + maxMonths);
-
-        return {
-            hasDebts: true,
-            totalDebt: Math.round(totalDebt),
-            monthlyPayments: Math.round(monthlyPayments),
-            estimatedMonths: maxMonths,
-            estimatedDate: estimatedDate.toISOString().slice(0, 7),
-            breakdown: allItems.map(i => ({
-                nombre: i.nombre,
-                type: i.type,
-                saldo: Math.round(i.saldo),
-                monthlyPayment: Math.round(i.monthlyPayment),
-                monthsLeft: i.monthsLeft,
-            })),
-        };
-    },
-
     getDistribution: async (userId) => {
         const [subscriptions, bankCredits, creditCards] = await Promise.all([
             Subscription.findAll({ where: { userId, status: 'activa' } }),
@@ -516,7 +445,8 @@ export const AnalyticsService = {
 
         const subMonthly = subscriptions.reduce((a, s) => a + subMonthlyCOP(s), 0);
         const creditMonthly = bankCredits.reduce((a, c) => a + toNum(c.valorCuota) + toNum(c.cuotaAdministracion), 0);
-        const cardMonthly = creditCards.flatMap(c => c.CreditCardPurchases || [])
+        const cardMonthly = creditCards.flatMap(c => (c.CreditCardPurchases || [])
+            .filter(p => p.status === 'activa' && esCompraPendiente(p, c.CreditCardPurchases)))
             .reduce((a, p) => a + toNum(p.valorCuotaMensual), 0);
 
         return [

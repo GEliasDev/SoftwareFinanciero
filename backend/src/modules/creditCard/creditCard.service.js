@@ -6,7 +6,6 @@ import { calcularCuotaCompra, calcularPagoMinimo } from './utils/creditCardCalcu
 import { effectiveDayInMonth } from '../../utils/cycleDay.js';
 import { AppError } from '../../middlewares/appError.js';
 import logger from '../../utils/logger.js';
-import { ReminderService } from '../reminder/reminder.service.js';
 
 export const CreditCardService = {
     // ── Tarjeta ──────────────────────────────────────────────
@@ -19,20 +18,6 @@ export const CreditCardService = {
                 userId: data.userId,
             });
             logger.info(`Credit card ${card.id} created for user ${data.userId}`);
-            // Recordatorio con default sensato (3 días antes del pago): antes
-            // el usuario tenía que crearlo a mano repitiendo datos que la
-            // tarjeta ya tiene. No bloquea el alta si falla.
-            try {
-                await ReminderService.createReminder({
-                    userId: data.userId,
-                    debtType: 'credit_card',
-                    debtId: card.id,
-                    nombre: card.nombre,
-                    diasAnticipacion: 3,
-                });
-            } catch (err) {
-                logger.error(`No se pudo auto-crear recordatorio para tarjeta ${card.id}: ${err.message}`);
-            }
             return card;
     },
 

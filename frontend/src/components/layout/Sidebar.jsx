@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Repeat, Bell, CreditCard, Landmark,
-  Menu, X, BarChart2, Wallet, Handshake, Target, PieChart, Activity,
+  LayoutDashboard, Repeat, CreditCard, Landmark,
+  Menu, X, BarChart2, Wallet, Handshake, Target, PieChart,
 } from 'lucide-react';
 import logo from '../../assets/logo.png';
 import icono from '../../assets/icono.png';
@@ -15,9 +15,7 @@ const SECTION_ICONS = {
   '/credit-cards': CreditCard,
   '/bank-credits': Landmark,
   '/subscriptions': Repeat,
-  '/reminders': Bell,
   '/reports': BarChart2,
-  '/activity': Activity,
 };
 
 function useActiveIcon() {
@@ -99,9 +97,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
           <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" onClick={close} />
 
           <div className="nav-divider" />
-          <NavItem to="/reminders" icon={Bell} label="Recordatorios" onClick={close} />
           <NavItem to="/reports" icon={BarChart2} label="Reportes" onClick={close} />
-          <NavItem to="/activity" icon={Activity} label="Actividad" onClick={close} />
         </nav>
       </aside>
     </>

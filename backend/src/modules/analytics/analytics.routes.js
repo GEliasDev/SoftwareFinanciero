@@ -9,7 +9,5 @@ router.use(authenticateToken);
 router.get('/summary',         AnalyticsController.getSummary);
 router.get('/monthly-trend',   AnalyticsController.getMonthlyTrend);
 router.get('/distribution',    AnalyticsController.getDistribution);
-router.get('/recommendations', AnalyticsController.getRecommendations);
-router.get('/debt-freedom',    AnalyticsController.getDebtFreedom);
 
 export default router;

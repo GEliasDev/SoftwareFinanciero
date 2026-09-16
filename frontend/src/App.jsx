@@ -48,10 +48,6 @@ const BankCreditSchedule = lazyNamed(() => import('./pages/bank-credit/BankCredi
 const BankCreditAnalysis = lazyNamed(() => import('./pages/bank-credit/BankCreditAnalysis'), 'BankCreditAnalysis');
 const BankCreditEdit = lazyNamed(() => import('./pages/BankCreditEdit'), 'BankCreditEdit');
 
-// Recordatorios
-const Reminders = lazyNamed(() => import('./pages/Reminders'), 'Reminders');
-const ReminderNew = lazyNamed(() => import('./pages/ReminderNew'), 'ReminderNew');
-
 // Ingresos
 const Income = lazyNamed(() => import('./pages/Income'), 'Income');
 const IncomeForm = lazyNamed(() => import('./pages/IncomeForm'), 'IncomeForm');
@@ -73,7 +69,6 @@ const Budget = lazyNamed(() => import('./pages/Budget'), 'Budget');
 
 // Herramientas
 const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
-const ActivityLog = lazyNamed(() => import('./pages/ActivityLog'), 'ActivityLog');
 const Profile = lazyNamed(() => import('./pages/Profile'), 'Profile');
 const Onboarding = lazyNamed(() => import('./pages/Onboarding'), 'Onboarding');
 
@@ -142,10 +137,6 @@ function App() {
           </Route>
           <Route path="bank-credits/:id/edit" element={<BankCreditEdit />} />
 
-          {/* Recordatorios */}
-          <Route path="reminders" element={<Reminders />} />
-          <Route path="reminders/new" element={<ReminderNew />} />
-
           {/* Ingresos */}
           <Route path="income" element={<Income />} />
           <Route path="income/new" element={<IncomeForm />} />
@@ -168,7 +159,6 @@ function App() {
 
           {/* Herramientas */}
           <Route path="reports" element={<Reports />} />
-          <Route path="activity" element={<ActivityLog />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

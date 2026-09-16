@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Eye, EyeOff, TrendingUp, CreditCard, Bell, Landmark, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, TrendingUp, CreditCard, Landmark, AlertCircle, ArrowRight, ShieldCheck, Mail } from 'lucide-react';
 import { AuthService } from '../services/authService';
 import logo from '../assets/logo.png';
-import icono from '../assets/icono.png';
 
 const FEATURES = [
   { icon: TrendingUp, text: 'Seguimiento de deudas y saldos en tiempo real' },
   { icon: CreditCard, text: 'Gestión completa de tarjetas y compras a cuotas' },
   { icon: Landmark,   text: 'Créditos con tabla de amortización automática' },
-  { icon: Bell,       text: 'Recordatorios de vencimientos configurables' },
+  { icon: Mail,       text: 'Resumen semanal de tus finanzas por email' },
 ];
 
 export const Login = () => {
