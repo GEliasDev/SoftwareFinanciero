@@ -4,7 +4,7 @@ import { CreditCardService } from '../services/creditCardService';
 import { Plus, CreditCard as CardIcon, AlertTriangle, ShoppingBag, CalendarClock, Wallet } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
 import { LoadError } from '../components/ui/LoadError';
-import { fmt, nextOccurrence, daysUntil, urgencyStyle, fmtShort, buildSchedule, effectiveDayInMonth } from '../utils/creditCard';
+import { fmt, urgencyStyle, fmtShort, buildCardStats } from '../utils/creditCard';
 
 const usageColor = (pct) =>
   pct >= 80 ? 'var(--neg-600)' : pct >= 50 ? 'var(--warn-600)' : 'var(--pos-600)';
@@ -33,56 +33,10 @@ export const CreditCards = () => {
   const totalDisp = totalCupo - totalUsado;
   const usoGlobalPct = totalCupo > 0 ? (totalUsado / totalCupo) * 100 : 0;
 
-  // Pre-cálculo dinámico de estadísticas de pago de cada tarjeta para evitar desfases.
-  const cardStats = useMemo(() => {
-    return cards.map(c => {
-      const schedule = buildSchedule(c.CreditCardPurchases || [], c);
-      
-      // Encontrar el primer ciclo (pasado, actual o futuro) que tenga cuotas pendientes de pago.
-      // Este es el ciclo activo hacia el cual el usuario está aportando o debe pagar.
-      const activeSlot = schedule.find(s => s.lines.some(l => !l.wasPaid));
-      
-      if (!activeSlot) {
-        return {
-          cardId: c.id,
-          cardOblMes: 0,
-          nextPago: null,
-          dPago: 999,
-          activePurchases: [],
-          activeSlot: null,
-          tieneDeuda: false,
-        };
-      }
-
-      // Saldo pendiente de este ciclo activo
-      const pendingLines = activeSlot.lines.filter(l => !l.wasPaid);
-      const cardOblMes = pendingLines.reduce((s, l) => s + l.valorCuota, 0);
-      
-      const activePurchases = (c.CreditCardPurchases || []).filter(p => p.status === 'activa');
-      
-      // Calcular la fecha de pago exacta para este ciclo activo
-      const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
-      // Día recortado al mes destino: un fechaPago=31 en un mes de 30 desbordaba
-      // al mes siguiente y la fecha de pago salía corrida.
-      const payYear  = activeSlot.date.getFullYear();
-      const payMonth = activeSlot.date.getMonth() + payMonthOffset;
-      const date = new Date(payYear, payMonth, effectiveDayInMonth(c.fechaPago, payYear, payMonth));
-      const dPago = daysUntil(date);
-      
-      // Tiene deuda exigible si el ciclo activo ya cerró (isPast)
-      const tieneDeuda = activeSlot.isPast && cardOblMes > 0;
-      
-      return {
-        cardId: c.id,
-        cardOblMes,
-        nextPago: date,
-        dPago,
-        activePurchases,
-        activeSlot,
-        tieneDeuda,
-      };
-    });
-  }, [cards]);
+  // Estadísticas de pago por tarjeta. Fuente ÚNICA `buildCardStats` (en
+  // utils/creditCard), la MISMA que usa el Dashboard, para que Inicio y
+  // Tarjetas nunca se desfasen.
+  const cardStats = useMemo(() => buildCardStats(cards), [cards]);
 
   // Tarjetas con algo pendiente de pago en su ciclo activo (ya ignora comisiones
   // de avances pagados, que podrían quedar colgadas como 'activa' por datos viejos).

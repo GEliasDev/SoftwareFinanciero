@@ -6,6 +6,7 @@ import {
 import { BankCreditService } from '../services/bankCreditService';
 import { Stepper } from '../components/ui/Stepper';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt, fmtDateLong } from '../utils/format';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
@@ -95,7 +96,9 @@ export const BankCreditEdit = () => {
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
       <label className="form-label" htmlFor={name}>{label}</label>
-      <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={data[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
+      {props.type === 'money'
+        ? <MoneyInput id={name} name={name} value={data[name]} onChange={v => setData(prev => ({ ...prev, [name]: v }))} onBlur={() => markTouched(name)} error={showErr(name)} placeholder={props.placeholder} disabled={props.disabled} />
+        : <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={data[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />}
       {showErr(name) ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p> : hint && <p className="form-hint">{hint}</p>}
     </div>
   );
@@ -231,8 +234,8 @@ export const BankCreditEdit = () => {
                   {lockedField('Cuotas ya pagadas', credit?.cuotasPagadas ?? 0, 'Se actualiza al registrar pagos')}
                 </div>
                 <div className="form-row-2">
-                  {field('cuotaAdministracion', 'Cuota administración', 'Cargo fijo mensual de administración', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
-                  {field('seguro', 'Seguro / aval mensual', 'Seguro de vida o aval (Addi, Sistecrédito…)', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
+                  {field('cuotaAdministracion', 'Cuota administración', 'Cargo fijo mensual de administración', { type: 'money', placeholder: '0' })}
+                  {field('seguro', 'Seguro / aval mensual', 'Seguro de vida o aval (Addi, Sistecrédito…)', { type: 'money', placeholder: '0' })}
                 </div>
               </div>
             )}

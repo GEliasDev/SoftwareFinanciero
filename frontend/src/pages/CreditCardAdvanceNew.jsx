@@ -5,6 +5,7 @@ import { CreditCardService } from '../services/creditCardService';
 import { ArrowLeft, Banknote, Check, DollarSign, ChevronRight, AlertCircle } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
 import { fmt, localISODate } from '../utils/format';
+import { MoneyInput } from '../components/ui/MoneyInput';
 
 function calcCuota(monto, cuotas, tasaPct) {
   if (!monto || !cuotas || cuotas < 1) return 0;
@@ -53,6 +54,7 @@ export const CreditCardAdvanceNew = () => {
   const blur = k => setTouched(t => ({ ...t, [k]: true }));
   const showErr = k => touched[k] && errs[k];
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+  const setMonto = (v) => setForm(f => ({ ...f, montoTotal: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -183,14 +185,13 @@ export const CreditCardAdvanceNew = () => {
             <div className="form-row-2" style={{ gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label" htmlFor="adv-monto">Monto del avance *</label>
-                <input
+                <MoneyInput
                   id="adv-monto"
-                  className={`form-input ${showErr('montoTotal') ? 'error' : ''}`}
-                  type="number"
                   value={form.montoTotal}
-                  onChange={set('montoTotal')}
+                  onChange={setMonto}
                   onBlur={() => blur('montoTotal')}
-                  min="0.01" step="0.01" placeholder="0.00"
+                  error={!!showErr('montoTotal')}
+                  placeholder="0"
                   aria-invalid={!!showErr('montoTotal')}
                   aria-describedby={showErr('montoTotal') ? 'adv-monto-err' : undefined}
                 />

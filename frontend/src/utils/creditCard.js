@@ -2,7 +2,11 @@ import {
   Utensils, Car, Heart, Tv2, Home, Laptop, Tag, BookOpen, Plane, Package,
   Banknote, Receipt, Wallet,
 } from 'lucide-react';
-import { nextOccurrence as _nextOccurrence } from './format';
+import {
+  nextOccurrence as _nextOccurrence,
+  daysUntil as _daysUntil,
+  effectiveDayInMonth as _effectiveDayInMonth,
+} from './format';
 
 // Tasa de usura de referencia (E.A.) para Colombia. Fuente única — antes estaba
 // copiada a mano como 28.5 en 4 sitios. Es un valor de referencia orientativo
@@ -107,7 +111,7 @@ const firstCutMonthIndex = (fechaCompra, cutDay) => {
  * @returns Array<{ key, date, label, total, lines, endingCount, isPast, isCurrent }>
  *   lines: [{ id, descripcion, categoria, valorCuota, cuotaActual, numeroCuotas, isLast, wasPaid }]
  */
-export const buildSchedule = (purchases, card, monthsAhead = 12, monthsBack = 3) => {
+export const buildSchedule = (purchases = [], card, monthsAhead = 12, monthsBack) => {
   if (!card) return [];
   const cutDay    = Number(card.fechaCorte);
   const anchor    = _nextOccurrence(cutDay);
@@ -200,7 +204,26 @@ export const buildSchedule = (purchases, card, monthsAhead = 12, monthsBack = 3)
     return { key, date, label, total: totalMes, lines, endingCount, isPast, isCurrent, isPaymentDue };
   };
 
-  const pastSlots   = Array.from({ length: monthsBack }, (_, i) => buildSlot(-(monthsBack - i)));
+  // Historial COMPLETO: sin monthsBack explícito se deriva desde la compra más
+  // antigua para que ningún extracto pasado quede fuera (antes se fijaba en 3
+  // meses y el historial más viejo "desaparecía" de la vista). Reports.jsx pasa
+  // 0 a propósito (su proyección solo mira hacia adelante).
+  let back = monthsBack;
+  if (back === undefined) {
+    let firstIdx = null;
+    for (const p of purchases) {
+      if (p?.fechaCompra) {
+        const idx = firstCutMonthIndex(p.fechaCompra, cutDay);
+        if (firstIdx === null || idx < firstIdx) firstIdx = idx;
+      }
+    }
+    // +1 cubre el ciclo en curso del corte más antiguo; el cap evita generar
+    // cientos de meses vacíos con una tarjeta de muchos años.
+    back = firstIdx === null ? 1 : Math.min(120, Math.max(1, anchorIdx - firstIdx + 1));
+  }
+
+  const pastCount   = Math.max(0, Number(back) || 0);
+  const pastSlots   = Array.from({ length: pastCount }, (_, i) => buildSlot(-(pastCount - i)));
   const currentSlot = buildSlot(0);
   const futureSlots = Array.from({ length: monthsAhead - 1 }, (_, i) => buildSlot(i + 1));
 
@@ -211,3 +234,53 @@ export const buildSchedule = (purchases, card, monthsAhead = 12, monthsBack = 3)
 
   return [...past, currentSlot, ...future];
 };
+
+/* ── Obligación mensual por tarjeta (fuente única) ────────────────────── */
+/**
+ * Obligación del ciclo activo de cada tarjeta: el primer corte (pasado,
+ * vigente o futuro) con cuotas pendientes. Fuente ÚNICA compartida por la
+ * lista de Tarjetas y el Dashboard, para que los números de Inicio y Tarjetas
+ * no puedan desfasarse: ambos llaman a esta función, que a su vez usa
+ * `buildSchedule`. Cualquier cambio en la lógica de extractos se refleja en
+ * las dos pantallas a la vez.
+ *
+ * @returns Array<{ cardId, nombre, entidad, cardOblMes, nextPago, dPago,
+ *                  activePurchases, activeSlot, tieneDeuda }>
+ */
+export const buildCardStats = (cards = []) =>
+  cards.map(c => {
+    const schedule = buildSchedule(c.CreditCardPurchases || [], c);
+
+    // Primer ciclo con cuotas pendientes: el corte hacia el que el usuario
+    // está aportando o debe pagar.
+    const activeSlot = schedule.find(s => s.lines.some(l => !l.wasPaid));
+
+    if (!activeSlot) {
+      return {
+        cardId: c.id, nombre: c.nombre, entidad: c.entidad,
+        cardOblMes: 0, nextPago: null, dPago: 999,
+        activePurchases: [], activeSlot: null, tieneDeuda: false,
+      };
+    }
+
+    const cardOblMes = activeSlot.lines
+      .filter(l => !l.wasPaid)
+      .reduce((s, l) => s + l.valorCuota, 0);
+
+    const activePurchases = (c.CreditCardPurchases || []).filter(p => p.status === 'activa');
+
+    // Fecha de pago del corte activo. Día recortado al mes destino: un
+    // fechaPago=31 en un mes de 30 desbordaba al mes siguiente.
+    const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
+    const payYear  = activeSlot.date.getFullYear();
+    const payMonth = activeSlot.date.getMonth() + payMonthOffset;
+    const nextPago = new Date(payYear, payMonth, _effectiveDayInMonth(c.fechaPago, payYear, payMonth));
+    const dPago = _daysUntil(nextPago);
+
+    return {
+      cardId: c.id, nombre: c.nombre, entidad: c.entidad,
+      cardOblMes, nextPago, dPago,
+      activePurchases, activeSlot,
+      tieneDeuda: activeSlot.isPast && cardOblMes > 0,
+    };
+  });

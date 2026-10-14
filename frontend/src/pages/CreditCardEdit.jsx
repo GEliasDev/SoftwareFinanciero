@@ -9,6 +9,7 @@ import {
 import { CARD_COLORS, getCardGradient, darkenHex } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
 import { TASA_USURA_EA } from '../utils/creditCard';
 
@@ -110,7 +111,9 @@ export const CreditCardEdit = () => {
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
       <label className="form-label" htmlFor={name}>{label}</label>
-      <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={data[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
+      {props.type === 'money'
+        ? <MoneyInput id={name} name={name} value={data[name]} onChange={v => setData(prev => ({ ...prev, [name]: v }))} onBlur={() => markTouched(name)} error={showErr(name)} placeholder={props.placeholder} disabled={props.disabled} />
+        : <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={data[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />}
       {showErr(name) ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p> : hint && <p className="form-hint">{hint}</p>}
     </div>
   );
@@ -286,7 +289,7 @@ export const CreditCardEdit = () => {
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Datos financieros</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Cupo y tasa</p>
                 <div className="form-row-2">
-                  {field('cupoTotal', 'Cupo total (COP) *', 'El cupo disponible se ajusta solo', { type: 'number', min: '0.01', step: '0.01', placeholder: '0' })}
+                  {field('cupoTotal', 'Cupo total (COP) *', 'El cupo disponible se ajusta solo', { type: 'money', placeholder: '0' })}
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Tasa mensual (%) *</label>
                     <input className={`form-input ${showErr('tasaInteresMensual') ? 'error' : ''}`} type="number" name="tasaInteresMensual" value={data.tasaInteresMensual} onChange={handleChange} onBlur={() => markTouched('tasaInteresMensual')} min="0.0001" step="0.0001" placeholder="Ej: 1.9872" />
@@ -295,11 +298,11 @@ export const CreditCardEdit = () => {
                   </div>
                 </div>
                 <div className="form-row-2" style={{ marginTop: '0.75rem' }}>
-                  {field('comisionAvance', 'Comisión por avance (COP)', 'Déjalo en 0 si la tarjeta no cobra avances', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 9900' })}
-                  {field('cuotaManejo', 'Cuota de manejo (COP)', 'Cargo fijo que se agrega en cada corte. 0 si no aplica', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 30000' })}
+                  {field('comisionAvance', 'Comisión por avance (COP)', 'Déjalo en 0 si la tarjeta no cobra avances', { type: 'money', placeholder: 'Ej: 9900' })}
+                  {field('cuotaManejo', 'Cuota de manejo (COP)', 'Cargo fijo que se agrega en cada corte. 0 si no aplica', { type: 'money', placeholder: 'Ej: 30000' })}
                 </div>
                 <div style={{ marginTop: '0.75rem' }}>
-                  {field('pagoMinimo', 'Pago mínimo mensual (COP)', 'Mínimo que exige el banco para no caer en mora. Opcional.', { type: 'number', min: '0', step: '0.01', placeholder: 'Ej: 150000' })}
+                  {field('pagoMinimo', 'Pago mínimo mensual (COP)', 'Mínimo que exige el banco para no caer en mora. Opcional.', { type: 'money', placeholder: 'Ej: 150000' })}
                 </div>
               </div>
             )}

@@ -35,7 +35,7 @@ const CardPurchases = lazyNamed(() => import('./pages/credit-card/CardPurchases'
 const CardAnalysis = lazyNamed(() => import('./pages/credit-card/CardAnalysis'), 'CardAnalysis');
 const CreditCardEdit = lazyNamed(() => import('./pages/CreditCardEdit'), 'CreditCardEdit');
 const CreditCardPurchaseDetail = lazyNamed(() => import('./pages/CreditCardPurchaseDetail'), 'CreditCardPurchaseDetail');
-const CreditCardPurchaseNew = lazyNamed(() => import('./pages/CreditCardPurchaseNew'), 'CreditCardPurchaseNew');
+const CreditCardPurchaseForm = lazyNamed(() => import('./pages/CreditCardPurchaseForm'), 'CreditCardPurchaseForm');
 const CreditCardAdvanceNew = lazyNamed(() => import('./pages/CreditCardAdvanceNew'), 'CreditCardAdvanceNew');
 const CreditCardImport = lazyNamed(() => import('./pages/CreditCardImport'), 'CreditCardImport');
 
@@ -122,10 +122,11 @@ function App() {
             <Route path="analysis" element={<CardAnalysis />} />
           </Route>
           <Route path="credit-cards/:id/edit" element={<CreditCardEdit />} />
-          <Route path="credit-cards/:id/purchases/new" element={<CreditCardPurchaseNew />} />
+          <Route path="credit-cards/:id/purchases/new" element={<CreditCardPurchaseForm />} />
           <Route path="credit-cards/:id/purchases/import" element={<CreditCardImport />} />
           <Route path="credit-cards/:id/advances/new" element={<CreditCardAdvanceNew />} />
           <Route path="credit-cards/:id/purchases/:purchaseId" element={<CreditCardPurchaseDetail />} />
+          <Route path="credit-cards/:id/purchases/:purchaseId/edit" element={<CreditCardPurchaseForm />} />
 
           {/* Créditos bancarios */}
           <Route path="bank-credits" element={<BankCredits />} />

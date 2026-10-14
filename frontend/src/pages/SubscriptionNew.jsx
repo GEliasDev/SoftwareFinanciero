@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
 
 const STEPS = ['Servicio', 'Cobro'];
@@ -78,7 +79,9 @@ export const SubscriptionNew = () => {
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
       <label className="form-label" htmlFor={name}>{label}</label>
-      <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
+      {props.type === 'money'
+        ? <MoneyInput id={name} name={name} value={formData[name]} onChange={v => setFormData(prev => ({ ...prev, [name]: v }))} onBlur={() => markTouched(name)} error={showErr(name)} placeholder={props.placeholder} disabled={props.disabled} />
+        : <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />}
       {showErr(name) ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p> : hint && <p className="form-hint">{hint}</p>}
     </div>
   );
@@ -140,7 +143,7 @@ export const SubscriptionNew = () => {
                   {field('descripcion', 'Descripción (opcional)', null, { placeholder: 'Detalle adicional' })}
                 </div>
                 <div className="form-row-2" style={{ marginTop: '0.75rem' }}>
-                  {field('monto', 'Monto *', null, { type: 'number', min: '0.01', step: '0.01', placeholder: '0.00' })}
+                  {field('monto', 'Monto *', null, { type: 'money', placeholder: '0' })}
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Moneda *</label>
                     <select className="form-input" name="moneda" value={formData.moneda} onChange={handleChange}>

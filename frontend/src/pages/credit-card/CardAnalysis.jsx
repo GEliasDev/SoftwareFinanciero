@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ShoppingBag, DollarSign, Zap, PieChart as PieIcon } from 'lucide-react';
 import { CreditCardService } from '../../services/creditCardService';
+import { MoneyInput } from '../../components/ui/MoneyInput';
 import { fmt } from '../../utils/format';
 
 function calcAbonoImpact(activePurchases, abonoAmount, tasaMensual) {
@@ -110,7 +111,7 @@ export const CardAnalysis = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.125rem' }}>
           <div>
             <label className="form-label">¿Cuánto puedes pagar por mes?</label>
-            <input className="form-input" type="number" min="0" step="1000" placeholder="Ej: 300000" value={simBudget} onChange={e => setSimBudget(e.target.value)} />
+            <MoneyInput placeholder="Ej: 300000" value={simBudget} onChange={setSimBudget} />
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Obligación actual: <strong className="tabular" style={{ color: 'var(--color-text-secondary)' }}>{fmt(monthlyObligation)}</strong></p>
           </div>
           <div>
@@ -141,7 +142,7 @@ export const CardAnalysis = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
             <div>
               <label className="form-label">Monto del abono</label>
-              <input className="form-input" type="number" min="0" step="10000" placeholder="Ej: 500000" value={abonoExtra} onChange={e => setAbonoExtra(e.target.value)} />
+              <MoneyInput placeholder="Ej: 500000" value={abonoExtra} onChange={setAbonoExtra} />
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Se aplica a la compra con más cuotas restantes.</p>
             </div>
             <div>

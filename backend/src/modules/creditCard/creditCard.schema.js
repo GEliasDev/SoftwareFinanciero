@@ -48,9 +48,17 @@ export const purchaseCreateSchema = z.object({
   categoria: z.enum(CATEGORIAS).optional().default('otros'),
 });
 
+// Edición de una compra. `descripcion` y `categoria` siempre; los campos de
+// dinero (`montoTotal`, `numeroCuotas`, `fechaCompra`) solo se aceptan mientras
+// la compra no tenga pagos (el service los bloquea si `cuotasPagadas > 0` o si
+// no es tipo `compra`), porque cambiarlos exige recalcular las cuotas y ajustar
+// el cupo. Ver `updatePurchase`.
 export const purchaseUpdateSchema = z.object({
-    descripcion: z.string().min(1).optional(),
+    descripcion: z.string().min(1, { message: 'La descripción es requerida' }).max(255, { message: 'La descripción es demasiado larga' }).optional(),
     categoria: z.enum(CATEGORIAS).optional(),
+    montoTotal: z.number().positive({ message: 'El monto debe ser mayor a 0' }).optional(),
+    numeroCuotas: z.number().int().min(1, { message: 'Debe ser mínimo 1 cuota' }).max(36, { message: 'No se pueden crear más de 36 cuotas' }).optional(),
+    fechaCompra: z.string().date({ message: 'Formato de fecha inválido, use YYYY-MM-DD' }).optional(),
 });
 
 export const advanceCreateSchema = z.object({

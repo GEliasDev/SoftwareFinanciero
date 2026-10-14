@@ -139,10 +139,11 @@ como obligación solo informativa:
   /purchases               → CardPurchases
   /analysis                → CardAnalysis
 /credit-cards/:id/edit
-/credit-cards/:id/purchases/new
+/credit-cards/:id/purchases/new   → CreditCardPurchaseForm (compartido con edición)
 /credit-cards/:id/purchases/import  → importar CSV/Excel (mapeo de columnas)
 /credit-cards/:id/advances/new
 /credit-cards/:id/purchases/:purchaseId
+/credit-cards/:id/purchases/:purchaseId/edit → CreditCardPurchaseForm
 /bank-credits              → lista | /new
 /bank-credits/:id          → BankCreditLayout (tabs anidados)
   index                    → BankCreditOverview
@@ -226,7 +227,8 @@ motor antes de decidir:
 - **Componentes base** en `frontend/src/components/ui/`: `PageHeader`, `StatCard`,
   `SectionCard`, `Money`, `BrandMark`, `Stepper`, `TabNav`, `ErrorBoundary`,
   `LoadError` (estado de "no cargó" con reintento), `DayOfMonthPicker` (selector de
-  día de ciclo tipo calendario con aviso 29-31). Por módulo:
+  día de ciclo tipo calendario con aviso 29-31), `MoneyInput` (ver gotcha
+  "Inputs de dinero es-CO" abajo). Por módulo:
   `components/credit-cards/`, `components/bank-credits/`, `components/subscriptions/`.
 - **Formato** centralizado en `frontend/src/utils/format.js` (`fmt`, `fmtDateLong`,
   `parseLocalDate`, `effectiveDayInMonth`, `nextOccurrence`, `daysUntil`,
@@ -330,6 +332,22 @@ desplegables (clases `.dist-legend-toggle` / `.dist-sublist` / `.dist-subrow`): 
 total va en la fila y el detalle por ítem se despliega debajo. Si se agrega una
 categoría nueva, añadirla a las dos listas para que el total siga cuadrando.
 
+### Tarjetas en el Dashboard = `buildCardStats` (fuente única con Tarjetas)
+A diferencia de las demás categorías, las cifras de tarjeta de Inicio **NO** salen de
+`getSummary`: el Dashboard también pide `CreditCardService.getAll()` y calcula la
+obligación con `buildCardStats` (`frontend/src/utils/creditCard.js`), la MISMA función
+que usa la página de Tarjetas (lista + banner, antes el cálculo vivía inline en
+`CreditCards.jsx`). Así, cualquier cambio en la lógica de extractos (`buildSchedule`)
+se refleja solo en Inicio y Tarjetas a la vez — era la causa de que "hubiera dos
+funciones que hacen lo mismo" (el cálculo del front y el espejo del backend). El
+Dashboard sustituye `obligations.creditCards` y `breakdown.creditCards` del backend por
+el valor de `buildCardStats`, recalcula `obligations.total` por delta y `dineroLibre`,
+y arma los próximos pagos de tipo `credit_card` con la misma función. El backend
+conserva su propio cálculo de tarjetas (`analytics.service.js`: `firstCutMonthIndex`,
+`nextCardPayment`, `esCompraPendiente`) porque `Reports.jsx` aún consume
+`summary.obligations.creditCards` y `getMonthlyTrend` — si algún día se toca, unificar
+ahí también para que Inicio y Reportes no vuelvan a desfasarse.
+
 ## Cálculo "Dinero Libre"
 
 ```
@@ -388,6 +406,22 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   `purpose` (los de sesión reales nunca lo llevan). Si se emite otro token de propósito
   especial (reset, etc.), NO usar `JWT_SECRET` para rutas de sesión sin este chequeo.
   Cubierto por `core/middleware/__tests__/jwtMiddleware.test.js`.
+- **SEGURIDAD — IDOR en compras de tarjeta (encontrado y cerrado 2026-10-13)**: los
+  endpoints de compras (`getPurchaseById`, `getPurchasesByCard`, `registerPurchasePayment`,
+  `undoPurchasePayment`, `registerAbono`, `updatePurchase`, `deletePurchase`,
+  `getMonthlySummary`, `getUpcomingPayments`, `getPurchaseStats`) solo pedían
+  `authenticateToken` y hacían `findByPk(id)` sin verificar dueño: cualquiera podía leer,
+  pagar, abonar, editar o borrar compras de otra cuenta cambiando el id. Ahora todos pasan
+  `userId`/`isAdmin` y usan los helpers `findOwnedCard`/`findOwnedPurchase` de
+  `creditCard.service.js` (mismo patrón `card.userId !== userId` que ya usaba
+  `createPurchase`). Además se cruza el `:creditCardId` de la URL contra
+  `purchase.creditCardId` (antes se ignoraba). **Al agregar un endpoint de compra, verificar
+  ownership igual.**
+- **El detalle de una compra tipo `avance` obtiene su comisión del backend**:
+  `getPurchaseById` adjunta `commission` (el `CreditCardPurchase` tipo `comision` con
+  `avanceId`) porque el frontend ya lo lee como `purchase.commission` — antes el detalle
+  mostraba "Comisión del avance" en $0 al no usar `attachAdvanceCommission`, que solo se
+  aplica en `CreditCardLayout`.
 - **`new Date('YYYY-MM-DD').getMonth()` devuelve el mes ANTERIOR si el día es 1.**
   El string se parsea en UTC y se lee en local (UTC-5), así que `'2026-07-01'` cae en
   el 30 de junio local → `getMonth()` = junio. Reventó la rama `anual` de
@@ -425,6 +459,30 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   la coacción numérica).
 - **Los `<select>` devuelven STRING.** El backend valida con Zod `z.number()` (sin
   coerción): convertir con `Number()` antes de enviar IDs/numéricos.
+- **Inputs de dinero es-CO: usar `<MoneyInput>`, NUNCA `<input type="number">`.**
+  Con locale es-CO el navegador pinta el valor DECIMAL del backend como
+  `26000,00` (sin agrupar miles: a los `type="number"` les está PROHIBIDO mostrar
+  separador de miles por spec), y el usuario espera `26.000`. `MoneyInput`
+  (`components/ui/MoneyInput.jsx`) es un input de texto con máscara en vivo:
+  agrupa miles con punto y usa coma decimal (`1.200.000`, `26.000,50`), expone el
+  valor CANÓNICO por `onChange` ('1200000.50', sin separadores, listo para
+  `Number()`) y omite los `,00` del prefill DECIMAL del backend
+  (`1200000.00` → muestra `1.200.000`). La lógica pura está en
+  `utils/format.js::parseMoneyInput/formatMoneyInput` (cubierta en
+  `format.test.js`). **Conectado en TODOS los formularios con dineros** (cambio
+  2026-10-13): monto de compra y avance directamente; los demás vía el helper
+  local `field(nombre, label, hint, { type: 'money' })` de cada formulario — el
+  branch del helper renderiza `<MoneyInput>` (forwardea `placeholder`/`disabled`,
+  ignora `min`/`step`) y recibe el canónico por `onChange`. Formularios con el
+  patrón: Income, PersonalDebt (alta/edición), Savings (alta/edición),
+  SubscriptionNew, CreditCard (alta/edición), BankCredit (alta/edición). Los
+  inputs inline sin helper (Budget límite/gasto, Reports ingresoNeto/gastosFijos,
+  CardAnalysis simBudget/abonoExtra, abono en CreditCardPurchaseDetail y
+  PersonalDebtDetail) son `<MoneyInput>` directo. **NO migrar porcentajes**
+  (`tasaInteresMensual`, `tasaInteres`), cuentas (`numeroCuotas`, `diaCobro…`) ni
+  el `input:'number'` de SweetAlert (`SavingsDetail.handleAporte` — Swal trae su
+  propio input; para formatearlo habría que usar `input:'text'` + `preConfirm`).
+- **`buildSchedule` genera TODO el historial de cortes pasados (desde 2026-10-13)**: el `monthsBack` por defecto ya no es 3 — se deriva desde la compra más antigua (`firstCutMonthIndex` de la más vieja, con cap de 120 meses) para que ningún extracto pasado quede fuera. Antes, con `monthsBack=3`, el extracto de una compra de hace más de 3 meses "desaparecía" de la vista de Extractos y el "Ver cortes anteriores" solo revelaba lo que cabía en esa ventana. **Si pasan `monthsBack` explícito se respeta** (`Reports.jsx` sigue mandando `0` a propósito: su proyección solo mira a futuro). `CardStatement` muestra por defecto los 3 cortes anteriores pagados + todos los que tengan saldo pendiente; el resto queda detrás de "Ver más extractos", que SOLO agrega antiguos sin quitar los ya visibles. Cubierto por `creditCard.test.js`.
 - **`Subscription.status` es `'activa'` (femenino), NO `'activo'`.** Los demás
   módulos usan masculino (`BankCredit`/`PersonalDebt`/`Income` →
   `'activo'`; `CreditCardPurchase` → `'activa'`). Un filtro `s.status === 'activo'`
@@ -459,6 +517,28 @@ Visible en el Dashboard como StatCard (verde si ≥ 0, rojo si < 0).
   capital de ~1). Ver `registerPurchasePayment`/`undoPurchasePayment`.
   Si un cupo queda inconsistente: `node backend/scripts/fix-cupo-disponible.js`
   (dry-run; `--apply` para corregir) lo recalcula desde las compras.
+  `registerAbono` y `deletePurchase` también se pasaron a `literal` con `LEAST`
+  el 2026-10-13 (antes hacían read-modify-write en JS).
+- **`registerAbono` recalcula `totalAPagar`/`totalIntereses`** desde
+  `numeroCuotas * valorCuotaMensual` (parcial) o desde lo realmente desembolsado
+  (liquidación total) — antes quedaban con el total original y no cuadraban con
+  "Ya pagado" + "Saldo pendiente" del detalle. En el frontend, "Ya pagado (cuotas)"
+  usa `totalAPagar` cuando la compra está `pagada` (una liquidación por abono paga
+  menos que la suma de cuotas con interés).
+- **Editar una compra (desde 2026-10-13)**: la edición vive en su propia ruta
+  `/credit-cards/:id/purchases/:purchaseId/edit` con el MISMO formulario del alta
+  (`CreditCardPurchaseForm.jsx`), nunca inline en el detalle — el detalle solo
+  navega. Se pueden editar siempre `descripcion` y `categoria`; `montoTotal`,
+  `numeroCuotas` y `fechaCompra` solo mientras `cuotasPagadas === 0` y `tipo ===
+  'compra'` (el `purchaseUpdateSchema` los acepta opcionales pero `updatePurchase`
+  los bloquea si la compra ya tiene pagos o no es tipo `compra`: recalcular sobre
+  una compra abonada es ambiguo y descuadraría el cupo, para eso está deshacer
+  pagos o borrar y recrear). En edición, `updatePurchase` vuelve a correr
+  `calcularCuotaCompra` (nuevo `valorCuotaMensual`/`totalAPagar`/`totalIntereses`)
+  y ajusta `cupoDisponible` por el DELTA de capital con `literal(LEAST/GREATEST)`,
+  nunca read-modify-write; si el delta sube y no alcanza el cupo → 400. El
+  frontend muestra los campos bloqueados con `disabled` + candado `Lock` y reason
+  (espejo del alta), y en la vista previa usa los valores reales en modo bloqueado.
 - **Datos históricos con comisiones de avance pendientes (bug 2026-09-07)**:
   los avances creados antes del fix de pago automático pueden tener la comisión
   aún `activa` (saldo fantasma) y el cupo descontado por comisión. Reparar con

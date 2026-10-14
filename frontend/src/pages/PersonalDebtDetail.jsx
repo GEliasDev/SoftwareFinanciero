@@ -5,6 +5,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
 import { LoadError } from '../components/ui/LoadError';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { TrendingDown, Wallet, Percent, Pencil, Plus, Repeat, ArrowLeft, Trash2, AlertCircle, Check, X, History } from 'lucide-react';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
@@ -58,12 +59,11 @@ const AbonoPanel = ({ debt, onSaved, onClose }) => {
       <form onSubmit={handleSubmit}>
         <div className="form-group" style={{ margin: '0 0 1rem' }}>
           <label className="form-label">Monto del abono (COP) *</label>
-          <input
-            className={`form-input ${hasError ? 'error' : ''}`}
-            type="number" min="1" max={saldoActual} step="any"
+          <MoneyInput
+            error={hasError}
             value={monto}
             placeholder={`Ej: ${fmt(parseFloat(debt.montoCuota))}`}
-            onChange={e => setMonto(e.target.value)}
+            onChange={setMonto}
             onBlur={() => setTouched(true)}
             autoFocus
           />

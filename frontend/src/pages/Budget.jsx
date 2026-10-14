@@ -3,6 +3,7 @@ import { PlusCircle, Trash2, ChevronLeft, ChevronRight, ShoppingCart, X, AlertTr
 import Swal from 'sweetalert2';
 import { BudgetService } from '../services/budgetService';
 import { PageHeader } from '../components/ui/PageHeader';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt, fmtDate, monthKey, addMonths, monthLabel, capFirst, localISODate } from '../utils/format';
 import { CATEGORIES, getCat } from '../utils/creditCard';
 
@@ -296,11 +297,7 @@ export const Budget = () => {
             </div>
             <div className="form-group">
               <label className="form-label">Límite mensual *</label>
-              <input
-                className="form-input" type="number" min="1" required
-                value={catForm.limite} onChange={e => setCatForm(p => ({ ...p, limite: e.target.value }))}
-                placeholder="500000"
-              />
+              <MoneyInput value={catForm.limite} onChange={v => setCatForm(p => ({ ...p, limite: v }))} placeholder="500000" />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Guardar</button>
@@ -321,8 +318,7 @@ export const Budget = () => {
             <form onSubmit={handleAddExpense}>
               <div className="form-group">
                 <label className="form-label">Monto *</label>
-                <input className="form-input" type="number" min="1" required
-                  value={expForm.monto} onChange={e => setExpForm(p => ({ ...p, monto: e.target.value }))} placeholder="25000" />
+                <MoneyInput value={expForm.monto} onChange={v => setExpForm(p => ({ ...p, monto: v }))} placeholder="25000" />
               </div>
               <div className="form-group">
                 <label className="form-label">Descripción</label>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, AlertCircle, Target } from 'lucide-react';
 import { SavingsGoalService } from '../services/savingsGoalService';
 import { PageHeader } from '../components/ui/PageHeader';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
 
@@ -22,13 +23,15 @@ export const SavingsNew = () => {
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
       <label className="form-label" htmlFor={name}>{label}</label>
-      <input
-        id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
-        value={form[name]}
-        onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
-        onBlur={() => mark(name)}
-        {...props}
-      />
+      {props.type === 'money'
+        ? <MoneyInput id={name} name={name} value={form[name]} onChange={v => setForm(f => ({ ...f, [name]: v }))} onBlur={() => mark(name)} error={showErr(name)} placeholder={props.placeholder} disabled={props.disabled} />
+        : <input
+          id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
+          value={form[name]}
+          onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
+          onBlur={() => mark(name)}
+          {...props}
+        />}
       {showErr(name)
         ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p>
         : hint && <p className="form-hint">{hint}</p>}
@@ -156,14 +159,14 @@ export const SavingsNew = () => {
                 {field('nombre', 'Nombre de la meta *', null, { placeholder: 'Ej: Fondo de emergencia' })}
               </div>
 
-              {field('montoMeta', 'Monto objetivo (COP) *', null, { type: 'number', min: '1', placeholder: '5 000 000' })}
+              {field('montoMeta', 'Monto objetivo (COP) *', null, { type: 'money', placeholder: '5 000 000' })}
 
               <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
                 <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.125rem' }}>Progreso inicial y plazo</h3>
                 <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 0.75rem' }}>Opcional — se usa para estimar cuándo llegas a tu meta.</p>
                 <div className="form-row-2">
-                  {field('aporteMensual', 'Aporte mensual planeado', 'Cuánto aportarás cada mes', { type: 'number', min: '0', placeholder: '0' })}
-                  {field('montoAcumulado', 'Ya tengo ahorrado', '0 si empiezas desde cero', { type: 'number', min: '0', placeholder: '0' })}
+                  {field('aporteMensual', 'Aporte mensual planeado', 'Cuánto aportarás cada mes', { type: 'money', placeholder: '0' })}
+                  {field('montoAcumulado', 'Ya tengo ahorrado', '0 si empiezas desde cero', { type: 'money', placeholder: '0' })}
                 </div>
                 <div style={{ marginTop: '0.75rem' }}>
                   {field('fechaMeta', 'Fecha objetivo', 'Opcional — fecha límite para alcanzar la meta', { type: 'date' })}

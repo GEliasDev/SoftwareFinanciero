@@ -54,7 +54,7 @@ export const CreditCardController = {
 
     getMonthlySummary: async (req, res, next) => {
         try {
-            const summary = await CreditCardService.getMonthlySummary(req.params.id);
+            const summary = await CreditCardService.getMonthlySummary(req.params.id, req.user.id, req.user.isAdmin);
             res.json(summary);
         } catch (error) {
             next(error);
@@ -93,7 +93,7 @@ export const CreditCardController = {
 
     getPurchasesByCard: async (req, res, next) => {
         try {
-            const purchases = await CreditCardService.getPurchasesByCard(req.params.creditCardId);
+            const purchases = await CreditCardService.getPurchasesByCard(req.params.creditCardId, req.user.id, req.user.isAdmin);
             res.json(purchases);
         } catch (error) {
             next(error);
@@ -102,7 +102,7 @@ export const CreditCardController = {
 
     getPurchaseById: async (req, res, next) => {
         try {
-            const purchase = await CreditCardService.getPurchaseById(req.params.purchaseId);
+            const purchase = await CreditCardService.getPurchaseById(req.params.purchaseId, req.params.creditCardId, req.user.id, req.user.isAdmin);
             res.json(purchase);
         } catch (error) {
             next(error);
@@ -111,7 +111,7 @@ export const CreditCardController = {
 
     registerPurchasePayment: async (req, res, next) => {
         try {
-            const purchase = await CreditCardService.registerPurchasePayment(req.params.purchaseId);
+            const purchase = await CreditCardService.registerPurchasePayment(req.params.purchaseId, req.params.creditCardId, req.user.id, req.user.isAdmin);
             res.json({
                 message: 'Cuota registrada exitosamente',
                 cuotasPagadas: purchase.cuotasPagadas,
@@ -125,7 +125,7 @@ export const CreditCardController = {
 
     updatePurchase: async (req, res, next) => {
         try {
-            const purchase = await CreditCardService.updatePurchase(req.params.purchaseId, req.body);
+            const purchase = await CreditCardService.updatePurchase(req.params.purchaseId, req.body, req.params.creditCardId, req.user.id, req.user.isAdmin);
             res.json(purchase);
         } catch (error) {
             next(error);
@@ -134,7 +134,7 @@ export const CreditCardController = {
 
     deletePurchase: async (req, res, next) => {
         try {
-            await CreditCardService.deletePurchase(req.params.purchaseId);
+            await CreditCardService.deletePurchase(req.params.purchaseId, req.params.creditCardId, req.user.id, req.user.isAdmin);
             res.status(204).send();
         } catch (error) {
             next(error);
@@ -152,7 +152,7 @@ export const CreditCardController = {
 
     undoPurchasePayment: async (req, res, next) => {
         try {
-            const purchase = await CreditCardService.undoPurchasePayment(req.params.purchaseId);
+            const purchase = await CreditCardService.undoPurchasePayment(req.params.purchaseId, req.params.creditCardId, req.user.id, req.user.isAdmin);
             res.json({
                 message: 'Pago revertido exitosamente',
                 cuotasPagadas: purchase.cuotasPagadas,
@@ -165,10 +165,10 @@ export const CreditCardController = {
 
     registerAbono: async (req, res, next) => {
         try {
-            const { purchaseId } = req.params;
+            const { purchaseId, creditCardId } = req.params;
             // Validate request body
             const { montoAbono } = abonoSchema.parse(req.body);
-            const purchase = await CreditCardService.registerAbono(purchaseId, montoAbono);
+            const purchase = await CreditCardService.registerAbono(purchaseId, montoAbono, creditCardId, req.user.id, req.user.isAdmin);
             res.json({ message: 'Abono registrado exitosamente', purchase });
         } catch (error) {
             next(error);
@@ -177,7 +177,7 @@ export const CreditCardController = {
 
     getUpcomingPayments: async (req, res, next) => {
         try {
-            const payments = await CreditCardService.getUpcomingPayments(req.params.id);
+            const payments = await CreditCardService.getUpcomingPayments(req.params.id, req.user.id, req.user.isAdmin);
             res.json(payments);
         } catch (error) {
             next(error);
@@ -186,7 +186,7 @@ export const CreditCardController = {
 
     getPurchaseStats: async (req, res, next) => {
         try {
-            const stats = await CreditCardService.getPurchaseStats(req.params.id);
+            const stats = await CreditCardService.getPurchaseStats(req.params.id, req.user.id, req.user.isAdmin);
             res.json(stats);
         } catch (error) {
             next(error);

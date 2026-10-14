@@ -12,6 +12,7 @@ import { PersonalDebtService } from '../services/personalDebtService';
 import { IncomeService } from '../services/incomeService';
 import { SavingsGoalService } from '../services/savingsGoalService';
 import { StatCard } from '../components/ui/StatCard';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { buildSchedule } from '../utils/creditCard';
 import { localISODate } from '../utils/format';
 import { subMonthlyCOP } from '../utils/currency';
@@ -124,8 +125,8 @@ export const Reports = () => {
     { name: 'Metas de ahorro',     value: summary.obligations.savings,       color: DIST_COLORS[4] },
   ].filter(d => d.value > 0) : [];
 
-  const handleIngresoChange = (e) => { setIngresoNeto(e.target.value); localStorage.setItem('debti_ingreso_neto', e.target.value); };
-  const handleGastosChange  = (e) => { setGastosFijos(e.target.value); localStorage.setItem('debti_gastos_fijos', e.target.value); };
+  const handleIngresoChange = (v) => { setIngresoNeto(v); localStorage.setItem('debti_ingreso_neto', v); };
+  const handleGastosChange  = (v) => { setGastosFijos(v); localStorage.setItem('debti_gastos_fijos', v); };
 
   // ── Proyección dinámica ──────────────────
   const getProjectionData = () => {
@@ -683,7 +684,7 @@ export const Reports = () => {
               <div className="form-group" style={{ marginBottom: 12 }}>
                 <label className="form-label">Ingreso Neto Mensual</label>
                 <div style={{ position: 'relative' }}>
-                  <input type="number" className="form-input" value={ingresoNeto} onChange={handleIngresoChange} style={{ paddingLeft: 24 }} />
+                  <MoneyInput className="form-input" value={ingresoNeto} onChange={handleIngresoChange} style={{ paddingLeft: 24 }} />
                   <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--text-3)', fontWeight: 600 }}>$</span>
                 </div>
                 <span className="form-hint">Tu salario neto o ingresos fijos en COP</span>
@@ -691,7 +692,7 @@ export const Reports = () => {
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Gastos Fijos No Opcionales</label>
                 <div style={{ position: 'relative' }}>
-                  <input type="number" className="form-input" value={gastosFijos} onChange={handleGastosChange} style={{ paddingLeft: 24 }} />
+                  <MoneyInput className="form-input" value={gastosFijos} onChange={handleGastosChange} style={{ paddingLeft: 24 }} />
                   <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--text-3)', fontWeight: 600 }}>$</span>
                 </div>
                 <span className="form-hint">Arriendo, alimentación base, servicios en COP</span>

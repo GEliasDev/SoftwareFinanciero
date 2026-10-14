@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BankCreditService } from '../services/bankCreditService';
+import { CreditCardService } from '../services/creditCardService';
 import { AuthService } from '../services/authService';
 import { AnalyticsService } from '../services/analyticsService';
 import {
@@ -11,7 +12,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
-import { fmt } from '../utils/format';
+import { fmt, localISODate } from '../utils/format';
+import { buildCardStats } from '../utils/creditCard';
 
 // ── Constantes de estilo ──────────────────────────────────────────────────────
 
@@ -59,6 +61,7 @@ export const Dashboard = () => {
 
   const [summary,   setSummary]   = useState(null);
   const [credits,   setCredits]   = useState([]);
+  const [cards,     setCards]     = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [openCat,   setOpenCat]   = useState(null);
   const [openDebt,  setOpenDebt]  = useState(null);
@@ -67,18 +70,33 @@ export const Dashboard = () => {
     Promise.allSettled([
       AnalyticsService.getSummary(),
       BankCreditService.getAll(),
-    ]).then(([sRes, cRes]) => {
+      CreditCardService.getAll(),
+    ]).then(([sRes, cRes, kRes]) => {
       if (sRes.status === 'fulfilled') setSummary(sRes.value);
       if (cRes.status === 'fulfilled') setCredits(cRes.value);
+      if (kRes.status === 'fulfilled') setCards(kRes.value);
     }).finally(() => setLoading(false));
   }, []);
 
   // ── Valores derivados ──────────────────────────────────────────────────────
   const obl          = summary?.obligations ?? {};
-  const dineroLibre  = summary?.dineroLibre ?? null;
   const totalIncome  = summary?.income?.total ?? 0;
-  const totalObl     = obl.total ?? 0;
   const savings      = obl.savings ?? 0;
+
+  // Tarjetas: fuente ÚNICA de verdad. `buildCardStats` (la MISMA que usa la
+  // página de Tarjetas) calcula la obligación por ciclo activo, así que un
+  // cambio en la lógica de tarjetas se refleja aquí sin tocar nada más.
+  const cardStats   = useMemo(() => buildCardStats(cards), [cards]);
+  const cardsObl    = cardStats.reduce((s, cs) => s + cs.cardOblMes, 0);
+  const cardsBreakdown = cardStats
+    .filter(cs => cs.cardOblMes > 0)
+    .map(cs => ({ id: cs.cardId, nombre: cs.nombre, detalle: cs.entidad, monto: cs.cardOblMes }))
+    .sort((a, b) => b.monto - a.monto);
+
+  // El total del backend trae su propio cálculo de tarjetas; lo sustituimos por
+  // el de buildCardStats y recalculamos dinero libre en consecuencia.
+  const totalObl     = (obl.total ?? 0) - (obl.creditCards ?? 0) + cardsObl;
+  const dineroLibre  = summary ? totalIncome - totalObl - savings : null;
   const health       = summary?.health;
   const healthTone   = health ? (HEALTH_TONE[health.label] ?? HEALTH_TONE['Regular']) : null;
 
@@ -86,7 +104,7 @@ export const Dashboard = () => {
   // la fila y el detalle se despliega debajo. La suma de items === value.
   const bd = summary?.breakdown ?? {};
   const dist = [
-    { key: 'creditCards',   name: 'Tarjetas de crédito', value: obl.creditCards   ?? 0, color: DIST_COLORS.creditCards,   items: bd.creditCards   ?? [] },
+    { key: 'creditCards',   name: 'Tarjetas de crédito', value: cardsObl,          color: DIST_COLORS.creditCards,   items: cardsBreakdown },
     { key: 'bankCredits',   name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: bd.bankCredits   ?? [] },
     { key: 'subscriptions', name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions, items: bd.subscriptions ?? [] },
     { key: 'personalDebts', name: 'Gastos',              value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts, items: bd.personalDebts ?? [] },
@@ -94,7 +112,17 @@ export const Dashboard = () => {
   ].filter(d => d.value > 0);
 
   const totalDist    = dist.reduce((a, d) => a + d.value, 0);
-  const upcoming     = (summary?.upcoming ?? []).slice(0, 8);
+
+  // Próximos pagos: los de tarjeta se derivan de `buildCardStats` (la misma
+  // fuente que la página de Tarjetas) en vez del cálculo del backend, para que
+  // fecha y monto coincidan exactamente con la lista de tarjetas.
+  const cardUpcoming = cardStats
+    .filter(cs => cs.cardOblMes > 0 && cs.nextPago && cs.dPago >= 0 && cs.dPago <= 30)
+    .map(cs => ({ date: localISODate(cs.nextPago), name: cs.nombre, type: 'credit_card', amount: cs.cardOblMes, moneda: 'COP' }));
+  const upcoming = [
+    ...(summary?.upcoming ?? []).filter(u => u.type !== 'credit_card'),
+    ...cardUpcoming,
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
   const activeCredits = credits.filter(c => c.status === 'activo');
   const totalDebt    = summary?.debt?.total ?? 0;
 

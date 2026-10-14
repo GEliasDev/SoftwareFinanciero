@@ -11,6 +11,60 @@ export const fmtK = (n) => {
   return `$${Math.round(v)}`;
 };
 
+// ---- Entrada de dinero (formato es-CO) ----
+// Un input de tipo text (nunca type="number") que agrupa miles con punto y
+// usa coma decimal. El componente MoneyInput usa estos dos helpers: el texto
+// que digita el usuario se normaliza a un valor CANÓNICO (punto decimal, sin
+// separadores) para guardarse/enviarse, y ese canónico se vuelve a formatear
+// para mostrarse. Ej.: '26.000' -> '26000' -> '26.000'.
+
+// Texto del input es-CO -> valor canónico.
+//   '26.000'            -> '26000'
+//   '1.200.000,50'      -> '1200000.50'
+//   '26.000,'           -> '26000.'   (separador pendiente, sigue digitando)
+//   '1234.5'            -> '1234.5'   (punto decimal en-US también sirve)
+export const parseMoneyInput = (s) => {
+  if (s == null) return '';
+  const raw = String(s).trim();
+  if (raw === '') return '';
+  let intRaw = raw;
+  let dec = '';
+  const commaIdx = raw.indexOf(',');
+  if (commaIdx !== -1) {
+    intRaw = raw.slice(0, commaIdx);
+    dec = raw.slice(commaIdx + 1).replace(/[^\d]/g, '').slice(0, 2);
+  }
+  const dotIdx = intRaw.indexOf('.');
+  if (dotIdx !== -1 && intRaw.indexOf('.', dotIdx + 1) === -1 && intRaw.length - dotIdx - 1 <= 2) {
+    if (!dec) dec = intRaw.slice(dotIdx + 1);
+    intRaw = intRaw.slice(0, dotIdx);
+  }
+  const int = intRaw.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '');
+  if (raw.endsWith(',') || raw.endsWith('.')) return `${int || '0'}.`;
+  return dec ? `${int || '0'}.${dec}` : (int === '' ? '0' : int);
+};
+
+// Valor canónico ('26000', '1200000.50') -> texto es-CO para mostrar en el input.
+//   '26000'      -> '26.000'
+//   '1200000.00' -> '1.200.000'   (los ,00 se omiten)
+//   '26000.50'   -> '26.000,50'
+//   '26000.'     -> '26.000,'     (separador pendiente)
+export const formatMoneyInput = (v) => {
+  if (v == null || v === '') return '';
+  const canonical = String(v);
+  const neg = canonical.startsWith('-');
+  const body = neg ? canonical.slice(1) : canonical;
+  const [intRaw, decRaw] = body.split('.');
+  const intGrouped = (intRaw || '0').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const prefix = neg ? '-' : '';
+  if (decRaw !== undefined) {
+    if (decRaw === '') return `${prefix}${intGrouped},`;
+    if (/^0+$/.test(decRaw)) return `${prefix}${intGrouped}`;
+    return `${prefix}${intGrouped},${decRaw}`;
+  }
+  return `${prefix}${intGrouped}`;
+};
+
 // "2026-05-30" -> "30 may 2026"
 export const fmtDate = (str) => {
   if (!str) return '—';

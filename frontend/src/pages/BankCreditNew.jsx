@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt, fmtDateLong, localISODate } from '../utils/format';
 
 const STEPS = ['Identidad', 'Financiero', 'Fechas'];
@@ -91,7 +92,9 @@ export const BankCreditNew = () => {
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
       <label className="form-label" htmlFor={name}>{label}</label>
-      <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />
+      {props.type === 'money'
+        ? <MoneyInput id={name} name={name} value={formData[name]} onChange={v => setFormData(prev => ({ ...prev, [name]: v }))} onBlur={() => markTouched(name)} error={showErr(name)} placeholder={props.placeholder} disabled={props.disabled} />
+        : <input id={name} className={`form-input ${showErr(name) ? 'error' : ''}`} name={name} value={formData[name]} onChange={handleChange} onBlur={() => markTouched(name)} {...props} />}
       {showErr(name) ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p> : hint && <p className="form-hint">{hint}</p>}
     </div>
   );
@@ -202,7 +205,7 @@ export const BankCreditNew = () => {
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Datos financieros</h3>
                 <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Monto, cuotas y tasa. Verás la cuota estimada a la izquierda.</p>
                 <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
-                  {field('montoTotal', 'Monto total (COP) *', 'Capital solicitado', { type: 'number', min: '0.01', step: '0.01', placeholder: '0.00' })}
+                  {field('montoTotal', 'Monto total (COP) *', 'Capital solicitado', { type: 'money', placeholder: '0' })}
                   {field('numeroCuotas', 'Número de cuotas *', null, { type: 'number', min: '1', step: '1', placeholder: 'Ej: 36' })}
                 </div>
                 <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
@@ -216,8 +219,8 @@ export const BankCreditNew = () => {
                   </div>
                 </div>
                 <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
-                  {field('cuotaAdministracion', 'Cuota administración', 'Cargo fijo mensual de administración', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
-                  {field('seguro', 'Seguro / aval mensual', 'Seguro de vida o aval (Addi, Sistecrédito…)', { type: 'number', min: '0', step: '0.01', placeholder: '0.00' })}
+                  {field('cuotaAdministracion', 'Cuota administración', 'Cargo fijo mensual de administración', { type: 'money', placeholder: '0' })}
+                  {field('seguro', 'Seguro / aval mensual', 'Seguro de vida o aval (Addi, Sistecrédito…)', { type: 'money', placeholder: '0' })}
                 </div>
                 {field('cuotasPagadas', 'Cuotas ya pagadas', 'Si registras un crédito en curso, indica cuántas cuotas ya pagaste', { type: 'number', min: '0', step: '1', placeholder: '0' })}
               </div>

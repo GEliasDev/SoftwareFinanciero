@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmt, fmtK, fmtDate, daysUntil, urgencyStyle, weekendToFriday, nextOccurrence, parseLocalDate, fmtDateLong, effectiveDayInMonth } from '../format';
+import { fmt, fmtK, fmtDate, daysUntil, urgencyStyle, weekendToFriday, nextOccurrence, parseLocalDate, fmtDateLong, effectiveDayInMonth, parseMoneyInput, formatMoneyInput } from '../format';
 
 describe('fmt', () => {
   it('formats positive COP amount', () => {
@@ -222,5 +222,67 @@ describe('nextOccurrence con días 29-31', () => {
     for (const dia of [1, 15, 28, 29, 30, 31]) {
       expect(nextOccurrence(dia).getTime()).toBeGreaterThanOrEqual(hoy.getTime());
     }
+  });
+});
+
+describe('parseMoneyInput (texto es-CO → valor canónico)', () => {
+  it('quita los separadores de miles con punto', () => {
+    expect(parseMoneyInput('26.000')).toBe('26000');
+    expect(parseMoneyInput('1.234.567')).toBe('1234567');
+    expect(parseMoneyInput('26.0000')).toBe('260000'); // digitando un dígito más
+  });
+
+  it('interpreta la coma como separador decimal', () => {
+    expect(parseMoneyInput('26.000,50')).toBe('26000.50');
+    expect(parseMoneyInput('1234,56')).toBe('1234.56');
+  });
+
+  it('acepta punto decimal estilo en-US', () => {
+    expect(parseMoneyInput('1234.5')).toBe('1234.5');
+    expect(parseMoneyInput('1234.56')).toBe('1234.56');
+  });
+
+  it('conserva el separador decimal pendiente mientras se digita', () => {
+    expect(parseMoneyInput('26.000,')).toBe('26000.');
+    expect(parseMoneyInput('26.000.')).toBe('26000.');
+  });
+
+  it('quita ceros a la izquierda', () => {
+    expect(parseMoneyInput('007')).toBe('7');
+    expect(parseMoneyInput('000')).toBe('0');
+  });
+
+  it('devuelve vacío para entradas vacías', () => {
+    expect(parseMoneyInput('')).toBe('');
+    expect(parseMoneyInput(null)).toBe('');
+    expect(parseMoneyInput(undefined)).toBe('');
+  });
+});
+
+describe('formatMoneyInput (valor canónico → texto es-CO)', () => {
+  it('agrupa miles con punto', () => {
+    expect(formatMoneyInput('26000')).toBe('26.000');
+    expect(formatMoneyInput('1234567')).toBe('1.234.567');
+    expect(formatMoneyInput('0')).toBe('0');
+  });
+
+  it('usa coma para los decimales', () => {
+    expect(formatMoneyInput('26000.50')).toBe('26.000,50');
+    expect(formatMoneyInput('179611.81')).toBe('179.611,81');
+  });
+
+  it('omite los decimales .00 (prefill de DECIMAL del backend)', () => {
+    expect(formatMoneyInput('1200000.00')).toBe('1.200.000');
+    expect(formatMoneyInput('26000.00')).toBe('26.000');
+  });
+
+  it('muestra el separador decimal pendiente', () => {
+    expect(formatMoneyInput('26000.')).toBe('26.000,');
+  });
+
+  it('acepta números y devuelve vacío para nulos', () => {
+    expect(formatMoneyInput(26000)).toBe('26.000');
+    expect(formatMoneyInput('')).toBe('');
+    expect(formatMoneyInput(null)).toBe('');
   });
 });

@@ -4,6 +4,7 @@ import { ArrowLeft, Check, AlertCircle, Wallet, Zap } from 'lucide-react';
 import { IncomeService } from '../services/incomeService';
 import { PageHeader } from '../components/ui/PageHeader';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
 import Swal from 'sweetalert2';
 
@@ -56,13 +57,15 @@ export const IncomeForm = () => {
   const field = (name, label, hint, props = {}) => (
     <div className="form-group" style={{ margin: 0 }}>
       <label className="form-label" htmlFor={name}>{label}</label>
-      <input
-        id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
-        value={form[name]}
-        onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
-        onBlur={() => mark(name)}
-        {...props}
-      />
+      {props.type === 'money'
+        ? <MoneyInput id={name} name={name} value={form[name]} onChange={v => setForm(f => ({ ...f, [name]: v }))} onBlur={() => mark(name)} error={showErr(name)} placeholder={props.placeholder} disabled={props.disabled} />
+        : <input
+          id={name} className={`form-input ${showErr(name) ? 'error' : ''}`}
+          value={form[name]}
+          onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
+          onBlur={() => mark(name)}
+          {...props}
+        />}
       {showErr(name)
         ? <p className="form-error"><AlertCircle size={11} /> {errors[name]}</p>
         : hint && <p className="form-hint">{hint}</p>}
@@ -202,7 +205,7 @@ export const IncomeForm = () => {
                 placeholder: form.tipo === 'extra' ? 'Ej: Proyecto freelance, Regalo' : 'Ej: Salario Bancolombia',
               })}
               <div style={{ maxWidth: 300 }}>
-                {field('monto', form.tipo === 'extra' ? 'Monto (COP) *' : 'Monto mensual (COP) *', null, { type: 'number', min: '1', placeholder: '500 000' })}
+                {field('monto', form.tipo === 'extra' ? 'Monto (COP) *' : 'Monto mensual (COP) *', null, { type: 'money', placeholder: '500 000' })}
               </div>
               <DayOfMonthPicker
                 label={form.tipo === 'extra' ? 'Día en que lo recibiste' : 'Día en que llega'}
