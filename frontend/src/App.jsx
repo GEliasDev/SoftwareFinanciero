@@ -71,6 +71,7 @@ const Budget = lazyNamed(() => import('./pages/Budget'), 'Budget');
 const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
 const Profile = lazyNamed(() => import('./pages/Profile'), 'Profile');
 const Onboarding = lazyNamed(() => import('./pages/Onboarding'), 'Onboarding');
+const CardInbox = lazyNamed(() => import('./pages/CardInbox'), 'CardInbox');
 const PrivacyPolicy = lazyNamed(() => import('./pages/PrivacyPolicy'), 'PrivacyPolicy');
 
 const ProtectedRoute = ({ children }) => {
@@ -146,6 +147,7 @@ function App() {
           <Route path="income/:id/edit" element={<IncomeForm />} />
 
           {/* Obligaciones personales */}
+          <Route path="card-inbox" element={<CardInbox />} />
           <Route path="fixed-commitments" element={<PersonalDebts />} />
           <Route path="fixed-commitments/new" element={<PersonalDebtNew />} />
           <Route path="fixed-commitments/:id" element={<PersonalDebtDetail />} />

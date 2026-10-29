@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Repeat, CreditCard, Landmark,
-  Menu, X, BarChart2, Wallet, CalendarCheck, Target, PieChart,
+  Menu, X, BarChart2, Wallet, CalendarCheck, Target, PieChart, Inbox,
 } from 'lucide-react';
 import logo from '../../assets/logo.png';
 import icono from '../../assets/icono.png';
@@ -13,6 +13,7 @@ const SECTION_ICONS = {
   '/savings': Target,
   '/budget': PieChart,
   '/credit-cards': CreditCard,
+  '/card-inbox': Inbox,
   '/bank-credits': Landmark,
   '/subscriptions': Repeat,
   '/reports': BarChart2,
@@ -93,6 +94,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
 
           <div className="nav-divider" />
           <NavItem to="/credit-cards" icon={CreditCard} label="Tarjetas" onClick={close} />
+          <NavItem to="/card-inbox" icon={Inbox} label="Por aprobar" onClick={close} />
           <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
           <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" onClick={close} />
 
