@@ -19,14 +19,16 @@ import pushSubscriptionRoutes from './modules/pushSubscription/pushSubscription.
 import budgetRoutes from './modules/budget/budget.routes.js';
 import netWorthRoutes from './modules/netWorth/netWorth.routes.js';
 import gmailRoutes from './modules/cardInbox/gmail.routes.js';
+import cardInboxRoutes from './modules/cardInbox/cardInbox.routes.js';
 import './modules/budget/budget.model.js';
-import { errorHandler } from './middlewares/errorHandler.js';
-import { startDailyChargesJob } from './jobs/dailyChargesJob.js';
 import './modules/cardInbox/cardInboxItem.model.js';
 import './modules/cardInbox/gmailConnection.model.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+import { startDailyChargesJob } from './jobs/dailyChargesJob.js';
 import { startMoraJob } from './jobs/bankCreditMoraJob.js';
 import { startWeeklyDigestJob } from './jobs/weeklyDigestJob.js';
 import { startNetWorthSnapshotJob } from './jobs/netWorthSnapshotJob.js';
+import { startCardInboxSyncJob } from './jobs/cardInboxSyncJob.js';
 
 const app = express();
 
@@ -67,9 +69,10 @@ app.use('/api/search',       searchRoutes);
 app.use('/api/push',        pushSubscriptionRoutes);
 app.use('/api/budget',      budgetRoutes);
 app.use('/api/net-worth',   netWorthRoutes);
+app.use('/api/gmail',       gmailRoutes);
+app.use('/api/card-inbox',  cardInboxRoutes);
 
 app.use(errorHandler);
-app.use('/api/gmail',       gmailRoutes);
 
 const PORT = process.env.PORT || 3001;
 
@@ -87,6 +90,7 @@ const PORT = process.env.PORT || 3001;
         startMoraJob();
         startWeeklyDigestJob();
         startNetWorthSnapshotJob();
+        startCardInboxSyncJob();
         app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${PORT}`));
     } catch (error) {
         console.error('Error al iniciar el servidor:', error);
