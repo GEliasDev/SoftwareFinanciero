@@ -21,6 +21,8 @@ import netWorthRoutes from './modules/netWorth/netWorth.routes.js';
 import './modules/budget/budget.model.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { startDailyChargesJob } from './jobs/dailyChargesJob.js';
+import './modules/cardInbox/cardInboxItem.model.js';
+import './modules/cardInbox/gmailConnection.model.js';
 import { startMoraJob } from './jobs/bankCreditMoraJob.js';
 import { startWeeklyDigestJob } from './jobs/weeklyDigestJob.js';
 import { startNetWorthSnapshotJob } from './jobs/netWorthSnapshotJob.js';
