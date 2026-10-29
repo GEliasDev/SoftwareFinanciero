@@ -18,6 +18,7 @@ import searchRoutes from './modules/search/search.routes.js';
 import pushSubscriptionRoutes from './modules/pushSubscription/pushSubscription.routes.js';
 import budgetRoutes from './modules/budget/budget.routes.js';
 import netWorthRoutes from './modules/netWorth/netWorth.routes.js';
+import gmailRoutes from './modules/cardInbox/gmail.routes.js';
 import './modules/budget/budget.model.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { startDailyChargesJob } from './jobs/dailyChargesJob.js';
@@ -68,6 +69,7 @@ app.use('/api/budget',      budgetRoutes);
 app.use('/api/net-worth',   netWorthRoutes);
 
 app.use(errorHandler);
+app.use('/api/gmail',       gmailRoutes);
 
 const PORT = process.env.PORT || 3001;
 

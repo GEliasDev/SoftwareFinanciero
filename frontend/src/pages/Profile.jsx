@@ -5,7 +5,8 @@ import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
 import { PushService } from '../services/pushService';
 import { TwoFactorService } from '../services/twoFactorService';
-import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Bell, BellOff, Mail, MailX, ShieldCheck, Shield, Download } from 'lucide-react';
+import { GmailService } from '../services/gmailService';
+import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Bell, BellOff, Mail, MailX, ShieldCheck, Shield, Download, Inbox } from 'lucide-react';
 
 const Alert = ({ type, message, onClose }) => (
   <div className={`info-box ${type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -59,11 +60,61 @@ export const Profile = () => {
   const [showNew, setShowNew]           = useState(false);
   const [showConfirm, setShowConfirm]   = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [gmail, setGmail] = useState(null); // { configured, connected, googleEmail, lastSyncAt }
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [gmailAlert, setGmailAlert] = useState(null);
 
   useEffect(() => {
     if (!PushService.isSupported()) return;
     PushService.getSubscription().then(s => setPushEnabled(!!s)).catch(() => {});
   }, []);
+
+  // Estado de la conexión con Gmail + resultado del regreso desde Google
+  // (/profile?gmail=ok|error&reason=…, que deja el callback del backend).
+  useEffect(() => {
+    GmailService.getStatus().then(setGmail).catch(() => setGmail(null));
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('gmail');
+    if (result) {
+      setGmailAlert(result === 'ok'
+        ? { type: 'success', message: 'Gmail conectado. Debti leerá solo las alertas de tus tarjetas.' }
+        : { type: 'error', message: `No se pudo conectar Gmail${params.get('reason') ? `: ${params.get('reason')}` : ''}.` });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleConnectGmail = async () => {
+    setGmailLoading(true);
+    setGmailAlert(null);
+    try {
+      window.location.href = await GmailService.getAuthUrl();
+    } catch (err) {
+      setGmailAlert({ type: 'error', message: err.response?.data?.message || 'No se pudo iniciar la conexión con Gmail.' });
+      setGmailLoading(false);
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    const { isConfirmed } = await Swal.fire({
+      title: '¿Desconectar Gmail?',
+      text: 'Debti dejará de leer tus alertas y se borrará el acceso guardado. Los movimientos ya aprobados se conservan.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, desconectar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
+    setGmailLoading(true);
+    try {
+      await GmailService.disconnect();
+      setGmail(g => ({ ...g, connected: false, googleEmail: null, lastSyncAt: null }));
+      setGmailAlert({ type: 'success', message: 'Gmail desconectado.' });
+    } catch {
+      setGmailAlert({ type: 'error', message: 'No se pudo desconectar. Intenta de nuevo.' });
+    } finally {
+      setGmailLoading(false);
+    }
+  };
 
   const togglePush = async () => {
     setPushLoading(true);
@@ -591,6 +642,36 @@ export const Profile = () => {
           </button>
         </div>
       </div>
+
+      {/* Conexión con Gmail (movimientos de tarjetas por correo) */}
+      {gmail && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <Inbox size={16} style={{ color: 'var(--color-primary)' }} />
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Movimientos desde Gmail</h2>
+          </div>
+          {gmailAlert && <Alert type={gmailAlert.type} message={gmailAlert.message} onClose={() => setGmailAlert(null)} />}
+          <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
+            Conecta tu Gmail (solo lectura) para que Debti detecte las alertas de tus tarjetas y te proponga los movimientos. Solo se leen los correos del banco; no se envía, modifica ni borra nada. Puedes desconectarlo cuando quieras.
+          </p>
+          {!gmail.configured ? (
+            <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>La conexión con Gmail aún no está configurada en el servidor.</p>
+          ) : gmail.connected ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>
+                Conectado como <strong>{gmail.googleEmail}</strong>
+              </span>
+              <button className="btn btn-secondary" onClick={handleDisconnectGmail} disabled={gmailLoading}>
+                {gmailLoading ? 'Desconectando...' : 'Desconectar'}
+              </button>
+            </div>
+          ) : (
+            <button className="btn btn-primary" onClick={handleConnectGmail} disabled={gmailLoading}>
+              <Mail size={14} /> {gmailLoading ? 'Redirigiendo...' : 'Conectar Gmail'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Exportar datos */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
