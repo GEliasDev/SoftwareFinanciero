@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, CreditCard, Landmark, Repeat, Wallet, Handshake, Target } from 'lucide-react';
+import { Search, X, CreditCard, Landmark, Repeat, Wallet, CalendarCheck, Target } from 'lucide-react';
 import api from '../../services/api';
 
 const TYPE_META = {
@@ -8,7 +8,7 @@ const TYPE_META = {
   bank_credit:   { label: 'Crédito bancario',    Icon: Landmark,   color: '#DC2626' },
   credit_card:   { label: 'Tarjeta de crédito',  Icon: CreditCard, color: '#3B82F6' },
   income:        { label: 'Ingreso',             Icon: Wallet,     color: '#059669' },
-  personal_debt: { label: 'Gasto',               Icon: Handshake,  color: '#7C3AED' },
+  personal_debt: { label: 'Compromiso fijo',     Icon: CalendarCheck, color: '#7C3AED' },
   savings_goal:  { label: 'Meta de ahorro',      Icon: Target,     color: '#0EA5E9' },
 };
 

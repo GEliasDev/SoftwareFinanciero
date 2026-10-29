@@ -6,7 +6,7 @@ import { AuthService } from '../services/authService';
 import { AnalyticsService } from '../services/analyticsService';
 import {
   Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus,
-  PieChart as PieIcon, TrendingUp, TrendingDown, Target, Handshake, ChevronRight,
+  PieChart as PieIcon, TrendingUp, TrendingDown, Target, CalendarCheck, ChevronRight,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -107,7 +107,7 @@ export const Dashboard = () => {
     { key: 'creditCards',   name: 'Tarjetas de crédito', value: cardsObl,          color: DIST_COLORS.creditCards,   items: cardsBreakdown },
     { key: 'bankCredits',   name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: bd.bankCredits   ?? [] },
     { key: 'subscriptions', name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions, items: bd.subscriptions ?? [] },
-    { key: 'personalDebts', name: 'Gastos',              value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts, items: bd.personalDebts ?? [] },
+    { key: 'personalDebts', name: 'Compromisos fijos',   value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts, items: bd.personalDebts ?? [] },
     { key: 'savings',       name: 'Metas de ahorro',     value: obl.savings       ?? 0, color: DIST_COLORS.savings,       items: bd.savings       ?? [] },
   ].filter(d => d.value > 0);
 
@@ -132,7 +132,6 @@ export const Dashboard = () => {
   const debtRows = [
     { key: 'creditCards',   name: 'Tarjetas de crédito', value: dbt.creditCards   ?? 0, color: DIST_COLORS.creditCards,   items: dbtB.creditCards   ?? [] },
     { key: 'bankCredits',   name: 'Créditos bancarios',  value: dbt.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: dbtB.bankCredits   ?? [] },
-    { key: 'personalDebts', name: 'Deudas personales',   value: dbt.personalDebts ?? 0, color: DIST_COLORS.personalDebts, items: dbtB.personalDebts ?? [] },
   ].filter(d => d.value > 0);
 
   const hoy = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -251,10 +250,10 @@ export const Dashboard = () => {
             <StatCard
               label="Compromisos mensuales"
               value={fmt(totalObl)}
-              delta="Tarjetas + créditos + suscripciones + gastos"
+              delta="Tarjetas + créditos + suscripciones + compromisos fijos"
               icon={TrendingDown}
               tone="warn"
-              onClick={() => navigate('/personal-debts')}
+              onClick={() => navigate('/fixed-commitments')}
             />
             <StatCard
               label="Ahorro mensual"
@@ -531,7 +530,7 @@ export const Dashboard = () => {
               <div className="quick-actions-grid">
                 {[
                   { Icon: Wallet,     label: 'Ingreso',     path: '/income/new' },
-                  { Icon: Handshake,  label: 'Gasto',       path: '/personal-debts/new' },
+                  { Icon: CalendarCheck, label: 'Compromiso', path: '/fixed-commitments/new' },
                   { Icon: Target,     label: 'Meta',        path: '/savings/new' },
                   { Icon: Repeat,     label: 'Suscripción', path: '/subscriptions/new' },
                   { Icon: CreditCard, label: 'Tarjeta',     path: '/credit-cards/new' },

@@ -144,10 +144,10 @@ function App() {
           <Route path="income/:id/edit" element={<IncomeForm />} />
 
           {/* Obligaciones personales */}
-          <Route path="personal-debts" element={<PersonalDebts />} />
-          <Route path="personal-debts/new" element={<PersonalDebtNew />} />
-          <Route path="personal-debts/:id" element={<PersonalDebtDetail />} />
-          <Route path="personal-debts/:id/edit" element={<PersonalDebtEdit />} />
+          <Route path="fixed-commitments" element={<PersonalDebts />} />
+          <Route path="fixed-commitments/new" element={<PersonalDebtNew />} />
+          <Route path="fixed-commitments/:id" element={<PersonalDebtDetail />} />
+          <Route path="fixed-commitments/:id/edit" element={<PersonalDebtEdit />} />
 
           {/* Metas de ahorro */}
           <Route path="savings" element={<Savings />} />
