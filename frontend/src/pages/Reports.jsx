@@ -12,14 +12,12 @@ import { PersonalDebtService } from '../services/personalDebtService';
 import { IncomeService } from '../services/incomeService';
 import { SavingsGoalService } from '../services/savingsGoalService';
 import { StatCard } from '../components/ui/StatCard';
-import { MoneyInput } from '../components/ui/MoneyInput';
 import { buildSchedule } from '../utils/creditCard';
 import { localISODate } from '../utils/format';
 import { subMonthlyCOP } from '../utils/currency';
 import {
   Download, FileText, TrendingUp, Calendar, Shield,
-  Repeat, CreditCard, Landmark, Sliders, Wallet, Zap, Handshake, TrendingDown,
-  ArrowUpRight, ArrowDownRight, Minus,
+  Repeat, CreditCard, Sliders, Wallet, Zap, TrendingDown, CalendarCheck,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -90,8 +88,6 @@ export const Reports = () => {
   const [credits, setCredits] = useState([]);
   const [debts, setDebts]     = useState([]);
 
-  const [ingresoNeto, setIngresoNeto] = useState(() => localStorage.getItem('debti_ingreso_neto') ?? '4000000');
-  const [gastosFijos, setGastosFijos] = useState(() => localStorage.getItem('debti_gastos_fijos') ?? '1000000');
 
   useEffect(() => {
     Promise.allSettled([
@@ -121,12 +117,10 @@ export const Reports = () => {
     { name: 'Suscripciones',       value: summary.obligations.subscriptions, color: DIST_COLORS[0] },
     { name: 'Créditos bancarios',  value: summary.obligations.bankCredits,   color: DIST_COLORS[1] },
     { name: 'Tarjetas de crédito', value: summary.obligations.creditCards,   color: DIST_COLORS[2] },
-    { name: 'Gastos',               value: summary.obligations.personalDebts, color: DIST_COLORS[3] },
+    { name: 'Compromisos fijos',    value: summary.obligations.personalDebts, color: DIST_COLORS[3] },
     { name: 'Metas de ahorro',     value: summary.obligations.savings,       color: DIST_COLORS[4] },
   ].filter(d => d.value > 0) : [];
 
-  const handleIngresoChange = (v) => { setIngresoNeto(v); localStorage.setItem('debti_ingreso_neto', v); };
-  const handleGastosChange  = (v) => { setGastosFijos(v); localStorage.setItem('debti_gastos_fijos', v); };
 
   // ── Proyección dinámica ──────────────────
   const getProjectionData = () => {
@@ -167,7 +161,6 @@ export const Reports = () => {
       }, 0);
 
       const totalObligations = totalSubs + totalCredits + totalCards + totalPersonalDebts + totalSavingsGoals;
-      const libre = (parseFloat(ingresoNeto) || 0) - (parseFloat(gastosFijos) || 0) - totalObligations;
 
       return {
         month: label.charAt(0).toUpperCase() + label.slice(1),
@@ -178,7 +171,6 @@ export const Reports = () => {
         ObligacionesPers: totalPersonalDebts,
         Metas: totalSavingsGoals,
         Obligaciones: totalObligations,
-        FlujoLibre: libre,
       };
     });
   };
@@ -210,7 +202,7 @@ export const Reports = () => {
         ['Suscripciones',       summary?.obligations?.subscriptions ?? 0, ''],
         ['Créditos bancarios',  summary?.obligations?.bankCredits   ?? 0, ''],
         ['Tarjetas de crédito', summary?.obligations?.creditCards   ?? 0, ''],
-        ['Gastos',               summary?.obligations?.personalDebts ?? 0, ''],
+        ['Compromisos fijos',    summary?.obligations?.personalDebts ?? 0, ''],
         ['Metas de ahorro',     summary?.obligations?.savings       ?? 0, ''],
         ['Total compromisos',   summary?.obligations?.total         ?? 0, ''],
         ['', '', ''],
@@ -237,16 +229,11 @@ export const Reports = () => {
         ...cardsData.map(c => [c.nombre, c.entidad, c.cupoTotal, c.cupoDisponible, c.cupoTotal - c.cupoDisponible, `${c.tasaInteresMensual}%`, c.status]),
       ]), 'Tarjetas');
 
-      // Obligaciones personales (con % pagado)
+      // Compromisos fijos
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['Nombre', 'Tipo', 'Acreedor', 'Monto Total', 'Saldo Pendiente', '% Pagado', 'Cuota Mensual', 'Día Pago', 'Estado'],
-        ...debtsData.map(d => {
-          const montoTotal = parseFloat(d.montoTotal ?? 0);
-          const saldo      = parseFloat(d.saldoPendiente ?? 0);
-          const pct        = montoTotal > 0 ? `${Math.round(((montoTotal - saldo) / montoTotal) * 100)}%` : '—';
-          return [d.nombre, d.tipo, d.prestamista ?? '—', montoTotal, saldo, pct, d.montoCuota, d.diaPago, d.status];
-        }),
-      ]), 'Deudas Pers.');
+        ['Nombre', 'Categoría', 'Cuota Mensual', 'Día Pago', 'Estado'],
+        ...debtsData.filter(d => d.tipo === 'gasto').map(d => [d.nombre, d.categoria ?? '—', d.montoCuota, d.diaPago, d.status]),
+      ]), 'Compromisos fijos');
 
       // Ingresos
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
@@ -299,9 +286,7 @@ export const Reports = () => {
 
   const projectionData        = getProjectionData();
   const avgMonthlyObligations = projectionData.reduce((acc, m) => acc + m.Obligaciones, 0) / 12;
-  const avgFreeCashflow       = Math.max(0, (parseFloat(ingresoNeto) || 0) - (parseFloat(gastosFijos) || 0) - avgMonthlyObligations);
 
-  const activeDebts  = debts.filter(d => d.tipo === 'deuda' && d.status === 'activo');
   const activeGastos = debts.filter(d => d.tipo === 'gasto' && d.status === 'activo');
 
   return (
@@ -330,9 +315,6 @@ export const Reports = () => {
         </button>
         <button className={`tab-nav-item ${activeTab === 'projection' ? 'active' : ''}`} onClick={() => setActiveTab('projection')}>
           <Sliders size={14} /> Proyección de Flujo
-        </button>
-        <button className={`tab-nav-item ${activeTab === 'mom' ? 'active' : ''}`} onClick={() => setActiveTab('mom')}>
-          <TrendingUp size={14} /> Comparación MoM
         </button>
       </div>
 
@@ -478,7 +460,7 @@ export const Reports = () => {
                 <div className="card-header" style={{ marginBottom: 14, paddingBottom: 10 }}>
                   <div>
                     <h3 className="card-title">Patrimonio Neto</h3>
-                    <p className="card-subtitle">Ahorro acumulado − deuda de tarjetas, créditos y obligaciones personales</p>
+                    <p className="card-subtitle">Ahorro acumulado − deuda de tarjetas, créditos bancarios</p>
                   </div>
                   <span className="tabular" style={{ fontSize: 15, fontWeight: 700, color: last.patrimonioNeto >= 0 ? 'var(--color-success)' : 'var(--neg-600)' }}>
                     {fmt(last.patrimonioNeto)}
@@ -578,64 +560,31 @@ export const Reports = () => {
             )}
           </div>
 
-          {/* Obligaciones personales */}
-          {(activeDebts.length > 0 || activeGastos.length > 0) && (
+          {/* Compromisos fijos */}
+          {activeGastos.length > 0 && (
             <div className="card" style={{ padding: '20px 24px' }}>
               <div className="card-header" style={{ marginBottom: 16, paddingBottom: 10 }}>
                 <div>
-                  <h3 className="card-title">Gastos y deudas</h3>
-                  <p className="card-subtitle">Avance de deudas y compromisos mensuales</p>
+                  <h3 className="card-title">Compromisos fijos</h3>
+                  <p className="card-subtitle">Lo que pagas cada mes sin falta</p>
                 </div>
-                <Handshake size={16} style={{ color: 'var(--color-primary)' }} />
+                <CalendarCheck size={16} style={{ color: 'var(--color-primary)' }} />
               </div>
 
-              {activeDebts.length > 0 && (
-                <div style={{ marginBottom: activeGastos.length > 0 ? 16 : 0 }}>
-                  {activeGastos.length > 0 && <SectionLabel>Deudas en cuotas</SectionLabel>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
-                    {activeDebts.map(debt => {
-                      const montoTotal = parseFloat(debt.montoTotal ?? 0);
-                      const saldo      = parseFloat(debt.saldoPendiente ?? 0);
-                      const pct        = montoTotal > 0 ? Math.min(100, ((montoTotal - saldo) / montoTotal) * 100) : 0;
-                      return (
-                        <div key={debt.id} style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius-md)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{debt.nombre}</p>
-                            <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: 'var(--neg-600)', flexShrink: 0 }}>{fmt(saldo)}</span>
-                          </div>
-                          <div className="progress-track" style={{ marginBottom: 4 }}>
-                            <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)' }}>
-                            <span>{fmt(debt.montoCuota)}/mes · Día {debt.diaPago}</span>
-                            <span className="tabular" style={{ color: 'var(--pos-600)', fontWeight: 600 }}>{pct.toFixed(0)}% pagado</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {activeGastos.length > 0 && (
-                <div>
-                  {activeDebts.length > 0 && <SectionLabel>Gastos mensuales</SectionLabel>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-                    {activeGastos.map(gasto => (
-                      <div key={gasto.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius-md)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Repeat size={13} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
-                          <div>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{gasto.nombre}</p>
-                            <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>Día {gasto.diaPago}</p>
-                          </div>
-                        </div>
-                        <span className="tabular" style={{ fontSize: 13, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{fmt(gasto.montoCuota)}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                {activeGastos.map(gasto => (
+                  <div key={gasto.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Repeat size={13} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{gasto.nombre}</p>
+                        <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>Día {gasto.diaPago}</p>
                       </div>
-                    ))}
+                    </div>
+                    <span className="tabular" style={{ fontSize: 13, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{fmt(gasto.montoCuota)}</span>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
 
@@ -668,37 +617,11 @@ export const Reports = () => {
       {activeTab === 'projection' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-            <StatCard label="Ingreso neto mensual"    value={fmt(parseFloat(ingresoNeto) || 0)} delta="Disponible para fijos + deudas"    icon={Repeat}    tone="brand"   />
-            <StatCard label="Gastos fijos declarados" value={fmt(parseFloat(gastosFijos) || 0)} delta="Arriendo, servicios, etc."          icon={Landmark}  tone="neutral" />
-            <StatCard label="Obligaciones promedio"   value={fmt(avgMonthlyObligations)}         delta="Suscr. + tarjetas + créditos + deudas + metas" icon={CreditCard} tone="neg"  />
-            <StatCard label="Flujo libre estimado"    value={fmt(avgFreeCashflow)}               delta="Promedio mensual neto restante"     icon={Shield}    tone="pos"    />
+            <StatCard label="Obligaciones promedio"   value={fmt(avgMonthlyObligations)}         delta="Suscr. + tarjetas + créditos + compromisos fijos + metas" icon={CreditCard} tone="neg"  />
           </div>
 
-          {/* Simulador + Gráfico (responsivo) */}
+          {/* Gráfico */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }}>
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                <Sliders size={16} style={{ color: 'var(--color-primary)' }} />
-                <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Simulador de Presupuesto</h4>
-              </div>
-              <div className="form-group" style={{ marginBottom: 12 }}>
-                <label className="form-label">Ingreso Neto Mensual</label>
-                <div style={{ position: 'relative' }}>
-                  <MoneyInput className="form-input" value={ingresoNeto} onChange={handleIngresoChange} style={{ paddingLeft: 24 }} />
-                  <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--text-3)', fontWeight: 600 }}>$</span>
-                </div>
-                <span className="form-hint">Tu salario neto o ingresos fijos en COP</span>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Gastos Fijos No Opcionales</label>
-                <div style={{ position: 'relative' }}>
-                  <MoneyInput className="form-input" value={gastosFijos} onChange={handleGastosChange} style={{ paddingLeft: 24 }} />
-                  <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--text-3)', fontWeight: 600 }}>$</span>
-                </div>
-                <span className="form-hint">Arriendo, alimentación base, servicios en COP</span>
-              </div>
-            </div>
-
             <div className="card" style={{ padding: 20 }}>
               <div className="card-header" style={{ marginBottom: 14, paddingBottom: 10 }}>
                 <div>
@@ -720,15 +643,10 @@ export const Reports = () => {
                   <YAxis tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={55} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                  <ReferenceLine
-                    y={(parseFloat(ingresoNeto) || 0) - (parseFloat(gastosFijos) || 0)}
-                    stroke="var(--color-text-primary)" strokeWidth={1.5} strokeDasharray="4 4"
-                    label={{ value: 'Presupuesto Neto', position: 'top', fill: 'var(--color-text-secondary)', fontSize: 10, fontWeight: 600 }}
-                  />
                   <Area type="monotone" dataKey="Suscripciones"                      stackId="a" stroke="#047857" fill="url(#gProjSub)"  strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Tarjetas"                           stackId="a" stroke="#D97706" fill="url(#gProjCard)" strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Créditos"                           stackId="a" stroke="#DC2626" fill="url(#gProjCred)" strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="ObligacionesPers" name="Gastos" stackId="a" stroke="#7C3AED" fill="url(#gProjDebt)" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="ObligacionesPers" name="Compromisos fijos" stackId="a" stroke="#7C3AED" fill="url(#gProjDebt)" strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Metas"            name="Metas"      stackId="a" stroke="#059669" fill="url(#gProjMeta)" strokeWidth={1.5} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -746,10 +664,9 @@ export const Reports = () => {
                     <th style={{ textAlign: 'right' }}>Suscripciones</th>
                     <th style={{ textAlign: 'right' }}>Tarjetas</th>
                     <th style={{ textAlign: 'right' }}>Créditos</th>
-                    <th style={{ textAlign: 'right' }}>Gastos</th>
+                    <th style={{ textAlign: 'right' }}>Compromisos</th>
                     <th style={{ textAlign: 'right' }}>Metas</th>
                     <th style={{ textAlign: 'right' }}>Total</th>
-                    <th style={{ textAlign: 'right' }}>Flujo Libre</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -759,12 +676,9 @@ export const Reports = () => {
                       <td className="tabular" data-label="Suscripciones" style={{ textAlign: 'right' }}>{fmt(m.Suscripciones)}</td>
                       <td className="tabular" data-label="Tarjetas"      style={{ textAlign: 'right' }}>{fmt(m.Tarjetas)}</td>
                       <td className="tabular" data-label="Créditos"      style={{ textAlign: 'right' }}>{fmt(m.Créditos)}</td>
-                      <td className="tabular" data-label="Gastos"  style={{ textAlign: 'right' }}>{fmt(m.ObligacionesPers)}</td>
+                      <td className="tabular" data-label="Compromisos" style={{ textAlign: 'right' }}>{fmt(m.ObligacionesPers)}</td>
                       <td className="tabular" data-label="Metas"         style={{ textAlign: 'right' }}>{fmt(m.Metas)}</td>
                       <td className="tabular" data-label="Total"         style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(m.Obligaciones)}</td>
-                      <td className="tabular" data-label="Flujo Libre"   style={{ textAlign: 'right', fontWeight: 700, color: m.FlujoLibre >= 0 ? 'var(--color-success)' : 'var(--neg-600)' }}>
-                        {fmt(m.FlujoLibre)}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -773,128 +687,6 @@ export const Reports = () => {
           </div>
         </div>
       )}
-
-      {/* ══ TAB 3: MoM ══ */}
-      {activeTab === 'mom' && (() => {
-        if (trend.length < 2) return (
-          <div className="card">
-            <div className="empty-state">
-              <div className="empty-state-icon"><TrendingUp size={26} /></div>
-              <p className="empty-state-title">No hay datos suficientes</p>
-              <p>Se necesitan al menos 2 meses registrados para la comparación.</p>
-            </div>
-          </div>
-        );
-
-        const cur  = trend[trend.length - 1];
-        const prev = trend[trend.length - 2];
-
-        const cats = [
-          { key: 'subscriptions', label: 'Suscripciones', color: '#047857' },
-          { key: 'bankCredits',   label: 'Créditos',       color: '#DC2626' },
-          { key: 'creditCards',   label: 'Tarjetas',        color: '#D97706' },
-          { key: 'total',         label: 'Total',           color: 'var(--brand-600)', bold: true },
-        ];
-
-        const delta = (c, p) => {
-          if (!p || p === 0) return null;
-          return ((c - p) / p) * 100;
-        };
-
-        const barData = [
-          { name: 'Suscripciones', prev: prev.subscriptions, cur: cur.subscriptions },
-          { name: 'Créditos',       prev: prev.bankCredits,   cur: cur.bankCredits   },
-          { name: 'Tarjetas',        prev: prev.creditCards,   cur: cur.creditCards   },
-          { name: 'Total',           prev: prev.total,         cur: cur.total         },
-        ];
-
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-              {cats.map(({ key, label, color, bold }) => {
-                const c = parseFloat(cur[key] ?? 0);
-                const p = parseFloat(prev[key] ?? 0);
-                const d = delta(c, p);
-                const up   = d !== null && d > 0;
-                const down = d !== null && d < 0;
-                return (
-                  <div key={key} className="card" style={{ padding: '1rem', borderTop: `3px solid ${color}` }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 0.375rem' }}>{label}</p>
-                    <p className="tabular" style={{ fontSize: bold ? '1.15rem' : '1rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 0.25rem' }}>{fmt(c)}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {d === null ? <Minus size={11} style={{ color: 'var(--text-3)' }} />
-                        : up ? <ArrowUpRight size={11} style={{ color: 'var(--neg-600)' }} />
-                        : down ? <ArrowDownRight size={11} style={{ color: 'var(--pos-600)' }} />
-                        : <Minus size={11} style={{ color: 'var(--text-3)' }} />}
-                      <span style={{ fontSize: 11, fontWeight: 600, color: d === null ? 'var(--text-3)' : up ? 'var(--neg-600)' : down ? 'var(--pos-600)' : 'var(--text-3)' }}>
-                        {d === null ? 'Sin datos' : `${d > 0 ? '+' : ''}${d.toFixed(1)}% vs ${prev.month}`}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="card" style={{ padding: '20px 24px' }}>
-              <div className="card-header" style={{ marginBottom: 14, paddingBottom: 10 }}>
-                <div>
-                  <h3 className="card-title">Comparación {prev.month} vs {cur.month}</h3>
-                  <p className="card-subtitle">Obligaciones por categoría — mes anterior vs actual</p>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={barData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
-                  <YAxis tickFormatter={fmtShort} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={55} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="prev" name={prev.month} fill="var(--surface-2)" stroke="var(--border)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="cur"  name={cur.month}  fill="var(--brand-600)"  radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="card" style={{ padding: '16px 20px' }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Detalle de cambios</h3>
-              <div className="responsive-table table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Categoría</th>
-                      <th style={{ textAlign: 'right' }}>{prev.month}</th>
-                      <th style={{ textAlign: 'right' }}>{cur.month}</th>
-                      <th style={{ textAlign: 'right' }}>Δ Absoluto</th>
-                      <th style={{ textAlign: 'right' }}>Δ %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cats.map(({ key, label, bold }) => {
-                      const c = parseFloat(cur[key] ?? 0);
-                      const p = parseFloat(prev[key] ?? 0);
-                      const abs = c - p;
-                      const d = delta(c, p);
-                      return (
-                        <tr key={key}>
-                          <td style={{ fontWeight: bold ? 700 : 400 }}>{label}</td>
-                          <td className="tabular" style={{ textAlign: 'right' }}>{fmt(p)}</td>
-                          <td className="tabular" style={{ textAlign: 'right', fontWeight: bold ? 700 : 400 }}>{fmt(c)}</td>
-                          <td className="tabular" style={{ textAlign: 'right', color: abs > 0 ? 'var(--neg-600)' : abs < 0 ? 'var(--pos-600)' : 'var(--text-3)', fontWeight: 600 }}>
-                            {abs > 0 ? '+' : ''}{fmt(abs)}
-                          </td>
-                          <td className="tabular" style={{ textAlign: 'right', color: d === null ? 'var(--text-3)' : d > 0 ? 'var(--neg-600)' : d < 0 ? 'var(--pos-600)' : 'var(--text-3)', fontWeight: 600 }}>
-                            {d === null ? '—' : `${d > 0 ? '+' : ''}${d.toFixed(1)}%`}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
     </div>
   );
