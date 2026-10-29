@@ -19,7 +19,6 @@ import pushSubscriptionRoutes from './modules/pushSubscription/pushSubscription.
 import budgetRoutes from './modules/budget/budget.routes.js';
 import netWorthRoutes from './modules/netWorth/netWorth.routes.js';
 import './modules/budget/budget.model.js';
-import './modules/personalDebt/personalDebtAbono.model.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { startDailyChargesJob } from './jobs/dailyChargesJob.js';
 import { startMoraJob } from './jobs/bankCreditMoraJob.js';

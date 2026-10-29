@@ -21,7 +21,7 @@ export const SearchService = {
             BankCredit.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
             CreditCard.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
             Income.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
-            PersonalDebt.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
+            PersonalDebt.findAll({ where: { userId, tipo: 'gasto', nombre: like(q) }, limit: 5 }),
             SavingsGoal.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
         ]);
 
@@ -58,9 +58,8 @@ export const SearchService = {
         debts.forEach(d => results.push({
             type: 'personal_debt', id: d.id,
             name: d.nombre,
-            // "Gastos" de cara al usuario desde 2026-07-23 (ver CLAUDE.md).
-            meta: `${d.tipo === 'deuda' ? 'Deuda personal' : 'Gasto'} · ${d.status}`,
-            route: `/personal-debts/${d.id}`,
+            meta: `Compromiso fijo · ${d.status}`,
+            route: `/fixed-commitments/${d.id}`,
         }));
 
         savings.forEach(g => results.push({

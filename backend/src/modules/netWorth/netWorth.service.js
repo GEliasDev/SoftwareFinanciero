@@ -3,7 +3,6 @@ import { NetWorthSnapshot } from './netWorth.model.js';
 import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { BankCredit } from '../bankCredit/bankCredit.model.js';
-import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
 
 const toNum = (v) => parseFloat(v) || 0;
 
@@ -16,21 +15,19 @@ const currentMes = () => {
 
 export const NetWorthService = {
     // Activos: ahorro acumulado. Pasivos: cupo de tarjeta ya usado + saldo
-    // pendiente de créditos bancarios + deudas personales (tipo 'deuda', no
-    // 'gasto' recurrente — un gasto mensual no es un pasivo con saldo).
+    // pendiente de créditos bancarios (un compromiso fijo mensual no es un
+    // pasivo con saldo).
     computeCurrent: async (userId) => {
-        const [savings, cards, credits, debts] = await Promise.all([
+        const [savings, cards, credits] = await Promise.all([
             SavingsGoal.findAll({ where: { userId } }),
             CreditCard.findAll({ where: { userId } }),
             BankCredit.findAll({ where: { userId, status: { [Op.in]: ['activo', 'en_mora'] } } }),
-            PersonalDebt.findAll({ where: { userId, tipo: 'deuda', status: 'activo' } }),
         ]);
 
         const activos = savings.reduce((s, g) => s + toNum(g.montoAcumulado), 0);
         const deudaTarjetas = cards.reduce((s, c) => s + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0);
         const deudaCreditos = credits.reduce((s, c) => s + toNum(c.saldoPendiente), 0);
-        const deudaPersonal = debts.reduce((s, d) => s + toNum(d.saldoPendiente), 0);
-        const pasivos = deudaTarjetas + deudaCreditos + deudaPersonal;
+        const pasivos = deudaTarjetas + deudaCreditos;
 
         return {
             activos: parseFloat(activos.toFixed(2)),

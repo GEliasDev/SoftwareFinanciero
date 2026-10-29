@@ -163,7 +163,7 @@ export const AnalyticsService = {
                 include: [{ model: CreditCardPurchase, as: 'CreditCardPurchases' }],
             }),
             Income.findAll({ where: { userId, status: 'activo' } }),
-            PersonalDebt.findAll({ where: { userId, status: 'activo' } }),
+            PersonalDebt.findAll({ where: { userId, tipo: 'gasto', status: 'activo' } }),
             SavingsGoal.findAll({ where: { userId, status: 'activo' } }),
         ]);
 
@@ -195,11 +195,6 @@ export const AnalyticsService = {
             (a, c) => a + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0
         );
 
-        // Deudas personales en cuotas: solo tipo 'deuda' activas (los 'gasto' son recurrentes, no saldo)
-        const totalDebtPersonal = personalDebts
-            .filter(d => d.tipo === 'deuda' && d.status === 'activo')
-            .reduce((a, d) => a + toNum(d.saldoPendiente), 0);
-
         // Mensual (fijo): siempre cuenta. Extra: solo cuenta si fue registrado en el mes en curso.
         const now = new Date();
         const isExtraThisMonth = (i) => {
@@ -208,10 +203,8 @@ export const AnalyticsService = {
         };
         const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo' || isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
         const totalIncomeExtra = incomes.filter(i => i.tipo === 'extra' && isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
-        // Solo los PersonalDebt tipo 'gasto' tienen montoCuota (las deudas lo
-        // guardan en null y se abonan contra saldoPendiente), así que esta suma
-        // es en la práctica "gastos recurrentes del mes".
-        const gastosActivos = personalDebts.filter(d => d.status === 'activo' && d.tipo === 'gasto');
+        // Compromisos fijos mensuales activos (PersonalDebt tipo 'gasto').
+        const gastosActivos = personalDebts;
         const monthlyPersonalDebts = gastosActivos.reduce((a, d) => a + toNum(d.montoCuota), 0);
         const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
         const totalObligaciones = monthlySubscriptions + monthlyBankCredits + monthlyCreditCards + monthlyPersonalDebts;
@@ -328,12 +321,9 @@ export const AnalyticsService = {
             debt: {
                 bankCredits: totalDebtCredits,
                 creditCards: totalDebtCards,
-                personalDebts: totalDebtPersonal,
-                total: totalDebtCredits + totalDebtCards + totalDebtPersonal,
+                total: totalDebtCredits + totalDebtCards,
             },
-            // Desglose de SALDOS (lo que se debe), no de cuotas mensuales. Aquí
-            // sí aparecen los PersonalDebt tipo 'deuda', que no tienen cuota
-            // mensual y por eso no salen en `breakdown`.
+            // Desglose de SALDOS (lo que se debe), no de cuotas mensuales.
             debtBreakdown: {
                 bankCredits: bankCredits
                     .filter(c => c.status !== 'pagado')
@@ -343,11 +333,6 @@ export const AnalyticsService = {
                 creditCards: creditCards
                     .map(c => ({ id: c.id, nombre: c.nombre, detalle: c.entidad, monto: toNum(c.cupoTotal) - toNum(c.cupoDisponible) }))
                     .filter(c => c.monto > 0)
-                    .sort((a, b) => b.monto - a.monto),
-                personalDebts: personalDebts
-                    .filter(d => d.tipo === 'deuda' && d.status === 'activo')
-                    .map(d => ({ id: d.id, nombre: d.nombre, detalle: d.prestamista, monto: toNum(d.saldoPendiente) }))
-                    .filter(d => d.monto > 0)
                     .sort((a, b) => b.monto - a.monto),
             },
             counts: {
