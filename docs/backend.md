@@ -140,4 +140,7 @@ Lectura: `cardInbox.service.js::syncUser` (Gmail `from:noreply@rappicard.co afte
 asunto RFC 2047) → parser → `CardInboxItem` `pendiente` (idempotente por `huella`). Job `jobs/cardInboxSyncJob.js` cada 15 min; manual
 `POST /api/card-inbox/sync`; lista `GET /api/card-inbox?status=`. Tarjeta: `resolverTarjeta` (últimos 4; si no coincide y hay UNA sola tarjeta
 Rappi → esa; una RappiCard tiene número físico y digital distintos, ej. *1625 y *7583). Cada sync reintenta asignar pendientes sin tarjeta.
-Pendiente: aprobar/descartar → `CreditCardPurchase` (compra 1 cuota por defecto editable; avance con `createAdvance`; pago solo informativo) y pantalla.
+Aprobación: `POST /api/card-inbox/:id/approve` (ajustes opcionales: `creditCardId`, `numeroCuotas`, `categoria`, `descripcion`) crea la compra
+(`createPurchase`, 1 cuota por defecto) o el avance (`createAdvance`, con las cuotas del correo) por el flujo normal de tarjetas, así cupo e
+intereses cuadran; `POST /:id/discard` descarta. Los pagos solo se descartan ("marcar como visto"): no hay registro de pago general.
+Ojo: `createAdvance` usa `CreditCard.comisionAvance` de la tarjeta, no el costo transaccional del correo (pueden diferir: 6.500 vs 7.000).

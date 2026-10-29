@@ -21,6 +21,7 @@ de un rediseño; no hay reglas visuales vigentes.
 /income                    lista | /new | /:id/edit
 /fixed-commitments         Compromisos fijos: lista | /new | /:id | /:id/edit
 /savings                   lista | /new | /:id | /:id/edit
+/card-inbox                Movimientos por aprobar (alertas de tarjetas detectadas en Gmail)
 /budget  /reports  /profile  /onboarding
 /login /register /forgot-password /reset-password   (públicas)
 /privacy                   política de privacidad (pública; la exige Google para publicar la app OAuth de Gmail)
