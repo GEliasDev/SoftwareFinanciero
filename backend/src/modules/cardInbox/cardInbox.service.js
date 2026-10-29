@@ -5,6 +5,9 @@ import { CreditCard } from '../creditCard/creditCard.model.js';
 import { decryptToken } from './gmailToken.js';
 import { getAccessToken, listMessageIds, getMessage } from './gmailApi.js';
 import { parseRappiCardEmail, REMITENTE_RAPPICARD } from './parsers/rappicard.parser.js';
+import { CreditCardService } from '../creditCard/creditCard.service.js';
+import { approveSchema } from './cardInbox.schema.js';
+import { AppError } from '../../middlewares/appError.js';
 import logger from '../../utils/logger.js';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -83,6 +86,49 @@ export const CardInboxService = {
                 logger.error(`[cardInbox] Usuario ${userId}: ${err.message}`);
             }
         }
+    },
+
+    findOwnedPending: async (userId, id) => {
+        const item = await CardInboxItem.findByPk(id);
+        if (!item) throw new AppError('Movimiento no encontrado', 404);
+        if (item.userId !== userId) throw new AppError('No autorizado', 403);
+        if (item.status !== 'pendiente') throw new AppError('Este movimiento ya fue procesado', 400);
+        return item;
+    },
+
+    // Convierte el pendiente en una compra o avance real por el flujo normal de tarjetas
+    // (descuenta cupo, calcula cuotas e intereses). Los pagos no se aprueban: solo se descartan.
+    approve: async (userId, id, data) => {
+        const item = await CardInboxService.findOwnedPending(userId, id);
+        if (item.tipo === 'pago') throw new AppError('Los pagos son informativos: márcalos como vistos', 400);
+
+        const ajustes = approveSchema.parse(data ?? {});
+        const creditCardId = ajustes.creditCardId ?? item.creditCardId;
+        if (!creditCardId) throw new AppError('Elige la tarjeta a la que pertenece el movimiento', 400);
+
+        const base = { montoTotal: Number(item.monto), fechaCompra: item.fechaMovimiento };
+        let creado;
+        if (item.tipo === 'avance') {
+            const { avance } = await CreditCardService.createAdvance(creditCardId, {
+                ...base, descripcion: ajustes.descripcion ?? 'Avance digital RappiCard', numeroCuotas: item.numeroCuotas ?? 1,
+            }, userId, false);
+            creado = avance;
+        } else {
+            creado = await CreditCardService.createPurchase(creditCardId, {
+                ...base,
+                descripcion: ajustes.descripcion ?? item.comercio ?? 'Compra RappiCard',
+                numeroCuotas: ajustes.numeroCuotas ?? 1,
+                categoria: ajustes.categoria ?? 'otros',
+            }, userId, false);
+        }
+
+        await item.update({ status: 'aprobado', creditCardId, purchaseId: creado.id });
+        return item;
+    },
+
+    discard: async (userId, id) => {
+        const item = await CardInboxService.findOwnedPending(userId, id);
+        return item.update({ status: 'descartado' });
     },
 
     list: async (userId, status = 'pendiente') => CardInboxItem.findAll({
