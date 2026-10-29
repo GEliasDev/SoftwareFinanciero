@@ -71,6 +71,7 @@ const Budget = lazyNamed(() => import('./pages/Budget'), 'Budget');
 const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
 const Profile = lazyNamed(() => import('./pages/Profile'), 'Profile');
 const Onboarding = lazyNamed(() => import('./pages/Onboarding'), 'Onboarding');
+const PrivacyPolicy = lazyNamed(() => import('./pages/PrivacyPolicy'), 'PrivacyPolicy');
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -100,6 +101,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
         {/* Protegidas — bajo MainLayout */}
