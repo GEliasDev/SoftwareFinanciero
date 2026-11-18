@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, PieChart, Inbox } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, Inbox } from 'lucide-react';
 import { CreditCardService } from '../../services/creditCardService';
 import { CardInboxService } from '../../services/cardInboxService';
 import { TabNav } from '../../components/ui/TabNav';
 import { fmt, nextOccurrence, daysUntil } from '../../utils/format';
-import { CATEGORIES, buildSchedule, TASA_USURA_EA, attachAdvanceCommission } from '../../utils/creditCard';
+import { buildSchedule, TASA_USURA_EA, attachAdvanceCommission } from '../../utils/creditCard';
 
 // Re-exportada para no romper imports existentes; la fuente vive en utils/creditCard.
 export { TASA_USURA_EA };
@@ -103,14 +103,6 @@ export const CreditCardLayout = () => {
   const daysCorte = useMemo(() => (nextCorte ? daysUntil(nextCorte) : null), [nextCorte]);
   const daysPago  = useMemo(() => (nextPago ? daysUntil(nextPago) : null), [nextPago]);
 
-  const categoryData = useMemo(() =>
-    CATEGORIES.map(cat => ({
-      name: cat.label, color: cat.color,
-      value: activePurchases.filter(p => p.categoria === cat.value).reduce((s, p) => s + parseFloat(p.montoTotal ?? 0), 0),
-    })).filter(d => d.value > 0),
-    [activePurchases]
-  );
-
   const handleDelete = async () => {
     const result = await Swal.fire({
       title: '¿Eliminar tarjeta?',
@@ -169,14 +161,13 @@ export const CreditCardLayout = () => {
     { to: 'statement', label: 'Extracto', icon: FileText },
     { to: 'purchases', label: 'Compras', icon: ShoppingBag, badge: activePurchases.length },
     { to: 'pending', label: 'Por aprobar', icon: Inbox, badge: pending.length },
-    { to: 'analysis', label: 'Análisis', icon: PieChart },
   ];
 
   const ctx = {
     card, purchases: normalizedPurchases, activePurchases, pending, id, reload: load,
     monthlyObligation, totalCapital, totalConIntereses, totalYaPagado, totalRestante, maxMesesRestantes,
-    cupoUsado, usagePct, barColor, tasaMensual, tasaEA, isHighRate,
-    nextCorte, nextPago, daysCorte, daysPago, categoryData, handlePayAll,
+    cupoUsado, usagePct, barColor, tasaEA, isHighRate,
+    nextCorte, nextPago, daysCorte, daysPago, handlePayAll,
     payableCount: payableLines.length,
     payableTotal,
     payableLines,

@@ -9,7 +9,7 @@ de un rediseño; no hay reglas visuales vigentes.
 /                          Dashboard
 /subscriptions             lista | /new | /:id | /:id/edit
 /credit-cards              lista | /new
-/credit-cards/:id          CreditCardLayout (tabs anidados): index=CardOverview, /statement, /purchases, /pending (movimientos por aprobar de esa tarjeta, detectados en Gmail), /analysis
+/credit-cards/:id          CreditCardLayout (tabs anidados): index=CardOverview, /statement, /purchases, /pending (movimientos por aprobar de esa tarjeta, detectados en Gmail)
 /credit-cards/:id/edit
 /credit-cards/:id/purchases/new      CreditCardPurchaseForm (compartido con edición)
 /credit-cards/:id/purchases/import   importar CSV/Excel

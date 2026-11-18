@@ -32,7 +32,6 @@ const CreditCardLayout = lazyNamed(() => import('./pages/credit-card/CreditCardL
 const CardOverview = lazyNamed(() => import('./pages/credit-card/CardOverview'), 'CardOverview');
 const CardStatementPage = lazyNamed(() => import('./pages/credit-card/CardStatementPage'), 'CardStatementPage');
 const CardPurchases = lazyNamed(() => import('./pages/credit-card/CardPurchases'), 'CardPurchases');
-const CardAnalysis = lazyNamed(() => import('./pages/credit-card/CardAnalysis'), 'CardAnalysis');
 const CardPending = lazyNamed(() => import('./pages/credit-card/CardPending'), 'CardPending');
 const CreditCardEdit = lazyNamed(() => import('./pages/CreditCardEdit'), 'CreditCardEdit');
 const CreditCardPurchaseDetail = lazyNamed(() => import('./pages/CreditCardPurchaseDetail'), 'CreditCardPurchaseDetail');
@@ -108,7 +107,6 @@ function App() {
             <Route path="statement" element={<CardStatementPage />} />
             <Route path="purchases" element={<CardPurchases />} />
             <Route path="pending" element={<CardPending />} />
-            <Route path="analysis" element={<CardAnalysis />} />
           </Route>
           <Route path="credit-cards/:id/edit" element={<CreditCardEdit />} />
           <Route path="credit-cards/:id/purchases/new" element={<CreditCardPurchaseForm />} />
