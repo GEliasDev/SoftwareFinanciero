@@ -13,8 +13,6 @@ import { CreditCardPurchase } from '../src/modules/creditCard/creditCardPurchase
 import { BankCredit } from '../src/modules/bankCredit/bankCredit.model.js';
 import { Subscription } from '../src/modules/suscription/subscription.model.js';
 import { Income } from '../src/modules/income/income.model.js';
-import { NetWorthSnapshot } from '../src/modules/netWorth/netWorth.model.js';
-import { PushSubscription } from '../src/modules/pushSubscription/pushSubscription.model.js';
 
 const APPLY = process.argv.includes('--apply');
 
@@ -49,8 +47,6 @@ try {
     await CreditCard.destroy({ where: { id: { [Op.in]: cardIds } }, transaction: t });
     await BankCredit.destroy({ where: { userId }, transaction: t });
     await Income.destroy({ where: { userId }, transaction: t });
-    await NetWorthSnapshot.destroy({ where: { userId }, transaction: t });
-    await PushSubscription.destroy({ where: { userId }, transaction: t });
     await user.destroy({ transaction: t });
 
     console.log(`  Borrado usuario #${userId} ${user.email}: ${cardIds.length} tarjeta(s), ${numCompras} compra(s), ${numCreditos} crédito(s), ${numSusc} suscripción(es)`);

@@ -30,7 +30,7 @@ Detalles con pestañas = layout + rutas anidadas reales; estado compartido con `
 - Code-splitting: páginas protegidas con `React.lazy` vía `lazyNamed(loader, name)` (adapta `export const X` a `default`); `Suspense`
   con `RouteFallback`. Login/Register/ForgotPassword/ResetPassword NO son lazy.
 - `GlobalSearch` (Ctrl+K → módulo `search`), dark mode (`data-theme` en `<html>`, `localStorage['debti-theme']`),
-  PWA (`sw.js` + workbox), push (`pushService.js`).
+  PWA (`sw.js` + workbox).
 - Utilidades — no duplicar: `utils/format.js` (`fmt`, `fmtDateLong`, `parseLocalDate`, `effectiveDayInMonth`, `nextOccurrence`,
   `daysUntil`, `urgencyStyle`, `localISODate`, `capFirst`, `parseMoneyInput`, `formatMoneyInput`),
   `utils/currency.js` (`toCOP`, `subMonthlyCOP`, `subAnnualCOP`; espejo de backend), `utils/creditCard.js` (`CATEGORIES`,

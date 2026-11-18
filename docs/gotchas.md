@@ -57,7 +57,6 @@
   saltaba el 2FA en toda ruta). Token de propósito especial nuevo → no usarlo como sesión sin ese chequeo. Test: `core/middleware/__tests__/jwtMiddleware.test.js`.
 - **IDOR**: todo endpoint de tarjeta/compra debe verificar dueño con `findOwnedCard`/`findOwnedPurchase` (`creditCard.service.js`;
   pasar `userId`/`isAdmin`) y cruzar `:creditCardId` de la URL con `purchase.creditCardId`.
-- `PushSubscriptionService.unsubscribe` va scoped a `req.user.id`; `subscribe` valida el body (400, no TypeError 500).
 
 ## PWA
 - Iconos reales: `frontend/public/icon-192.png`/`icon-512.png` (fondo blanco sólido por iOS); `sw.js` usa `/icon-192.png`.

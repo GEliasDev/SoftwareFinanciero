@@ -7,7 +7,7 @@ Cada recurso: `backend/src/modules/<nombre>/` con
 El service lanza `throw new AppError('msg', status)`; `errorHandler` (`main.js`) lo vuelve JSON.
 
 Módulos: `user | creditCard | bankCredit | suscription | analytics | income | search |
-pushSubscription | netWorth | cardInbox`.
+cardInbox`.
 Typo histórico: la carpeta es `suscription` (sin "b").
 
 Utils en `backend/src/utils/`: `emailService.js`, `logger.js` (winston), `currency.js`
@@ -73,11 +73,13 @@ Con tarjeta, `subscriptionChargeJob` crea un `CreditCardPurchase` normal (`tipo:
 - Costo mensual = `montoMensual` (no `monto`) convertido con `subMonthlyCOP()` (front: `utils/currency.js`, espejo del backend).
 
 ## Módulos eliminados (2026-11-18)
-Compromisos fijos (`personalDebt`), Metas de ahorro (`savingsGoal`) y Presupuesto (`budget`) se quitaron del
-código (backend, frontend y dependientes: analytics, netWorth, búsqueda, export, Dashboard, Reportes, onboarding).
-Las migraciones `20261118130000-drop-personal-debts` y `20261118140000-drop-savings-goals-and-budgets` borran las
-tablas `personal_debts` (y `personal_debt_abonos`), `savings_goals`, `budgets` y `budget_expenses`; su `down`
-solo recrea la estructura, no los datos.
+Compromisos fijos (`personalDebt`), Metas de ahorro (`savingsGoal`), Presupuesto (`budget`), Patrimonio neto
+(`netWorth` + `netWorthSnapshotJob`) y Notificaciones push (`pushSubscription`, `web-push`, handlers de `sw.js`,
+`pushService.js`) se quitaron del código (backend, frontend y dependientes: analytics, búsqueda, export, Dashboard,
+Reportes, Perfil, onboarding). Las migraciones `20261118130000-drop-personal-debts`,
+`20261118140000-drop-savings-goals-and-budgets` y `20261118150000-drop-net-worth-and-push-subscriptions` borran las
+tablas `personal_debts` (y `personal_debt_abonos`), `savings_goals`, `budgets`, `budget_expenses`,
+`net_worth_snapshots` y `push_subscriptions`; su `down` solo recrea la estructura, no los datos.
 
 ## Tarjetas con número físico y digital
 `CreditCard.ultimos4` (digital) y `ultimos4Fisica` (plástico, opcional). `cardInbox.service.js::resolverTarjeta`
@@ -90,9 +92,6 @@ tarjeta Rappi si hay una sola. Campo editable en `CreditCardEdit.jsx`.
 - `subscriptionChargeJob.js` — cargo automático de suscripciones con tarjeta.
 - `bankCreditMoraJob.js` — marca créditos en mora.
 - `weeklyDigestJob.js` — resumen semanal por email (opt-in `User.emailDigest`).
-- `netWorthSnapshotJob.js` — día 1 congela `NetWorthSnapshot` del mes cerrado; el mes en curso se calcula en vivo
-  (`netWorth.service.js::getHistory`). Activos = 0 (ya no hay fuente: se eliminó Metas de ahorro); pasivos = cupo de tarjeta usado +
-  saldo de créditos.
 
 ## Analytics y Dashboard
 `analytics.service.js::getSummary` devuelve totales + `breakdown` (cuotas mensuales por ítem: `creditCards`,
@@ -115,7 +114,6 @@ dineroLibre = Σ Income.monto (activos)
 
 ## Otros
 - `GET /users/export`: un JSON con todo del usuario; usa SIEMPRE `req.user.id` (nunca id de URL); registrada ANTES de `/:id`.
-- Push (`/api/push/*`): opcional; `webpush.setVapidDetails()` solo si hay llaves VAPID (`isEnabled()`); hoy nada dispara notificaciones.
 - Búsqueda: escapa `%`/`_`.
 - Scripts de reparación (dry-run; `--apply`): `scripts/fix-cupo-disponible.js` (recalcula cupo desde compras),
   `scripts/fix-comisiones-avances.js` (comisiones de avance `activa` con cuota 1 ya pagada).

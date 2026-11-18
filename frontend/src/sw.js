@@ -18,32 +18,3 @@ registerRoute(
     ],
   })
 );
-
-// Push notification handler
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  let pushData;
-  try { pushData = event.data.json(); } catch { pushData = { title: 'Debti', body: event.data.text() }; }
-
-  event.waitUntil(
-    self.registration.showNotification(pushData.title || 'Debti', {
-      body: pushData.body || '',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      data: { url: pushData.url || '/' },
-    })
-  );
-});
-
-// Notification click: focus existing window or open new one
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const url = event.notification.data?.url || '/';
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      const found = list.find(c => c.url.includes(url));
-      if (found) return found.focus();
-      return self.clients.openWindow(url);
-    })
-  );
-});

@@ -16,7 +16,6 @@ import { CreditCardPurchase } from '../creditCard/creditCardPurchase.model.js';
 import { BankCredit } from '../bankCredit/bankCredit.model.js';
 import { Subscription } from '../suscription/subscription.model.js';
 import { Income } from '../income/income.model.js';
-import { NetWorthSnapshot } from '../netWorth/netWorth.model.js';
 
 const SALT_ROUNDS = 10;
 const TWO_FACTOR_PENDING_TTL = '5m';
@@ -179,13 +178,11 @@ export const UserService = {
 
         const [
             creditCards, bankCredits, subscriptions, incomes,
-            netWorthHistory,
         ] = await Promise.all([
             CreditCard.findAll({ where: { userId }, include: [CreditCardPurchase] }),
             BankCredit.findAll({ where: { userId } }),
             Subscription.findAll({ where: { userId } }),
             Income.findAll({ where: { userId } }),
-            NetWorthSnapshot.findAll({ where: { userId }, order: [['mes', 'ASC']] }),
         ]);
 
         logger.info(`User ${userId} exported their data`);
@@ -196,7 +193,6 @@ export const UserService = {
             creditosBancarios: bankCredits,
             suscripciones: subscriptions,
             ingresos: incomes,
-            patrimonioNeto: netWorthHistory,
         };
     },
 

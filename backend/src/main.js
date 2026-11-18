@@ -13,8 +13,6 @@ import subscriptionRoutes from './modules/suscription/subscription.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import incomeRoutes from './modules/income/income.routes.js';
 import searchRoutes from './modules/search/search.routes.js';
-import pushSubscriptionRoutes from './modules/pushSubscription/pushSubscription.routes.js';
-import netWorthRoutes from './modules/netWorth/netWorth.routes.js';
 import gmailRoutes from './modules/cardInbox/gmail.routes.js';
 import cardInboxRoutes from './modules/cardInbox/cardInbox.routes.js';
 import './modules/cardInbox/cardInboxItem.model.js';
@@ -23,7 +21,6 @@ import { errorHandler } from './middlewares/errorHandler.js';
 import { startDailyChargesJob } from './jobs/dailyChargesJob.js';
 import { startMoraJob } from './jobs/bankCreditMoraJob.js';
 import { startWeeklyDigestJob } from './jobs/weeklyDigestJob.js';
-import { startNetWorthSnapshotJob } from './jobs/netWorthSnapshotJob.js';
 import { startCardInboxSyncJob } from './jobs/cardInboxSyncJob.js';
 
 const app = express();
@@ -60,8 +57,6 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/income', incomeRoutes);
 app.use('/api/search',       searchRoutes);
-app.use('/api/push',        pushSubscriptionRoutes);
-app.use('/api/net-worth',   netWorthRoutes);
 app.use('/api/gmail',       gmailRoutes);
 app.use('/api/card-inbox',  cardInboxRoutes);
 
@@ -82,7 +77,6 @@ const PORT = process.env.PORT || 3001;
         startDailyChargesJob();
         startMoraJob();
         startWeeklyDigestJob();
-        startNetWorthSnapshotJob();
         startCardInboxSyncJob();
         app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${PORT}`));
     } catch (error) {

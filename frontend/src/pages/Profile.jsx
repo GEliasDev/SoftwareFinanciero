@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
-import { PushService } from '../services/pushService';
 import { TwoFactorService } from '../services/twoFactorService';
 import { GmailService } from '../services/gmailService';
-import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Bell, BellOff, Mail, MailX, ShieldCheck, Shield, Download, Inbox } from 'lucide-react';
+import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Mail, MailX, ShieldCheck, Shield, Download, Inbox } from 'lucide-react';
 
 const Alert = ({ type, message, onClose }) => (
   <div className={`info-box ${type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -40,9 +39,6 @@ export const Profile = () => {
     confirmPassword: '',
   });
 
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
-  const [pushAlert, setPushAlert] = useState(null);
   const [emailDigest, setEmailDigest] = useState(false);
   const [emailDigestLoading, setEmailDigestLoading] = useState(false);
   const [emailDigestAlert, setEmailDigestAlert] = useState(null);
@@ -63,11 +59,6 @@ export const Profile = () => {
   const [gmail, setGmail] = useState(null); // { configured, connected, googleEmail, lastSyncAt }
   const [gmailLoading, setGmailLoading] = useState(false);
   const [gmailAlert, setGmailAlert] = useState(null);
-
-  useEffect(() => {
-    if (!PushService.isSupported()) return;
-    PushService.getSubscription().then(s => setPushEnabled(!!s)).catch(() => {});
-  }, []);
 
   // Estado de la conexión con Gmail + resultado del regreso desde Google
   // (/profile?gmail=ok|error&reason=…, que deja el callback del backend).
@@ -113,31 +104,6 @@ export const Profile = () => {
       setGmailAlert({ type: 'error', message: 'No se pudo desconectar. Intenta de nuevo.' });
     } finally {
       setGmailLoading(false);
-    }
-  };
-
-  const togglePush = async () => {
-    setPushLoading(true);
-    setPushAlert(null);
-    try {
-      if (pushEnabled) {
-        await PushService.unsubscribe();
-        setPushEnabled(false);
-        setPushAlert({ type: 'success', message: 'Notificaciones desactivadas.' });
-      } else {
-        const perm = await Notification.requestPermission();
-        if (perm !== 'granted') {
-          setPushAlert({ type: 'error', message: 'Permiso denegado. Habilita las notificaciones en la configuración del navegador.' });
-          return;
-        }
-        await PushService.subscribe();
-        setPushEnabled(true);
-        setPushAlert({ type: 'success', message: 'Notificaciones activadas. Te avisaremos antes de cada pago.' });
-      }
-    } catch {
-      setPushAlert({ type: 'error', message: 'Error al configurar notificaciones. Intenta de nuevo.' });
-    } finally {
-      setPushLoading(false);
     }
   };
 
@@ -577,40 +543,6 @@ export const Profile = () => {
           )}
         </div>
       </div>
-      {/* ── Notificaciones push ── */}
-      {PushService.isSupported() && (
-        <div className="card" style={{ marginTop: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <Bell size={18} style={{ color: 'var(--brand-600)' }} />
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Notificaciones push</h2>
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-            Recibe alertas en tu dispositivo antes de que venzan tus pagos.
-          </p>
-          {pushAlert && (
-            <Alert type={pushAlert.type} message={pushAlert.message} onClose={() => setPushAlert(null)} />
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {pushEnabled
-                ? <Bell size={20} style={{ color: 'var(--pos-600)' }} />
-                : <BellOff size={20} style={{ color: 'var(--text-3)' }} />}
-              <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
-                {pushEnabled ? 'Notificaciones activas' : 'Notificaciones inactivas'}
-              </span>
-            </div>
-            <button
-              className={`btn ${pushEnabled ? 'btn-secondary' : 'btn-primary'}`}
-              onClick={togglePush}
-              disabled={pushLoading}
-              style={{ minWidth: 140 }}
-            >
-              {pushLoading ? 'Procesando...' : pushEnabled ? 'Desactivar' : 'Activar notificaciones'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Resumen semanal por email */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
