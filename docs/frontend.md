@@ -43,3 +43,8 @@ Ya no hay página ni entrada en el sidebar (se quitó `/card-inbox`). Se ven en 
 En la lista `CreditCards.jsx` cada tarjeta con pendientes muestra el badge "N por aprobar" y arriba aparece la sección
 **Movimientos sin tarjeta asignada** (con selector de tarjeta). Piezas compartidas: `components/credit-cards/PendingMovements.jsx`
 (`PendingList`, `SyncButton`). `PendingList` tiene selección, **Aprobar/Descartar seleccionados** (en serie, no en paralelo: cada aprobación mueve el cupo; los pagos se omiten al aprobar y la compra sin tarjeta también) y es dueño de lo editado por fila (cuotas, categoría, tarjeta). "Sincronizar ahora" vive en la pestaña.
+
+## Navegación hacia atrás
+- Flujos que cuelgan de una pestaña (detalle/alta de compra, alta de avance) vuelven a `/credit-cards/:id/purchases`, no al Resumen.
+- "Editar tarjeta" y "Editar crédito" se abren desde el encabezado (cualquier pestaña): usan `hooks/useGoBack.js` (`navigate(-1)`; si la
+  página se abrió directo por URL, va al destino de respaldo). Guardar sigue yendo al detalle.

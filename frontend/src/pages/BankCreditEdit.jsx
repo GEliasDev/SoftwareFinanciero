@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useGoBack } from '../hooks/useGoBack';
 import {
   ArrowLeft, Info, Landmark, ChevronRight, ChevronLeft, Check, AlertCircle, Wallet, Lock,
 } from 'lucide-react';
@@ -15,6 +16,7 @@ const STEP_FIELDS = [['nombre', 'entidad', 'tipoCredito'], ['cuotaAdministracion
 export const BankCreditEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const goBack = useGoBack(`/bank-credits/${id}`);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -138,7 +140,7 @@ export const BankCreditEdit = () => {
     <div className="animate-fade-in">
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={() => navigate(`/bank-credits/${id}`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>
+          <button onClick={goBack} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>
           <div>
             <h1 className="page-title" style={{ margin: 0 }}>Editar crédito</h1>
             <p className="page-subtitle">{data.nombre} — toca un paso para saltar a él</p>
@@ -260,7 +262,7 @@ export const BankCreditEdit = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', paddingTop: '1.25rem', marginTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
               {step > 0
                 ? <button type="button" className="btn btn-secondary" onClick={() => setStep(s => s - 1)}><ChevronLeft size={15} /> Atrás</button>
-                : <button type="button" className="btn btn-secondary" onClick={() => navigate(`/bank-credits/${id}`)}>Cancelar</button>}
+                : <button type="button" className="btn btn-secondary" onClick={goBack}>Cancelar</button>}
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {step < STEPS.length - 1 && <button type="button" className="btn btn-secondary" onClick={handleNext}>Siguiente <ChevronRight size={15} /></button>}
                 <button type="submit" className="btn btn-primary" disabled={saving}><Check size={14} /> {saving ? 'Guardando…' : 'Guardar cambios'}</button>

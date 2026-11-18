@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useGoBack } from '../hooks/useGoBack';
 import Swal from 'sweetalert2';
 import { CreditCardService } from '../services/creditCardService';
 import {
@@ -35,6 +36,7 @@ function nextDatePreview(day) {
 export const CreditCardEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const goBack = useGoBack(`/credit-cards/${id}`);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(0);
@@ -138,7 +140,7 @@ export const CreditCardEdit = () => {
     <div className="animate-fade-in">
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={() => navigate(`/credit-cards/${id}`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>
+          <button onClick={goBack} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>
           <div>
             <h1 className="page-title" style={{ margin: 0 }}>Editar tarjeta</h1>
             <p className="page-subtitle">{data.nombre} · {data.entidad} — toca un paso para saltar a él</p>
@@ -345,7 +347,7 @@ export const CreditCardEdit = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', paddingTop: '1.25rem', marginTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
               {step > 0
                 ? <button type="button" className="btn btn-secondary" onClick={() => setStep(s => s - 1)}><ChevronLeft size={15} /> Atrás</button>
-                : <button type="button" className="btn btn-secondary" onClick={() => navigate(`/credit-cards/${id}`)}>Cancelar</button>}
+                : <button type="button" className="btn btn-secondary" onClick={goBack}>Cancelar</button>}
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {step < STEPS.length - 1 && <button type="button" className="btn btn-secondary" onClick={handleNext}>Siguiente <ChevronRight size={15} /></button>}
                 <button type="submit" className="btn btn-primary" disabled={saving}><Check size={14} /> {saving ? 'Guardando…' : 'Guardar cambios'}</button>
