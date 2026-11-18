@@ -42,4 +42,4 @@ Ya no hay página ni entrada en el sidebar (se quitó `/card-inbox`). Se ven en 
 (`pages/credit-card/CardPending.jsx`, badge con la cantidad; `CreditCardLayout` los carga y los pasa por el contexto del `Outlet`).
 En la lista `CreditCards.jsx` cada tarjeta con pendientes muestra el badge "N por aprobar" y arriba aparece la sección
 **Movimientos sin tarjeta asignada** (con selector de tarjeta). Piezas compartidas: `components/credit-cards/PendingMovements.jsx`
-(`PendingRow`, `SyncButton`). "Sincronizar ahora" vive en la pestaña.
+(`PendingList`, `SyncButton`). `PendingList` tiene selección, **Aprobar/Descartar seleccionados** (en serie, no en paralelo: cada aprobación mueve el cupo; los pagos se omiten al aprobar y la compra sin tarjeta también) y es dueño de lo editado por fila (cuotas, categoría, tarjeta). "Sincronizar ahora" vive en la pestaña.

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCardService } from '../services/creditCardService';
 import { CardInboxService } from '../services/cardInboxService';
-import { PendingRow } from '../components/credit-cards/PendingMovements';
+import { PendingList } from '../components/credit-cards/PendingMovements';
 import { Plus, CreditCard as CardIcon, AlertTriangle, ShoppingBag, CalendarClock, Wallet } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
 import { LoadError } from '../components/ui/LoadError';
@@ -114,9 +114,7 @@ export const CreditCards = () => {
           <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>
             Movimientos sin tarjeta asignada ({sinTarjeta.length})
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {sinTarjeta.map(item => <PendingRow key={item.id} item={item} cards={cardsActivas} onDone={load} />)}
-          </div>
+          <PendingList items={sinTarjeta} cards={cardsActivas} onDone={load} />
         </div>
       )}
 

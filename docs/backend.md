@@ -151,3 +151,6 @@ Aprobación: `POST /api/card-inbox/:id/approve` (ajustes opcionales: `creditCard
 (`createPurchase`, 1 cuota por defecto) o el avance (`createAdvance`, con las cuotas del correo) por el flujo normal de tarjetas, así cupo e
 intereses cuadran; `POST /:id/discard` descarta. Los pagos solo se descartan ("marcar como visto"): no hay registro de pago general.
 Ojo: `createAdvance` usa `CreditCard.comisionAvance` de la tarjeta, no el costo transaccional del correo (pueden diferir: 6.500 vs 7.000).
+Cuotas en el correo (verificado 2026-11-18): solo **Guama** trae el campo `Cuotas` en la compra (a veces vacío, a veces `1`; se guarda en
+`numeroCuotas` y la UI lo precarga marcado "del correo"). RappiCard y Bancolombia NO incluyen las cuotas en la alerta de compra; ahí la
+UI parte de 1 y el usuario la ajusta.

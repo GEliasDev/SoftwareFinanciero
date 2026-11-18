@@ -1,6 +1,6 @@
 import { Link, useOutletContext } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
-import { PendingRow, SyncButton } from '../../components/credit-cards/PendingMovements';
+import { PendingList, SyncButton } from '../../components/credit-cards/PendingMovements';
 
 // Pestaña "Por aprobar": movimientos de esta tarjeta detectados en Gmail.
 export const CardPending = () => {
@@ -22,7 +22,7 @@ export const CardPending = () => {
           </div>
         </div>
       ) : (
-        pending.map(item => <PendingRow key={item.id} item={item} onDone={reload} />)
+        <PendingList items={pending} onDone={reload} />
       )}
     </div>
   );
