@@ -117,7 +117,7 @@ export const CreditCardPurchaseForm = () => {
       } else {
         await CreditCardService.createPurchase(id, payload);
         Swal.fire({ icon: 'success', title: '¡Compra registrada!', timer: 1500, showConfirmButton: false });
-        navigate(`/credit-cards/${id}`);
+        navigate(`/credit-cards/${id}/purchases`);
       }
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'No se pudo guardar la compra.', confirmButtonColor: '#047857' });
@@ -126,7 +126,7 @@ export const CreditCardPurchaseForm = () => {
     }
   };
 
-  const goBack = () => navigate(isEdit ? `/credit-cards/${id}/purchases/${purchaseId}` : `/credit-cards/${id}`);
+  const goBack = () => navigate(isEdit ? `/credit-cards/${id}/purchases/${purchaseId}` : `/credit-cards/${id}/purchases`);
 
   if (loading) return (
     <div>

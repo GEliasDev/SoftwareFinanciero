@@ -158,7 +158,7 @@ export const CreditCardPurchaseDetail = () => {
     if (!result.isConfirmed) return;
     try {
       await CreditCardService.deletePurchase(cardId, purchaseId);
-      navigate(`/credit-cards/${cardId}`);
+      navigate(`/credit-cards/${cardId}/purchases`);
     } catch {
       Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar la compra.' });
     }
@@ -178,7 +178,7 @@ export const CreditCardPurchaseDetail = () => {
   if (!purchase) return (
     <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
       <p style={{ color: 'var(--color-text-muted)' }}>Compra no encontrada.</p>
-      <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={() => navigate(`/credit-cards/${cardId}`)}>
+      <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={() => navigate(`/credit-cards/${cardId}/purchases`)}>
         <ArrowLeft size={14} /> Volver
       </button>
     </div>
@@ -205,7 +205,7 @@ export const CreditCardPurchaseDetail = () => {
 
         <div className="page-header" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button onClick={() => navigate(`/credit-cards/${cardId}`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
+            <button onClick={() => navigate(`/credit-cards/${cardId}/purchases`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
               <ArrowLeft size={16} />
             </button>
             <div>

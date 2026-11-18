@@ -74,7 +74,7 @@ export const CreditCardAdvanceNew = () => {
         fechaCompra: form.fechaCompra,
       });
       Swal.fire({ icon: 'success', title: '¡Avance registrado!', timer: 1500, showConfirmButton: false });
-      navigate(`/credit-cards/${id}`);
+      navigate(`/credit-cards/${id}/purchases`);
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || 'No se pudo registrar el avance.' });
     } finally {
@@ -104,7 +104,7 @@ export const CreditCardAdvanceNew = () => {
         </div>
         <div className="page-header" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button onClick={() => navigate(`/credit-cards/${id}`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
+            <button onClick={() => navigate(`/credit-cards/${id}/purchases`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
               <ArrowLeft size={16} />
             </button>
             <div>
@@ -237,7 +237,7 @@ export const CreditCardAdvanceNew = () => {
             )}
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => navigate(`/credit-cards/${id}`)}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => navigate(`/credit-cards/${id}/purchases`)}>
                 <ArrowLeft size={14} /> Cancelar
               </button>
               <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={saving}>
