@@ -9,7 +9,7 @@
 import { normalizar, parseMontoCOP } from './rappicard.parser.js';
 
 const RE_COMPRA = new RegExp(
-    'Tu compra en (.+?) fue APROBADA\\.? Más información de la transacción Tarjeta (\\d{4}) ' +
+    'Tu compra en (.+?) fue APROBADA ?\\.? Más información de la transacción Tarjeta (\\d{4}) ' +
     'Valor \\$?\\s*([\\d.,]+) Cuotas(?: (\\d+))? Fecha (\\d{4}-\\d{2}-\\d{2}) Hora (\\d{2}:\\d{2})',
     'i'
 );

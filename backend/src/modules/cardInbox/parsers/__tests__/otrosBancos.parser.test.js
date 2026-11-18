@@ -84,6 +84,15 @@ describe('parseGuamaEmail', () => {
         expect(mov.numeroCuotas).toBeUndefined();
     });
 
+    it('lee el texto convertido desde HTML, que deja un espacio antes del punto ("APROBADA .")', () => {
+        // Regresión 2026-11-18: así llega por gmailApi.htmlToText y el parser devolvía null.
+        const html = 'Tu compra en MEGATIENDAS TORICES fue APROBADA . Más información de la transacción Tarjeta 7315 ' +
+            'Valor $ 20.140,00 Cuotas Fecha 2026-10-20 Hora 20:07 ℹ️ Recuerda que puedes cambiar el número de cuotas';
+        expect(parseGuamaEmail({ subject: 'Compra aprobada', body: html })).toMatchObject({
+            tipo: 'compra', monto: 20140, ultimos4: '7315', comercio: 'MEGATIENDAS TORICES', fecha: '2026-10-20', hora: '20:07',
+        });
+    });
+
     it('lee un pago aprobado (sin tarjeta)', () => {
         expect(parseGuamaEmail({ subject: 'Tu pago en Guama fue aprobado 🎉', body: GUAMA_PAGO })).toEqual({
             fuente: 'guama', tipo: 'pago', monto: 128438.96, ultimos4: null,
