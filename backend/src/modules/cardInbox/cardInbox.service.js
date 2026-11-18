@@ -18,7 +18,7 @@ const PRIMERA_LECTURA_DIAS = 30;
 // número físico y digital, ej. *1625 y *7583) y el usuario tiene UNA sola tarjeta de esa
 // entidad, esa. Si hay duda se deja sin asignar para que el usuario elija al aprobar.
 export const resolverTarjeta = (cards, mov) => {
-    const exacta = mov.ultimos4 ? cards.find(c => c.ultimos4 === mov.ultimos4) : null;
+    const exacta = mov.ultimos4 ? cards.find(c => c.ultimos4 === mov.ultimos4 || c.ultimos4Fisica === mov.ultimos4) : null;
     if (exacta) return exacta.id;
     const candidatas = cards.filter(c => /rappi/i.test(`${c.nombre} ${c.entidad}`));
     return candidatas.length === 1 ? candidatas[0].id : null;
@@ -34,7 +34,7 @@ export const CardInboxService = {
         const inicio = conn.lastSyncAt ? new Date(conn.lastSyncAt.getTime() - DIA_MS) : new Date(Date.now() - PRIMERA_LECTURA_DIAS * DIA_MS);
         const ids = await listMessageIds(accessToken, `from:${REMITENTE_RAPPICARD} after:${Math.floor(inicio.getTime() / 1000)}`);
 
-        const cards = await CreditCard.findAll({ where: { userId, status: 'activa' }, attributes: ['id', 'nombre', 'entidad', 'ultimos4'] });
+        const cards = await CreditCard.findAll({ where: { userId, status: 'activa' }, attributes: ['id', 'nombre', 'entidad', 'ultimos4', 'ultimos4Fisica'] });
         // Pendientes que quedaron sin tarjeta (p. ej. antes de cargar los últimos 4): reintentar.
         const sinTarjeta = await CardInboxItem.findAll({ where: { userId, status: 'pendiente', creditCardId: null } });
         for (const item of sinTarjeta) {

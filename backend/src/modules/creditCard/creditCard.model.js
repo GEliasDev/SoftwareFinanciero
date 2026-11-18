@@ -45,6 +45,11 @@ CreditCard.init(
             type: DataTypes.STRING(4),
             allowNull: true,
         },
+        // Últimos 4 del plástico físico cuando la tarjeta también tiene número digital (ej. RappiCard)
+        ultimos4Fisica: {
+            type: DataTypes.STRING(4),
+            allowNull: true,
+        },
         color: {
             type: DataTypes.STRING(20),
             allowNull: true,

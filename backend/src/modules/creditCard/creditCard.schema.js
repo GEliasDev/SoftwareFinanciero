@@ -9,6 +9,7 @@ export const creditCardCreateSchema = z.object({
     fechaCorte: z.number().int().min(1).max(31, { message: 'El día de corte debe estar entre 1 y 31' }),
     fechaPago: z.number().int().min(1).max(31, { message: 'El día de pago debe estar entre 1 y 31' }),
     ultimos4: z.string().length(4).regex(/^\d{4}$/).optional(),
+    ultimos4Fisica: z.string().length(4).regex(/^\d{4}$/).optional(),
     color: z.union([
         z.enum(['blue', 'purple', 'green', 'red', 'slate', 'gold', 'rose', 'teal']),
         z.string().regex(/^#[0-9a-fA-F]{6}$/, { message: 'Color inválido' }),
@@ -30,6 +31,7 @@ export const creditCardUpdateSchema = z.object({
     fechaPago: z.number().int().min(1).max(31).optional(),
     status: z.enum(['activa', 'bloqueada', 'cancelada']).optional(),
     ultimos4: z.string().length(4).regex(/^\d{4}$/).optional().nullable(),
+    ultimos4Fisica: z.string().length(4).regex(/^\d{4}$/).optional().nullable(),
     color: z.union([
         z.enum(['blue', 'purple', 'green', 'red', 'slate', 'gold', 'rose', 'teal']),
         z.string().regex(/^#[0-9a-fA-F]{6}$/, { message: 'Color inválido' })

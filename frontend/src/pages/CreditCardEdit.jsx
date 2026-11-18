@@ -42,7 +42,7 @@ export const CreditCardEdit = () => {
   const [simCuotas, setSimCuotas] = useState(12);
   const [data, setData] = useState({
     nombre: '', entidad: '', cupoTotal: '', tasaInteresMensual: '',
-    fechaCorte: '', fechaPago: '', status: 'activa', ultimos4: '',
+    fechaCorte: '', fechaPago: '', status: 'activa', ultimos4: '', ultimos4Fisica: '',
     comisionAvance: '', cuotaManejo: '', pagoMinimo: '', color: 'blue',
   });
 
@@ -51,7 +51,7 @@ export const CreditCardEdit = () => {
       .then(card => setData({
         nombre: card.nombre, entidad: card.entidad, cupoTotal: card.cupoTotal,
         tasaInteresMensual: card.tasaInteresMensual, fechaCorte: card.fechaCorte, fechaPago: card.fechaPago,
-        status: card.status, ultimos4: card.ultimos4 ?? '',
+        status: card.status, ultimos4: card.ultimos4 ?? '', ultimos4Fisica: card.ultimos4Fisica ?? '',
         comisionAvance: card.comisionAvance ?? '', cuotaManejo: card.cuotaManejo ?? '',
         pagoMinimo: card.pagoMinimo ?? '', color: card.color ?? 'blue',
       }))
@@ -66,6 +66,7 @@ export const CreditCardEdit = () => {
   if (!String(data.nombre).trim()) errors.nombre = 'Ingresa un nombre';
   if (!String(data.entidad).trim()) errors.entidad = 'Ingresa la entidad';
   if (data.ultimos4 && String(data.ultimos4).length !== 4) errors.ultimos4 = 'Deben ser 4 dígitos';
+  if (data.ultimos4Fisica && String(data.ultimos4Fisica).length !== 4) errors.ultimos4Fisica = 'Deben ser 4 dígitos';
   if (!(Number(data.cupoTotal) > 0)) errors.cupoTotal = 'Debe ser mayor a 0';
   if (!(Number(data.tasaInteresMensual) > 0)) errors.tasaInteresMensual = 'Debe ser mayor a 0';
   const corte = Number(data.fechaCorte); if (!(corte >= 1 && corte <= 31)) errors.fechaCorte = 'Día entre 1 y 31';
@@ -97,7 +98,7 @@ export const CreditCardEdit = () => {
         comisionAvance: Number(data.comisionAvance) || 0,
         cuotaManejo: Number(data.cuotaManejo) || 0,
         pagoMinimo: data.pagoMinimo ? Number(data.pagoMinimo) : null,
-        status: data.status, ultimos4: data.ultimos4 || null, color: data.color,
+        status: data.status, ultimos4: data.ultimos4 || null, ultimos4Fisica: data.ultimos4Fisica || null, color: data.color,
       });
       Swal.fire({ icon: 'success', title: '¡Actualizado!', timer: 1500, showConfirmButton: false });
       navigate(`/credit-cards/${id}`);
@@ -280,6 +281,14 @@ export const CreditCardEdit = () => {
                     <input className={`form-input ${showErr('ultimos4') ? 'error' : ''}`} style={{ letterSpacing: '0.2em', fontVariantNumeric: 'tabular-nums' }} value={data.ultimos4}
                       onChange={e => setData(prev => ({ ...prev, ultimos4: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onBlur={() => markTouched('ultimos4')} placeholder="1234" maxLength={4} />
                     {showErr('ultimos4') ? <p className="form-error"><AlertCircle size={11} /> {errors.ultimos4}</p> : <p className="form-hint">Facilita identificarla en pantalla</p>}
+                  </div>
+                </div>
+                <div className="form-row-2">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Últimos 4 del plástico físico (opcional)</label>
+                    <input className={`form-input ${showErr('ultimos4Fisica') ? 'error' : ''}`} style={{ letterSpacing: '0.2em', fontVariantNumeric: 'tabular-nums' }} value={data.ultimos4Fisica}
+                      onChange={e => setData(prev => ({ ...prev, ultimos4Fisica: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onBlur={() => markTouched('ultimos4Fisica')} placeholder="1234" maxLength={4} />
+                    {showErr('ultimos4Fisica') ? <p className="form-error"><AlertCircle size={11} /> {errors.ultimos4Fisica}</p> : <p className="form-hint">Si tiene número digital y físico, pon aquí el otro</p>}
                   </div>
                 </div>
               </div>

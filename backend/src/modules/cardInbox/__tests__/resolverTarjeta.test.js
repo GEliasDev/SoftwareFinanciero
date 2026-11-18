@@ -23,6 +23,14 @@ describe('resolverTarjeta', () => {
         expect(resolverTarjeta([rappi, otra], { ultimos4: '1111' })).toBe(30);
     });
 
+    it('con dos tarjetas Rappi, el número físico de cada una resuelve exacto', () => {
+        const conFisica = { ...rappi, ultimos4Fisica: '1625' };
+        const otra = { id: 30, nombre: 'RappiCard 2', entidad: 'Rappi', ultimos4: '1111', ultimos4Fisica: null };
+        expect(resolverTarjeta([conFisica, otra], { ultimos4: '1625' })).toBe(4);
+        expect(resolverTarjeta([conFisica, otra], { ultimos4: '7583' })).toBe(4);
+        expect(resolverTarjeta([conFisica, otra], { ultimos4: '1111' })).toBe(30);
+    });
+
     it('sin ninguna tarjeta Rappi queda sin asignar', () => {
         expect(resolverTarjeta([nu], { ultimos4: '1625' })).toBeNull();
     });
