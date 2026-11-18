@@ -1,19 +1,17 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CardInboxService } from '../services/cardInboxService';
-import { CreditCardService } from '../services/creditCardService';
-import { PageHeader } from '../components/ui/PageHeader';
-import { LoadError } from '../components/ui/LoadError';
-import { Inbox, RefreshCw, Check, X } from 'lucide-react';
-import { fmt, parseLocalDate } from '../utils/format';
-import { CATEGORIES } from '../utils/creditCard';
+import { useState } from 'react';
+import { RefreshCw, Check, X } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { CardInboxService } from '../../services/cardInboxService';
+import { fmt, parseLocalDate } from '../../utils/format';
+import { CATEGORIES } from '../../utils/creditCard';
 
 const TIPO_LABEL = { compra: 'Compra', avance: 'Avance', pago: 'Pago de tarjeta' };
 
 const fechaCorta = (iso) => parseLocalDate(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
 
-const Row = ({ item, cards, onDone }) => {
+// Un movimiento detectado en Gmail. Con `cards` muestra el selector de tarjeta (movimientos sin tarjeta
+// asignada); sin `cards` el movimiento se aprueba contra la tarjeta que ya tiene.
+export const PendingRow = ({ item, cards, onDone }) => {
   const [cardId, setCardId] = useState(item.creditCardId ?? '');
   const [cuotas, setCuotas] = useState(item.numeroCuotas ?? 1);
   const [categoria, setCategoria] = useState('otros');
@@ -55,7 +53,7 @@ const Row = ({ item, cards, onDone }) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-        {!esPago && (
+        {!esPago && cards && (
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label" htmlFor={`card-${item.id}`}>Tarjeta</label>
             <select id={`card-${item.id}`} className="form-input" value={cardId} onChange={e => setCardId(e.target.value)}>
@@ -100,29 +98,16 @@ const Row = ({ item, cards, onDone }) => {
   );
 };
 
-export const CardInbox = () => {
-  const [items, setItems] = useState([]);
-  const [cards, setCards] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+// Lee ahora los correos nuevos de todas las tarjetas (el job también lo hace solo cada 15 min).
+export const SyncButton = ({ onDone }) => {
   const [syncing, setSyncing] = useState(false);
-
-  const load = () => {
-    setLoading(true);
-    setError(false);
-    Promise.all([CardInboxService.list(), CreditCardService.getAll()])
-      .then(([pend, tarjetas]) => { setItems(pend); setCards(tarjetas.filter(c => c.status === 'activa')); })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, []);
 
   const sync = async () => {
     setSyncing(true);
     try {
       const { nuevos } = await CardInboxService.sync();
       await Swal.fire({ icon: 'success', title: nuevos ? `${nuevos} movimiento${nuevos !== 1 ? 's' : ''} nuevo${nuevos !== 1 ? 's' : ''}` : 'No hay movimientos nuevos', timer: 1500, showConfirmButton: false });
-      load();
+      onDone();
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'No se pudo sincronizar', text: err.response?.data?.message || 'Revisa la conexión con Gmail en tu perfil.', confirmButtonColor: 'var(--brand-600)' });
     } finally {
@@ -131,36 +116,8 @@ export const CardInbox = () => {
   };
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title="Movimientos por aprobar"
-        subtitle="Alertas de tus tarjetas detectadas en Gmail"
-        actions={
-          <button className="btn btn-secondary" onClick={sync} disabled={syncing}>
-            <RefreshCw size={14} /> {syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
-          </button>
-        }
-      />
-
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 96, borderRadius: 'var(--radius-md)' }} />)}
-        </div>
-      ) : error ? (
-        <LoadError onRetry={load} title="No se pudieron cargar los movimientos" />
-      ) : items.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon"><Inbox size={24} /></div>
-            <p className="empty-state-title">No hay movimientos pendientes</p>
-            <p>Conecta Gmail en tu <Link to="/profile">perfil</Link> y las compras de tus tarjetas aparecerán aquí para aprobarlas.</p>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {items.map(item => <Row key={item.id} item={item} cards={cards} onDone={load} />)}
-        </div>
-      )}
-    </div>
+    <button className="btn btn-secondary" onClick={sync} disabled={syncing}>
+      <RefreshCw size={14} /> {syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+    </button>
   );
 };

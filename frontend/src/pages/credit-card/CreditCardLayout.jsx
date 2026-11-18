@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, PieChart } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, PieChart, Inbox } from 'lucide-react';
 import { CreditCardService } from '../../services/creditCardService';
+import { CardInboxService } from '../../services/cardInboxService';
 import { TabNav } from '../../components/ui/TabNav';
 import { fmt, nextOccurrence, daysUntil } from '../../utils/format';
 import { CATEGORIES, buildSchedule, TASA_USURA_EA, attachAdvanceCommission } from '../../utils/creditCard';
@@ -15,6 +16,7 @@ export const CreditCardLayout = () => {
   const navigate = useNavigate();
   const [card, setCard]           = useState(null);
   const [purchases, setPurchases] = useState([]);
+  const [pending, setPending]     = useState([]);
   const [loading, setLoading]     = useState(true);
 
   const normalizedPurchases = useMemo(() => attachAdvanceCommission(purchases), [purchases]);
@@ -22,12 +24,15 @@ export const CreditCardLayout = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [cardData, purchasesData] = await Promise.all([
+      const [cardData, purchasesData, pendingData] = await Promise.all([
         CreditCardService.getById(id),
         CreditCardService.getPurchases(id),
+        // Sin Gmail conectado (o si falla) la pestaña simplemente queda vacía.
+        CardInboxService.list().catch(() => []),
       ]);
       setCard(cardData);
       setPurchases(purchasesData);
+      setPending(pendingData.filter(p => p.creditCardId === Number(id)));
     } catch {
       Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la tarjeta.' });
     } finally {
@@ -163,11 +168,12 @@ export const CreditCardLayout = () => {
     { to: '', label: 'Resumen', icon: LayoutGrid, end: true },
     { to: 'statement', label: 'Extracto', icon: FileText },
     { to: 'purchases', label: 'Compras', icon: ShoppingBag, badge: activePurchases.length },
+    { to: 'pending', label: 'Por aprobar', icon: Inbox, badge: pending.length },
     { to: 'analysis', label: 'Análisis', icon: PieChart },
   ];
 
   const ctx = {
-    card, purchases: normalizedPurchases, activePurchases, id, reload: load,
+    card, purchases: normalizedPurchases, activePurchases, pending, id, reload: load,
     monthlyObligation, totalCapital, totalConIntereses, totalYaPagado, totalRestante, maxMesesRestantes,
     cupoUsado, usagePct, barColor, tasaMensual, tasaEA, isHighRate,
     nextCorte, nextPago, daysCorte, daysPago, categoryData, handlePayAll,

@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCardService } from '../services/creditCardService';
+import { CardInboxService } from '../services/cardInboxService';
+import { PendingRow } from '../components/credit-cards/PendingMovements';
 import { Plus, CreditCard as CardIcon, AlertTriangle, ShoppingBag, CalendarClock, Wallet } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';
 import { LoadError } from '../components/ui/LoadError';
@@ -17,16 +19,22 @@ export const CreditCards = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filterDeuda, setFilterDeuda] = useState(false);
+  const [pending, setPending] = useState([]);
 
   const load = () => {
     setLoading(true);
     setError(false);
+    // Sin Gmail conectado (o si falla) simplemente no hay pendientes que mostrar.
+    CardInboxService.list().then(setPending).catch(() => setPending([]));
     CreditCardService.getAll()
       .then(setCards)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+
+  const sinTarjeta = pending.filter(p => !p.creditCardId);
+  const cardsActivas = cards.filter(c => c.status === 'activa');
 
   const totalCupo = cards.reduce((s, c) => s + parseFloat(c.cupoTotal ?? 0), 0);
   const totalUsado = cards.reduce((s, c) => s + (parseFloat(c.cupoTotal ?? 0) - parseFloat(c.cupoDisponible ?? c.cupoTotal ?? 0)), 0);
@@ -99,6 +107,18 @@ export const CreditCards = () => {
           <Plus size={15} /> Nueva Tarjeta
         </button>
       </div>
+
+      {/* ── Movimientos de Gmail que no se pudieron asignar a una tarjeta ── */}
+      {!loading && !error && sinTarjeta.length > 0 && (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>
+            Movimientos sin tarjeta asignada ({sinTarjeta.length})
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {sinTarjeta.map(item => <PendingRow key={item.id} item={item} cards={cardsActivas} onDone={load} />)}
+          </div>
+        </div>
+      )}
 
       {/* ── Banner consolidado: estado de cuenta del mes ──────────────── */}
       {!loading && !error && cardsConDeuda.length > 0 && (
@@ -263,6 +283,19 @@ export const CreditCards = () => {
                       <div style={{ color: 'white', fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>{card.nombre}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                      {pending.some(p => p.creditCardId === card.id) && (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); navigate(`/credit-cards/${card.id}/pending`); }}
+                          aria-label={`Ver movimientos por aprobar de ${card.nombre}`}
+                          style={{
+                            background: 'rgba(255,255,255,0.9)', color: 'var(--brand-700)', border: 'none', cursor: 'pointer',
+                            fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 99,
+                          }}
+                        >
+                          {pending.filter(p => p.creditCardId === card.id).length} por aprobar
+                        </button>
+                      )}
                       {statusLabel && (
                         <span style={{
                           background: card.status === 'bloqueada' ? 'rgba(239,68,68,0.85)' : 'rgba(107,114,128,0.85)',

@@ -9,7 +9,7 @@ de un rediseño; no hay reglas visuales vigentes.
 /                          Dashboard
 /subscriptions             lista | /new | /:id | /:id/edit
 /credit-cards              lista | /new
-/credit-cards/:id          CreditCardLayout (tabs anidados): index=CardOverview, /statement, /purchases, /analysis
+/credit-cards/:id          CreditCardLayout (tabs anidados): index=CardOverview, /statement, /purchases, /pending (movimientos por aprobar de esa tarjeta, detectados en Gmail), /analysis
 /credit-cards/:id/edit
 /credit-cards/:id/purchases/new      CreditCardPurchaseForm (compartido con edición)
 /credit-cards/:id/purchases/import   importar CSV/Excel
@@ -19,7 +19,6 @@ de un rediseño; no hay reglas visuales vigentes.
 /bank-credits/:id          BankCreditLayout: index=BankCreditOverview, /schedule, /analysis
 /bank-credits/:id/edit
 /income                    lista | /new | /:id/edit
-/card-inbox                Movimientos por aprobar (alertas de tarjetas detectadas en Gmail)
 /reports  /profile  /onboarding
 /login /register /forgot-password /reset-password   (públicas)
 /privacy                   política de privacidad (pública; la exige Google para publicar la app OAuth de Gmail)
@@ -37,3 +36,10 @@ Detalles con pestañas = layout + rutas anidadas reales; estado compartido con `
   `TASA_USURA_EA`, `buildSchedule`, `buildCardStats`), `utils/csvImport.js`.
 - Componentes funcionales en `components/ui/`: `MoneyInput`, `DayOfMonthPicker`, `LoadError`, `ErrorBoundary`; resto (`PageHeader`,
   `StatCard`, `SectionCard`, `TabNav`, `Stepper`, …) son presentación y pueden cambiar con el rediseño.
+
+## Movimientos por aprobar (Gmail)
+Ya no hay página ni entrada en el sidebar (se quitó `/card-inbox`). Se ven en la pestaña **Por aprobar** de cada tarjeta
+(`pages/credit-card/CardPending.jsx`, badge con la cantidad; `CreditCardLayout` los carga y los pasa por el contexto del `Outlet`).
+En la lista `CreditCards.jsx` cada tarjeta con pendientes muestra el badge "N por aprobar" y arriba aparece la sección
+**Movimientos sin tarjeta asignada** (con selector de tarjeta). Piezas compartidas: `components/credit-cards/PendingMovements.jsx`
+(`PendingRow`, `SyncButton`). "Sincronizar ahora" vive en la pestaña.

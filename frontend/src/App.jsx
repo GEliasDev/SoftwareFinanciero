@@ -33,6 +33,7 @@ const CardOverview = lazyNamed(() => import('./pages/credit-card/CardOverview'),
 const CardStatementPage = lazyNamed(() => import('./pages/credit-card/CardStatementPage'), 'CardStatementPage');
 const CardPurchases = lazyNamed(() => import('./pages/credit-card/CardPurchases'), 'CardPurchases');
 const CardAnalysis = lazyNamed(() => import('./pages/credit-card/CardAnalysis'), 'CardAnalysis');
+const CardPending = lazyNamed(() => import('./pages/credit-card/CardPending'), 'CardPending');
 const CreditCardEdit = lazyNamed(() => import('./pages/CreditCardEdit'), 'CreditCardEdit');
 const CreditCardPurchaseDetail = lazyNamed(() => import('./pages/CreditCardPurchaseDetail'), 'CreditCardPurchaseDetail');
 const CreditCardPurchaseForm = lazyNamed(() => import('./pages/CreditCardPurchaseForm'), 'CreditCardPurchaseForm');
@@ -56,7 +57,6 @@ const IncomeForm = lazyNamed(() => import('./pages/IncomeForm'), 'IncomeForm');
 const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
 const Profile = lazyNamed(() => import('./pages/Profile'), 'Profile');
 const Onboarding = lazyNamed(() => import('./pages/Onboarding'), 'Onboarding');
-const CardInbox = lazyNamed(() => import('./pages/CardInbox'), 'CardInbox');
 const PrivacyPolicy = lazyNamed(() => import('./pages/PrivacyPolicy'), 'PrivacyPolicy');
 
 const ProtectedRoute = ({ children }) => {
@@ -107,6 +107,7 @@ function App() {
             <Route index element={<CardOverview />} />
             <Route path="statement" element={<CardStatementPage />} />
             <Route path="purchases" element={<CardPurchases />} />
+            <Route path="pending" element={<CardPending />} />
             <Route path="analysis" element={<CardAnalysis />} />
           </Route>
           <Route path="credit-cards/:id/edit" element={<CreditCardEdit />} />
@@ -130,9 +131,6 @@ function App() {
           <Route path="income" element={<Income />} />
           <Route path="income/new" element={<IncomeForm />} />
           <Route path="income/:id/edit" element={<IncomeForm />} />
-
-          {/* Obligaciones personales */}
-          <Route path="card-inbox" element={<CardInbox />} />
 
           {/* Herramientas */}
           <Route path="reports" element={<Reports />} />
