@@ -26,8 +26,8 @@
   Cupo inconsistente: `node backend/scripts/fix-cupo-disponible.js` (dry-run; `--apply`).
 
 ## Fechas (UTC-5: Colombia)
-- **Nunca `toISOString()` para "hoy"/mes**: tras ~7 p. m. da el día/mes siguiente. Frontend: `localISODate()`, `monthKey()`,
-  `addMonths()`, `fmtDate()` (`utils/format.js`). Backend: `localToday()`/`localMonth()` (`utils/localDate.js`).
+- **Nunca `toISOString()` para "hoy"/mes**: tras ~7 p. m. da el día/mes siguiente. Frontend: `localISODate()`,
+  `fmtDate()` (`utils/format.js`). Backend: `localToday()` (`utils/localDate.js`).
   (`new Date(a,m,d).toISOString()` a medianoche local SÍ es seguro; el problema es `new Date()` con hora actual.)
 - **`new Date('YYYY-MM-DD')` parsea en UTC** y retrocede un día en local (`'2026-07-01'.getMonth()` = junio; un 1 de enero
   mostraba "31 dic"). Para MOSTRAR/comparar un DATEONLY: `parseLocalDate()`/`fmtDateLong()`. Para año/mes de un DATEONLY:

@@ -14,7 +14,7 @@ Utils en `backend/src/utils/`: `emailService.js`, `logger.js` (winston), `curren
 (`toCOP(monto, moneda)`, env `TRM_USD`/`TRM_EUR`), `categories.js` (`CATEGORIAS`, taxonomía única de
 gasto; la usa `creditCard.schema.js`; el frontend tiene su
 propio `CATEGORIES` en `utils/creditCard.js` — mantener en sync a mano), `cycleDay.js`
-(`effectiveDayInMonth`), `localDate.js` (`localToday`, `localMonth`).
+(`effectiveDayInMonth`), `localDate.js` (`localToday`).
 
 ## Base de datos
 - PostgreSQL en Supabase. Credenciales en `backend/.env` (no leer). SSL automático salvo localhost.

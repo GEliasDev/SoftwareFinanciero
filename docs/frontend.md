@@ -32,7 +32,7 @@ Detalles con pestañas = layout + rutas anidadas reales; estado compartido con `
 - `GlobalSearch` (Ctrl+K → módulo `search`), dark mode (`data-theme` en `<html>`, `localStorage['debti-theme']`),
   PWA (`sw.js` + workbox), push (`pushService.js`).
 - Utilidades — no duplicar: `utils/format.js` (`fmt`, `fmtDateLong`, `parseLocalDate`, `effectiveDayInMonth`, `nextOccurrence`,
-  `daysUntil`, `urgencyStyle`, `localISODate`, `monthKey`, `addMonths`, `capFirst`, `parseMoneyInput`, `formatMoneyInput`),
+  `daysUntil`, `urgencyStyle`, `localISODate`, `capFirst`, `parseMoneyInput`, `formatMoneyInput`),
   `utils/currency.js` (`toCOP`, `subMonthlyCOP`, `subAnnualCOP`; espejo de backend), `utils/creditCard.js` (`CATEGORIES`,
   `TASA_USURA_EA`, `buildSchedule`, `buildCardStats`), `utils/csvImport.js`.
 - Componentes funcionales en `components/ui/`: `MoneyInput`, `DayOfMonthPicker`, `LoadError`, `ErrorBoundary`; resto (`PageHeader`,

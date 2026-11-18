@@ -121,16 +121,6 @@ export const effectiveDayInMonth = (day, year, monthIndex) => {
 export const localISODate = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-// Date -> "YYYY-MM" en hora local
-export const monthKey = (d = new Date()) => localISODate(d).slice(0, 7);
-
-// "YYYY-MM" ± n meses -> "YYYY-MM" (aritmética local, sin parseo UTC)
-export const addMonths = (mKey, delta) => {
-  const [y, mo] = mKey.split('-').map(Number);
-  const d = new Date(y, mo - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-
 // Fecha desde un Date, un DATEONLY ("2026-05-30") o un ISO con hora -> "30 may 2026"
 export const fmtDateLong = (x) => {
   const d = parseLocalDate(x);
