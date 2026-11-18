@@ -16,7 +16,7 @@ const MESES = { ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6, jul: 7, ago: 8, 
 // El cuerpo llega como tabla markdown ("| Monto | $21.000 |") o aplanado
 // (snippet). Se normaliza a una sola línea con espacios simples para que la
 // misma regex sirva en ambos casos.
-const normalizar = (texto) => String(texto ?? '')
+export const normalizar = (texto) => String(texto ?? '')
     .replace(/\|/g, ' ')
     .replace(/-{3,}/g, ' ')
     .replace(/\s+/g, ' ')

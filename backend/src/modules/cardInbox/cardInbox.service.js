@@ -4,7 +4,7 @@ import { GmailConnection } from './gmailConnection.model.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { decryptToken } from './gmailToken.js';
 import { getAccessToken, listMessageIds, getMessage } from './gmailApi.js';
-import { parseRappiCardEmail, REMITENTE_RAPPICARD } from './parsers/rappicard.parser.js';
+import { FUENTES, consultaGmail, parseCorreo } from './parsers/index.js';
 import { CreditCardService } from '../creditCard/creditCard.service.js';
 import { approveSchema } from './cardInbox.schema.js';
 import { AppError } from '../../middlewares/appError.js';
@@ -14,25 +14,26 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 const PRIMERA_LECTURA_DIAS = 30;
 
 // Tarjeta del usuario a la que pertenece el movimiento: por últimos 4 dígitos. Si el
-// correo no los trae (avance de RappiCard) o no coinciden (una misma RappiCard tiene
-// número físico y digital, ej. *1625 y *7583) y el usuario tiene UNA sola tarjeta de esa
-// entidad, esa. Si hay duda se deja sin asignar para que el usuario elija al aprobar.
+// correo no los trae (avance de RappiCard, pagos de Guama) o no coinciden (una misma
+// RappiCard tiene número físico y digital, ej. *1625 y *7583) y el usuario tiene UNA sola
+// tarjeta de esa entidad, esa. Si hay duda se deja sin asignar para que el usuario elija al aprobar.
 export const resolverTarjeta = (cards, mov) => {
     const exacta = mov.ultimos4 ? cards.find(c => c.ultimos4 === mov.ultimos4 || c.ultimos4Fisica === mov.ultimos4) : null;
     if (exacta) return exacta.id;
-    const candidatas = cards.filter(c => /rappi/i.test(`${c.nombre} ${c.entidad}`));
+    const entidad = FUENTES.find(f => f.fuente === mov.fuente)?.entidad ?? /rappi/i;
+    const candidatas = cards.filter(c => entidad.test(`${c.nombre} ${c.entidad}`));
     return candidatas.length === 1 ? candidatas[0].id : null;
 };
 
 export const CardInboxService = {
-    // Lee los correos nuevos del remitente de RappiCard y crea los pendientes.
+    // Lee los correos nuevos de los bancos configurados (parsers/index.js) y crea los pendientes.
     syncUser: async (userId) => {
         const conn = await GmailConnection.findOne({ where: { userId } });
         if (!conn) return { nuevos: 0, revisados: 0 };
 
         const accessToken = await getAccessToken(decryptToken(conn.refreshToken));
         const inicio = conn.lastSyncAt ? new Date(conn.lastSyncAt.getTime() - DIA_MS) : new Date(Date.now() - PRIMERA_LECTURA_DIAS * DIA_MS);
-        const ids = await listMessageIds(accessToken, `from:${REMITENTE_RAPPICARD} after:${Math.floor(inicio.getTime() / 1000)}`);
+        const ids = await listMessageIds(accessToken, `(${consultaGmail()}) after:${Math.floor(inicio.getTime() / 1000)}`, 200);
 
         const cards = await CreditCard.findAll({ where: { userId, status: 'activa' }, attributes: ['id', 'nombre', 'entidad', 'ultimos4', 'ultimos4Fisica'] });
         // Pendientes que quedaron sin tarjeta (p. ej. antes de cargar los últimos 4): reintentar.
@@ -51,7 +52,7 @@ export const CardInboxService = {
             const msg = await getMessage(accessToken, id);
             let mov = null;
             for (const body of msg.texts) {
-                mov = parseRappiCardEmail({ subject: msg.subject, body });
+                mov = parseCorreo({ from: msg.from, subject: msg.subject, body });
                 if (mov) break;
             }
             if (!mov) continue; // extracto, publicidad, etc.
@@ -117,7 +118,7 @@ export const CardInboxService = {
             creado = await CreditCardService.createPurchase(creditCardId, {
                 ...base,
                 descripcion: ajustes.descripcion ?? item.comercio ?? 'Compra RappiCard',
-                numeroCuotas: ajustes.numeroCuotas ?? 1,
+                numeroCuotas: ajustes.numeroCuotas ?? item.numeroCuotas ?? 1,
                 categoria: ajustes.categoria ?? 'otros',
             }, userId, false);
         }

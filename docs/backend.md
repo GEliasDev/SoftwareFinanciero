@@ -122,22 +122,31 @@ dineroLibre = Σ Income.monto (activos)
   `.webmanifest`); tolerable, o fijar header `Content-Type: application/json` en `/manifest.webmanifest`.
 
 ## cardInbox — movimientos por correo (en construcción)
-Meta: leer alertas de tarjetas desde Gmail (OAuth `gmail.readonly`, un banco primero) y proponerlas en una bandeja de pendientes.
+Meta: leer alertas de tarjetas desde Gmail (OAuth `gmail.readonly`; RappiCard, Bancolombia, Nu y Guama) y proponerlas en una bandeja de pendientes.
 Hecho: `modules/cardInbox/parsers/rappicard.parser.js` (puro, con tests). RappiCard = remitente `noreply@rappicard.co`; tipos por asunto:
 `Resumen de transacción` (compra: monto, `*1625`, autorización, comercio, fecha; NO trae cuotas), `Avance Digital` (monto, cuotas, tasas,
 costo transaccional, total; NO trae tarjeta), `Comprobante de pago` (pago de la tarjeta). Extractos y publicidad se ignoran.
 Montos es-CO (`$21.000`, `$50.000,00`) salvo `Costo Transaccional` (`7000.00`). Huella antidupe: `huella` del parser.
-Bancolombia (`alertasynotificaciones@bancolombia.com.co`) solo trae débito/transferencias en este buzón: fuera de alcance.
+Más bancos (2026-11-18), un parser puro por banco y el registro `parsers/index.js` (`FUENTES`: remitente, filtro de Gmail, regex de
+entidad, parser; `consultaGmail()`, `parseCorreo()` elige parser por el `From` real). Para sumar un banco: parser + entrada en `FUENTES`.
+- **Bancolombia** (`*@notificacionesbancolombia.com`, asunto siempre "Alertas y Notificaciones"): solo compras con **`T.Cred *7439`**
+  (filtro Gmail `"T.Cred"`); la compra con débito (`T.Deb`), transferencias, nómina y pagos desde cuenta se ignoran. Sin autorización:
+  la huella usa fecha, hora, monto y comercio. Monto `COP3.200,00` o `$10.500,00`, fecha `dd/mm/aaaa`.
+- **Guama** (`info@guamacard.com`): `Compra aprobada` (tarjeta `7315`, valor, cuotas —puede venir vacío—, fecha, hora) y
+  `Tu pago en Guama fue aprobado` (sin tarjeta). Pagos rechazados, códigos y avisos se ignoran.
+- **Nu** (`nu@nu.com.co`): solo `¡Ya entró tu pago!` (tarjeta destino `**** 8063`, hora de 12 h, huella por ID de transacción). Nu no
+  manda correo por compra, así que sus compras no entran por este flujo.
 Hecho también: tablas `gmail_connections` y `card_inbox_items` (migración `20261029170000`), conexión OAuth en
 `cardInbox/gmail.service.js` + `gmail.routes.js` (`/api/gmail`: `status`, `auth-url`, `DELETE /`, `callback` público),
 refresh token cifrado AES-256-GCM (`gmailToken.js`, clave `GMAIL_TOKEN_KEY` = 64 hex). `state` del OAuth = JWT con
 `purpose:'gmail-oauth'` (el callback no lleva sesión). UI: sección "Movimientos desde Gmail" en `Profile.jsx`.
 Env: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (debe coincidir con la autorizada en Google Cloud),
 `GMAIL_TOKEN_KEY`, `FRONTEND_URL` (destino tras el callback; por defecto `http://localhost:5174`). Sin ellas `status.configured=false`.
-Lectura: `cardInbox.service.js::syncUser` (Gmail `from:noreply@rappicard.co after:<lastSyncAt-1d>`, 1ª vez 30 días) → `gmailApi.js` (HTML→texto,
+Lectura: `cardInbox.service.js::syncUser` (Gmail `consultaGmail() after:<lastSyncAt-1d>`, hasta 200 correos, 1ª vez 30 días) → `gmailApi.js` (HTML→texto,
 asunto RFC 2047) → parser → `CardInboxItem` `pendiente` (idempotente por `huella`). Job `jobs/cardInboxSyncJob.js` cada 15 min; manual
 `POST /api/card-inbox/sync`; lista `GET /api/card-inbox?status=`. Tarjeta: `resolverTarjeta` (últimos 4; si no coincide y hay UNA sola tarjeta
-Rappi → esa; una RappiCard tiene número físico y digital distintos, ej. *1625 y *7583). Cada sync reintenta asignar pendientes sin tarjeta.
+de la entidad de la fuente (`FUENTES[].entidad`, p. ej. Rappi/Bancolombia/Nu/Guama) → esa; una RappiCard tiene número físico y digital
+distintos, ej. *1625 y *7583, y se guardan en `ultimos4`/`ultimos4Fisica`). Cada sync reintenta asignar pendientes sin tarjeta.
 Aprobación: `POST /api/card-inbox/:id/approve` (ajustes opcionales: `creditCardId`, `numeroCuotas`, `categoria`, `descripcion`) crea la compra
 (`createPurchase`, 1 cuota por defecto) o el avance (`createAdvance`, con las cuotas del correo) por el flujo normal de tarjetas, así cupo e
 intereses cuadran; `POST /:id/discard` descarta. Los pagos solo se descartan ("marcar como visto"): no hay registro de pago general.
