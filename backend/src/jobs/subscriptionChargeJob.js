@@ -22,7 +22,7 @@ const ymd = (d) =>
  *
  * El cargo se registra como CreditCardPurchase tipo 'compra' (no un tipo
  * nuevo) para no tener que tocar cada filtro `tipo === 'compra'` del
- * proyecto (Presupuesto, analytics, listados) — así aparece igual que
+ * proyecto (analytics, listados) — así aparece igual que
  * cualquier compra real, que es lo que es.
  */
 export const generateSubscriptionCharges = async () => {

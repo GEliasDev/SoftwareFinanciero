@@ -680,7 +680,7 @@ export const Profile = () => {
           <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Exporta tus datos</h2>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
-          Descarga toda tu información (tarjetas, créditos, suscripciones, ingresos, deudas, metas, presupuesto e historial) en un solo archivo .json.
+          Descarga toda tu información (tarjetas, créditos, suscripciones, ingresos e historial) en un solo archivo .json.
         </p>
         <button className="btn btn-secondary" onClick={handleExportData} disabled={exportLoading}>
           <Download size={14} /> {exportLoading ? 'Generando...' : 'Descargar mis datos'}

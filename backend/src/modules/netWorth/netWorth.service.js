@@ -1,6 +1,5 @@
 import { Op } from 'sequelize';
 import { NetWorthSnapshot } from './netWorth.model.js';
-import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { BankCredit } from '../bankCredit/bankCredit.model.js';
 
@@ -14,17 +13,15 @@ const currentMes = () => {
 };
 
 export const NetWorthService = {
-    // Activos: ahorro acumulado. Pasivos: cupo de tarjeta ya usado + saldo
-    // pendiente de créditos bancarios (un compromiso fijo mensual no es un
-    // pasivo con saldo).
+    // Activos: hoy no hay ninguna fuente (se retiró Metas de ahorro), queda en 0.
+    // Pasivos: cupo de tarjeta ya usado + saldo pendiente de créditos bancarios.
     computeCurrent: async (userId) => {
-        const [savings, cards, credits] = await Promise.all([
-            SavingsGoal.findAll({ where: { userId } }),
+        const [cards, credits] = await Promise.all([
             CreditCard.findAll({ where: { userId } }),
             BankCredit.findAll({ where: { userId, status: { [Op.in]: ['activo', 'en_mora'] } } }),
         ]);
 
-        const activos = savings.reduce((s, g) => s + toNum(g.montoAcumulado), 0);
+        const activos = 0;
         const deudaTarjetas = cards.reduce((s, c) => s + (toNum(c.cupoTotal) - toNum(c.cupoDisponible)), 0);
         const deudaCreditos = credits.reduce((s, c) => s + toNum(c.saldoPendiente), 0);
         const pasivos = deudaTarjetas + deudaCreditos;

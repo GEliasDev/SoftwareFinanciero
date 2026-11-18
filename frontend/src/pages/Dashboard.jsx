@@ -6,7 +6,7 @@ import { AuthService } from '../services/authService';
 import { AnalyticsService } from '../services/analyticsService';
 import {
   Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus,
-  PieChart as PieIcon, TrendingUp, TrendingDown, Target, CalendarCheck, ChevronRight,
+  PieChart as PieIcon, TrendingUp, TrendingDown, ChevronRight,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -21,8 +21,6 @@ const DIST_COLORS = {
   creditCards:   '#3B82F6',
   bankCredits:   '#DC2626',
   subscriptions: '#D97706',
-  personalDebts: '#7C3AED',
-  savings:       '#059669',
 };
 
 const UPCOMING_TYPE = {
@@ -81,7 +79,6 @@ export const Dashboard = () => {
   // ── Valores derivados ──────────────────────────────────────────────────────
   const obl          = summary?.obligations ?? {};
   const totalIncome  = summary?.income?.total ?? 0;
-  const savings      = obl.savings ?? 0;
 
   // Tarjetas: fuente ÚNICA de verdad. `buildCardStats` (la MISMA que usa la
   // página de Tarjetas) calcula la obligación por ciclo activo, así que un
@@ -96,7 +93,7 @@ export const Dashboard = () => {
   // El total del backend trae su propio cálculo de tarjetas; lo sustituimos por
   // el de buildCardStats y recalculamos dinero libre en consecuencia.
   const totalObl     = (obl.total ?? 0) - (obl.creditCards ?? 0) + cardsObl;
-  const dineroLibre  = summary ? totalIncome - totalObl - savings : null;
+  const dineroLibre  = summary ? totalIncome - totalObl : null;
   const health       = summary?.health;
   const healthTone   = health ? (HEALTH_TONE[health.label] ?? HEALTH_TONE['Regular']) : null;
 
@@ -107,8 +104,6 @@ export const Dashboard = () => {
     { key: 'creditCards',   name: 'Tarjetas de crédito', value: cardsObl,          color: DIST_COLORS.creditCards,   items: cardsBreakdown },
     { key: 'bankCredits',   name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: bd.bankCredits   ?? [] },
     { key: 'subscriptions', name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions, items: bd.subscriptions ?? [] },
-    { key: 'personalDebts', name: 'Compromisos fijos',   value: obl.personalDebts ?? 0, color: DIST_COLORS.personalDebts, items: bd.personalDebts ?? [] },
-    { key: 'savings',       name: 'Metas de ahorro',     value: obl.savings       ?? 0, color: DIST_COLORS.savings,       items: bd.savings       ?? [] },
   ].filter(d => d.value > 0);
 
   const totalDist    = dist.reduce((a, d) => a + d.value, 0);
@@ -217,7 +212,6 @@ export const Dashboard = () => {
                   {[
                     { label: 'Ingresos',       value: totalIncome, Icon: TrendingUp,   color: 'var(--pos-600)',  sign: null },
                     { label: 'Compromisos',    value: totalObl,    Icon: TrendingDown,  color: 'var(--warn-600)', sign: '−' },
-                    { label: 'Metas ahorro',   value: savings,     Icon: Target,        color: 'var(--brand-600)',sign: '−' },
                   ].map(({ label, value, Icon, color, sign }) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       {sign && (
@@ -236,7 +230,7 @@ export const Dashboard = () => {
           )}
 
           {/* ═══════════════════════════════════════════════════════════════
-              KPI ROW — Ingresos / Compromisos / Metas / Deuda
+              KPI ROW — Ingresos / Compromisos / Deuda
           ═══════════════════════════════════════════════════════════════ */}
           <div className="kpi-grid" style={{ marginBottom: 16 }}>
             <StatCard
@@ -250,24 +244,15 @@ export const Dashboard = () => {
             <StatCard
               label="Compromisos mensuales"
               value={fmt(totalObl)}
-              delta="Tarjetas + créditos + suscripciones + compromisos fijos"
+              delta="Tarjetas + créditos + suscripciones"
               icon={TrendingDown}
               tone="warn"
-              onClick={() => navigate('/fixed-commitments')}
-            />
-            <StatCard
-              label="Ahorro mensual"
-              value={fmt(savings)}
-              delta="Aporte a metas activas"
-              icon={Target}
-              tone="brand"
-              onClick={() => navigate('/savings')}
             />
             {totalDebt > 0 && (
               <StatCard
                 label="Deuda total"
                 value={fmt(totalDebt)}
-                delta="Créditos + tarjetas + deudas personales"
+                delta="Créditos + tarjetas"
                 icon={Landmark}
                 tone="neg"
                 onClick={() => navigate('/bank-credits')}
@@ -280,10 +265,10 @@ export const Dashboard = () => {
           ═══════════════════════════════════════════════════════════════ */}
           <div className="split-grid" style={{ marginBottom: 16 }}>
 
-            {/* Distribución — 5 categorías */}
+            {/* Distribución — 3 categorías */}
             <SectionCard
               title="¿A dónde va tu dinero?"
-              subtitle="Compromisos + metas este mes"
+              subtitle="Compromisos este mes"
               icon={PieIcon}
             >
               {dist.length > 0 ? (
@@ -525,13 +510,11 @@ export const Dashboard = () => {
               )}
             </SectionCard>
 
-            {/* Accesos rápidos — 6 acciones en grilla 3×2 */}
+            {/* Accesos rápidos — 4 acciones */}
             <SectionCard title="Registrar rápido" subtitle="Nuevo movimiento en un clic" icon={Plus}>
               <div className="quick-actions-grid">
                 {[
                   { Icon: Wallet,     label: 'Ingreso',     path: '/income/new' },
-                  { Icon: CalendarCheck, label: 'Compromiso', path: '/fixed-commitments/new' },
-                  { Icon: Target,     label: 'Meta',        path: '/savings/new' },
                   { Icon: Repeat,     label: 'Suscripción', path: '/subscriptions/new' },
                   { Icon: CreditCard, label: 'Tarjeta',     path: '/credit-cards/new' },
                   { Icon: Landmark,   label: 'Crédito',     path: '/bank-credits/new' },

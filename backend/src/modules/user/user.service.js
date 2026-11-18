@@ -16,9 +16,6 @@ import { CreditCardPurchase } from '../creditCard/creditCardPurchase.model.js';
 import { BankCredit } from '../bankCredit/bankCredit.model.js';
 import { Subscription } from '../suscription/subscription.model.js';
 import { Income } from '../income/income.model.js';
-import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
-import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
-import { Budget, BudgetExpense } from '../budget/budget.model.js';
 import { NetWorthSnapshot } from '../netWorth/netWorth.model.js';
 
 const SALT_ROUNDS = 10;
@@ -181,17 +178,13 @@ export const UserService = {
         if (!user) throw new AppError('Usuario no encontrado', 404);
 
         const [
-            creditCards, bankCredits, subscriptions, incomes, personalDebts,
-            savingsGoals, budgets, budgetExpenses, netWorthHistory,
+            creditCards, bankCredits, subscriptions, incomes,
+            netWorthHistory,
         ] = await Promise.all([
             CreditCard.findAll({ where: { userId }, include: [CreditCardPurchase] }),
             BankCredit.findAll({ where: { userId } }),
             Subscription.findAll({ where: { userId } }),
             Income.findAll({ where: { userId } }),
-            PersonalDebt.findAll({ where: { userId } }),
-            SavingsGoal.findAll({ where: { userId } }),
-            Budget.findAll({ where: { userId } }),
-            BudgetExpense.findAll({ where: { userId } }),
             NetWorthSnapshot.findAll({ where: { userId }, order: [['mes', 'ASC']] }),
         ]);
 
@@ -203,9 +196,6 @@ export const UserService = {
             creditosBancarios: bankCredits,
             suscripciones: subscriptions,
             ingresos: incomes,
-            deudasPersonales: personalDebts,
-            metasAhorro: savingsGoals,
-            presupuesto: { categorias: budgets, gastos: budgetExpenses },
             patrimonioNeto: netWorthHistory,
         };
     },

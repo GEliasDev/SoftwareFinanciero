@@ -3,8 +3,6 @@ import { Subscription } from '../suscription/subscription.model.js';
 import { BankCredit } from '../bankCredit/bankCredit.model.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { Income } from '../income/income.model.js';
-import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
-import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
 
 // Escapa los comodines de LIKE: sin esto, buscar "%" o "_" los interpretaba
 // como patrón y devolvía TODO (o coincidencias raras) en vez de buscar el
@@ -16,13 +14,11 @@ export const SearchService = {
     search: async (userId, q) => {
         if (!q || q.trim().length < 2) return [];
 
-        const [subs, credits, cards, incomes, debts, savings] = await Promise.all([
+        const [subs, credits, cards, incomes] = await Promise.all([
             Subscription.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
             BankCredit.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
             CreditCard.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
             Income.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
-            PersonalDebt.findAll({ where: { userId, tipo: 'gasto', nombre: like(q) }, limit: 5 }),
-            SavingsGoal.findAll({ where: { userId, nombre: like(q) }, limit: 5 }),
         ]);
 
         const results = [];
@@ -53,20 +49,6 @@ export const SearchService = {
             name: i.nombre,
             meta: `Ingreso · ${i.tipo || 'fijo'}`,
             route: `/income`,
-        }));
-
-        debts.forEach(d => results.push({
-            type: 'personal_debt', id: d.id,
-            name: d.nombre,
-            meta: `Compromiso fijo · ${d.status}`,
-            route: `/fixed-commitments/${d.id}`,
-        }));
-
-        savings.forEach(g => results.push({
-            type: 'savings_goal', id: g.id,
-            name: g.nombre,
-            meta: `Meta de ahorro · ${g.status}`,
-            route: `/savings/${g.id}`,
         }));
 
         return results.slice(0, 12);

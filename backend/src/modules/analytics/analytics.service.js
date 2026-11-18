@@ -3,8 +3,6 @@ import { BankCredit } from '../bankCredit/bankCredit.model.js';
 import { CreditCard } from '../creditCard/creditCard.model.js';
 import { CreditCardPurchase } from '../creditCard/creditCardPurchase.model.js';
 import { Income } from '../income/income.model.js';
-import { PersonalDebt } from '../personalDebt/personalDebt.model.js';
-import { SavingsGoal } from '../savingsGoal/savingsGoal.model.js';
 import { Op } from 'sequelize';
 import { toCOP } from '../../utils/currency.js';
 import { effectiveDayInMonth } from '../../utils/cycleDay.js';
@@ -155,7 +153,7 @@ const computeHealthScore = (subscriptions, creditCards, bankCredits) => {
 export const AnalyticsService = {
 
     getSummary: async (userId) => {
-        const [subscriptions, bankCredits, creditCards, incomes, personalDebts, savingsGoals] = await Promise.all([
+        const [subscriptions, bankCredits, creditCards, incomes] = await Promise.all([
             Subscription.findAll({ where: { userId } }),
             BankCredit.findAll({ where: { userId } }),
             CreditCard.findAll({
@@ -163,8 +161,6 @@ export const AnalyticsService = {
                 include: [{ model: CreditCardPurchase, as: 'CreditCardPurchases' }],
             }),
             Income.findAll({ where: { userId, status: 'activo' } }),
-            PersonalDebt.findAll({ where: { userId, tipo: 'gasto', status: 'activo' } }),
-            SavingsGoal.findAll({ where: { userId, status: 'activo' } }),
         ]);
 
         // Las suscripciones con creditCardId se auto-cobran en la tarjeta
@@ -203,12 +199,8 @@ export const AnalyticsService = {
         };
         const totalIncome = incomes.filter(i => !i.tipo || i.tipo === 'fijo' || isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
         const totalIncomeExtra = incomes.filter(i => i.tipo === 'extra' && isExtraThisMonth(i)).reduce((a, i) => a + toNum(i.monto), 0);
-        // Compromisos fijos mensuales activos (PersonalDebt tipo 'gasto').
-        const gastosActivos = personalDebts;
-        const monthlyPersonalDebts = gastosActivos.reduce((a, d) => a + toNum(d.montoCuota), 0);
-        const monthlySavings = savingsGoals.reduce((a, g) => a + toNum(g.aporteMensual), 0);
-        const totalObligaciones = monthlySubscriptions + monthlyBankCredits + monthlyCreditCards + monthlyPersonalDebts;
-        const dineroLibre = totalIncome - totalObligaciones - monthlySavings;
+        const totalObligaciones = monthlySubscriptions + monthlyBankCredits + monthlyCreditCards;
+        const dineroLibre = totalIncome - totalObligaciones;
 
         const health = computeHealthScore(subscriptions, creditCards, bankCredits);
 
@@ -297,13 +289,6 @@ export const AnalyticsService = {
                     monto: subMonthlyCOP(s),
                 }))
                 .sort((a, b) => b.monto - a.monto),
-            personalDebts: gastosActivos
-                .map(d => ({ id: d.id, nombre: d.nombre, detalle: d.categoria, monto: toNum(d.montoCuota) }))
-                .sort((a, b) => b.monto - a.monto),
-            savings: savingsGoals
-                .map(g => ({ id: g.id, nombre: g.nombre, detalle: g.emoji, monto: toNum(g.aporteMensual) }))
-                .filter(g => g.monto > 0)
-                .sort((a, b) => b.monto - a.monto),
         };
 
         return {
@@ -313,8 +298,6 @@ export const AnalyticsService = {
                 subscriptions: monthlySubscriptions,
                 bankCredits: monthlyBankCredits,
                 creditCards: monthlyCreditCards,
-                personalDebts: monthlyPersonalDebts,
-                savings: monthlySavings,
                 total: totalObligaciones,
             },
             breakdown,

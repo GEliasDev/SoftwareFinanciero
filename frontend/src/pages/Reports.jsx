@@ -8,16 +8,14 @@ import { NetWorthService } from '../services/netWorthService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
-import { PersonalDebtService } from '../services/personalDebtService';
 import { IncomeService } from '../services/incomeService';
-import { SavingsGoalService } from '../services/savingsGoalService';
 import { StatCard } from '../components/ui/StatCard';
 import { buildSchedule } from '../utils/creditCard';
 import { localISODate } from '../utils/format';
 import { subMonthlyCOP } from '../utils/currency';
 import {
   Download, FileText, TrendingUp, Calendar, Shield,
-  Repeat, CreditCard, Sliders, Wallet, Zap, TrendingDown, CalendarCheck,
+  CreditCard, Sliders, Wallet, Zap, TrendingDown,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -86,8 +84,6 @@ export const Reports = () => {
   const [subs, setSubs]       = useState([]);
   const [cards, setCards]     = useState([]);
   const [credits, setCredits] = useState([]);
-  const [debts, setDebts]     = useState([]);
-
 
   useEffect(() => {
     Promise.allSettled([
@@ -96,15 +92,13 @@ export const Reports = () => {
       SubscriptionService.getAll(),
       CreditCardService.getAll(),
       BankCreditService.getAll(),
-      PersonalDebtService.getAll(),
       NetWorthService.getHistory(),
-    ]).then(([s, t, subRes, cardRes, credRes, debtRes, nwRes]) => {
+    ]).then(([s, t, subRes, cardRes, credRes, nwRes]) => {
       if (s.status       === 'fulfilled') setSummary(s.value);
       if (t.status       === 'fulfilled') setTrend(t.value);
       if (subRes.status  === 'fulfilled') setSubs(subRes.value);
       if (cardRes.status === 'fulfilled') setCards(cardRes.value);
       if (credRes.status === 'fulfilled') setCredits(credRes.value);
-      if (debtRes.status === 'fulfilled') setDebts(debtRes.value);
       if (nwRes.status   === 'fulfilled') setNetWorth(nwRes.value);
     }).finally(() => setLoading(false));
   }, []);
@@ -112,13 +106,11 @@ export const Reports = () => {
   const health = summary?.health;
   const hc     = health ? HEALTH_COLOR(health.score) : null;
 
-  // 5 categorías de compromisos desde summary.obligations
+  // 3 categorías de compromisos desde summary.obligations
   const distribution = summary ? [
     { name: 'Suscripciones',       value: summary.obligations.subscriptions, color: DIST_COLORS[0] },
     { name: 'Créditos bancarios',  value: summary.obligations.bankCredits,   color: DIST_COLORS[1] },
     { name: 'Tarjetas de crédito', value: summary.obligations.creditCards,   color: DIST_COLORS[2] },
-    { name: 'Compromisos fijos',    value: summary.obligations.personalDebts, color: DIST_COLORS[3] },
-    { name: 'Metas de ahorro',     value: summary.obligations.savings,       color: DIST_COLORS[4] },
   ].filter(d => d.value > 0) : [];
 
 
@@ -134,12 +126,6 @@ export const Reports = () => {
     const totalSubs = subs
       .filter(s => s.status === 'activa' && !s.creditCardId)
       .reduce((acc, s) => acc + subMonthlyCOP(s), 0);
-
-    const totalPersonalDebts = debts
-      .filter(d => d.status === 'activo')
-      .reduce((acc, d) => acc + parseFloat(d.montoCuota ?? 0), 0);
-
-    const totalSavingsGoals = summary?.obligations?.savings ?? 0;
 
     return Array.from({ length: 12 }, (_, i) => {
       const d     = new Date(today.getFullYear(), today.getMonth() + i, 1);
@@ -160,7 +146,7 @@ export const Reports = () => {
         return acc + (slot ? slot.total : 0);
       }, 0);
 
-      const totalObligations = totalSubs + totalCredits + totalCards + totalPersonalDebts + totalSavingsGoals;
+      const totalObligations = totalSubs + totalCredits + totalCards;
 
       return {
         month: label.charAt(0).toUpperCase() + label.slice(1),
@@ -168,8 +154,6 @@ export const Reports = () => {
         Suscripciones: totalSubs,
         Créditos: totalCredits,
         Tarjetas: totalCards,
-        ObligacionesPers: totalPersonalDebts,
-        Metas: totalSavingsGoals,
         Obligaciones: totalObligations,
       };
     });
@@ -179,13 +163,11 @@ export const Reports = () => {
   const handleExportExcel = async () => {
     setExporting(true);
     try {
-      const [subsData, cardsData, creditsData, debtsData, incomesData, savingsData] = await Promise.all([
+      const [subsData, cardsData, creditsData, incomesData] = await Promise.all([
         SubscriptionService.getAll(),
         CreditCardService.getAll(),
         BankCreditService.getAll(),
-        PersonalDebtService.getAll(),
         IncomeService.getAll(),
-        SavingsGoalService.getAll(),
       ]);
 
       const wb = XLSX.utils.book_new();
@@ -202,8 +184,6 @@ export const Reports = () => {
         ['Suscripciones',       summary?.obligations?.subscriptions ?? 0, ''],
         ['Créditos bancarios',  summary?.obligations?.bankCredits   ?? 0, ''],
         ['Tarjetas de crédito', summary?.obligations?.creditCards   ?? 0, ''],
-        ['Compromisos fijos',    summary?.obligations?.personalDebts ?? 0, ''],
-        ['Metas de ahorro',     summary?.obligations?.savings       ?? 0, ''],
         ['Total compromisos',   summary?.obligations?.total         ?? 0, ''],
         ['', '', ''],
         ['Dinero libre mensual',  summary?.dineroLibre ?? 0, ''],
@@ -229,28 +209,12 @@ export const Reports = () => {
         ...cardsData.map(c => [c.nombre, c.entidad, c.cupoTotal, c.cupoDisponible, c.cupoTotal - c.cupoDisponible, `${c.tasaInteresMensual}%`, c.status]),
       ]), 'Tarjetas');
 
-      // Compromisos fijos
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['Nombre', 'Categoría', 'Cuota Mensual', 'Día Pago', 'Estado'],
-        ...debtsData.filter(d => d.tipo === 'gasto').map(d => [d.nombre, d.categoria ?? '—', d.montoCuota, d.diaPago, d.status]),
-      ]), 'Compromisos fijos');
-
       // Ingresos
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
         ['Nombre', 'Tipo', 'Monto', 'Frecuencia', 'Fuente', 'Fecha', 'Estado'],
         ...incomesData.map(i => [i.nombre, i.tipo ?? 'fijo', i.monto, i.frecuencia ?? 'mensual', i.fuente ?? '—', i.fecha ?? '—', i.status]),
       ]), 'Ingresos');
 
-      // Metas de ahorro
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['Nombre', 'Meta', 'Ahorrado', '% Completado', 'Aporte Mensual', 'Fecha Límite', 'Estado'],
-        ...savingsData.map(g => {
-          const meta    = parseFloat(g.montoMeta ?? 0);
-          const ahorrado = parseFloat(g.montoAhorrado ?? 0);
-          const pct = meta > 0 ? `${Math.round((ahorrado / meta) * 100)}%` : '—';
-          return [g.nombre, meta, ahorrado, pct, g.aporteMensual, g.fechaLimite ?? '—', g.status];
-        }),
-      ]), 'Metas de Ahorro');
 
       // Tendencia
       if (trend.length > 0) {
@@ -286,8 +250,6 @@ export const Reports = () => {
 
   const projectionData        = getProjectionData();
   const avgMonthlyObligations = projectionData.reduce((acc, m) => acc + m.Obligaciones, 0) / 12;
-
-  const activeGastos = debts.filter(d => d.tipo === 'gasto' && d.status === 'activo');
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -405,7 +367,7 @@ export const Reports = () => {
                 <StatCard
                   label="Dinero libre mensual"
                   value={fmt(summary.dineroLibre)}
-                  delta="Ingresos fijos − compromisos − metas"
+                  delta="Ingresos fijos − compromisos"
                   icon={TrendingDown}
                   tone={summary.dineroLibre >= 0 ? 'pos' : 'neg'}
                 />
@@ -560,34 +522,6 @@ export const Reports = () => {
             )}
           </div>
 
-          {/* Compromisos fijos */}
-          {activeGastos.length > 0 && (
-            <div className="card" style={{ padding: '20px 24px' }}>
-              <div className="card-header" style={{ marginBottom: 16, paddingBottom: 10 }}>
-                <div>
-                  <h3 className="card-title">Compromisos fijos</h3>
-                  <p className="card-subtitle">Lo que pagas cada mes sin falta</p>
-                </div>
-                <CalendarCheck size={16} style={{ color: 'var(--color-primary)' }} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-                {activeGastos.map(gasto => (
-                  <div key={gasto.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius-md)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Repeat size={13} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{gasto.nombre}</p>
-                        <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>Día {gasto.diaPago}</p>
-                      </div>
-                    </div>
-                    <span className="tabular" style={{ fontSize: 13, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>{fmt(gasto.montoCuota)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Comportamiento mensual (bar chart) */}
           {trend.length > 0 && (
             <div className="card" style={{ padding: '20px 24px' }}>
@@ -617,7 +551,7 @@ export const Reports = () => {
       {activeTab === 'projection' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-            <StatCard label="Obligaciones promedio"   value={fmt(avgMonthlyObligations)}         delta="Suscr. + tarjetas + créditos + compromisos fijos + metas" icon={CreditCard} tone="neg"  />
+            <StatCard label="Obligaciones promedio"   value={fmt(avgMonthlyObligations)}         delta="Suscr. + tarjetas + créditos" icon={CreditCard} tone="neg"  />
           </div>
 
           {/* Gráfico */}
@@ -635,8 +569,6 @@ export const Reports = () => {
                     <linearGradient id="gProjSub"  x1="0" y1="0" x2="0" y2="1"><stop offset="5%"  stopColor="#047857" stopOpacity={0.15} /><stop offset="95%" stopColor="#047857" stopOpacity={0} /></linearGradient>
                     <linearGradient id="gProjCard" x1="0" y1="0" x2="0" y2="1"><stop offset="5%"  stopColor="#D97706" stopOpacity={0.15} /><stop offset="95%" stopColor="#D97706" stopOpacity={0} /></linearGradient>
                     <linearGradient id="gProjCred" x1="0" y1="0" x2="0" y2="1"><stop offset="5%"  stopColor="#DC2626" stopOpacity={0.15} /><stop offset="95%" stopColor="#DC2626" stopOpacity={0} /></linearGradient>
-                    <linearGradient id="gProjDebt" x1="0" y1="0" x2="0" y2="1"><stop offset="5%"  stopColor="#7C3AED" stopOpacity={0.15} /><stop offset="95%" stopColor="#7C3AED" stopOpacity={0} /></linearGradient>
-                    <linearGradient id="gProjMeta" x1="0" y1="0" x2="0" y2="1"><stop offset="5%"  stopColor="#059669" stopOpacity={0.15} /><stop offset="95%" stopColor="#059669" stopOpacity={0} /></linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
@@ -646,8 +578,6 @@ export const Reports = () => {
                   <Area type="monotone" dataKey="Suscripciones"                      stackId="a" stroke="#047857" fill="url(#gProjSub)"  strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Tarjetas"                           stackId="a" stroke="#D97706" fill="url(#gProjCard)" strokeWidth={1.5} />
                   <Area type="monotone" dataKey="Créditos"                           stackId="a" stroke="#DC2626" fill="url(#gProjCred)" strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="ObligacionesPers" name="Compromisos fijos" stackId="a" stroke="#7C3AED" fill="url(#gProjDebt)" strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="Metas"            name="Metas"      stackId="a" stroke="#059669" fill="url(#gProjMeta)" strokeWidth={1.5} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -664,8 +594,6 @@ export const Reports = () => {
                     <th style={{ textAlign: 'right' }}>Suscripciones</th>
                     <th style={{ textAlign: 'right' }}>Tarjetas</th>
                     <th style={{ textAlign: 'right' }}>Créditos</th>
-                    <th style={{ textAlign: 'right' }}>Compromisos</th>
-                    <th style={{ textAlign: 'right' }}>Metas</th>
                     <th style={{ textAlign: 'right' }}>Total</th>
                   </tr>
                 </thead>
@@ -676,8 +604,6 @@ export const Reports = () => {
                       <td className="tabular" data-label="Suscripciones" style={{ textAlign: 'right' }}>{fmt(m.Suscripciones)}</td>
                       <td className="tabular" data-label="Tarjetas"      style={{ textAlign: 'right' }}>{fmt(m.Tarjetas)}</td>
                       <td className="tabular" data-label="Créditos"      style={{ textAlign: 'right' }}>{fmt(m.Créditos)}</td>
-                      <td className="tabular" data-label="Compromisos" style={{ textAlign: 'right' }}>{fmt(m.ObligacionesPers)}</td>
-                      <td className="tabular" data-label="Metas"         style={{ textAlign: 'right' }}>{fmt(m.Metas)}</td>
                       <td className="tabular" data-label="Total"         style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(m.Obligaciones)}</td>
                     </tr>
                   ))}

@@ -13,9 +13,6 @@ import { CreditCardPurchase } from '../src/modules/creditCard/creditCardPurchase
 import { BankCredit } from '../src/modules/bankCredit/bankCredit.model.js';
 import { Subscription } from '../src/modules/suscription/subscription.model.js';
 import { Income } from '../src/modules/income/income.model.js';
-import { PersonalDebt } from '../src/modules/personalDebt/personalDebt.model.js';
-import { SavingsGoal } from '../src/modules/savingsGoal/savingsGoal.model.js';
-import { Budget, BudgetExpense } from '../src/modules/budget/budget.model.js';
 import { NetWorthSnapshot } from '../src/modules/netWorth/netWorth.model.js';
 import { PushSubscription } from '../src/modules/pushSubscription/pushSubscription.model.js';
 
@@ -52,10 +49,6 @@ try {
     await CreditCard.destroy({ where: { id: { [Op.in]: cardIds } }, transaction: t });
     await BankCredit.destroy({ where: { userId }, transaction: t });
     await Income.destroy({ where: { userId }, transaction: t });
-    await PersonalDebt.destroy({ where: { userId }, transaction: t });
-    await SavingsGoal.destroy({ where: { userId }, transaction: t });
-    await BudgetExpense.destroy({ where: { userId }, transaction: t });
-    await Budget.destroy({ where: { userId }, transaction: t });
     await NetWorthSnapshot.destroy({ where: { userId }, transaction: t });
     await PushSubscription.destroy({ where: { userId }, transaction: t });
     await user.destroy({ transaction: t });

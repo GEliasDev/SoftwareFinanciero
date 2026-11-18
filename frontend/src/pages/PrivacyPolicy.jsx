@@ -11,7 +11,7 @@ export const PrivacyPolicy = () => (
     <h2>1. Qué es Debti</h2>
     <p>
       Debti es una aplicación de finanzas personales para llevar el control de tarjetas de crédito, créditos,
-      suscripciones, ingresos, compromisos fijos, metas de ahorro y presupuesto.
+      suscripciones e ingresos.
     </p>
 
     <h2>2. Datos que guardamos</h2>

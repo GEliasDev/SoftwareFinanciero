@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, CreditCard, Landmark, Target, CheckCircle2, ArrowRight, ArrowLeft, Repeat } from 'lucide-react';
+import { Wallet, CreditCard, Landmark, CheckCircle2, ArrowRight, ArrowLeft, Repeat } from 'lucide-react';
 import { BrandMark } from '../components/ui/BrandMark';
 import { AuthService } from '../services/authService';
 
@@ -9,7 +9,7 @@ const STEPS = [
     id: 'welcome',
     title: '¡Bienvenido a Debti!',
     subtitle: 'Tu asistente de finanzas personales',
-    description: 'En 3 pasos te explicamos cómo sacarle el máximo provecho. Toma menos de 2 minutos.',
+    description: 'En 2 pasos te explicamos cómo sacarle el máximo provecho. Toma menos de 2 minutos.',
     icon: null,
     cta: 'Empezar',
     skip: false,
@@ -40,18 +40,6 @@ const STEPS = [
       { label: 'Crédito bancario',   path: '/bank-credits/new', Icon: Landmark   },
       { label: 'Suscripción',        path: '/subscriptions/new',Icon: Repeat     },
     ],
-    skip: true,
-  },
-  {
-    id: 'savings',
-    title: 'Crea una meta de ahorro',
-    subtitle: 'Opcional pero muy recomendado',
-    description: 'Define una meta (fondo de emergencia, vacaciones, carro…) y Debti te dirá cuánto debes apartar cada mes.',
-    icon: Target,
-    color: '#7C3AED',
-    bg: 'rgba(124,58,237,0.08)',
-    cta: 'Crear meta',
-    action: '/savings/new',
     skip: true,
   },
 ];
@@ -120,7 +108,7 @@ export const Onboarding = () => {
             {[
               { Icon: Wallet,    c: 'var(--pos-600)',  b: 'var(--pos-50)'   },
               { Icon: CreditCard,c: 'var(--brand-600)',b: 'var(--brand-50)' },
-              { Icon: Target,    c: '#7C3AED',         b: 'rgba(124,58,237,0.08)' },
+              { Icon: Landmark,  c: '#7C3AED',         b: 'rgba(124,58,237,0.08)' },
               { Icon: CheckCircle2, c: 'var(--pos-700)',b: 'var(--pos-50)'  },
             ].map(({ Icon, c, b }, i) => (
               <div key={i} style={{ width: 44, height: 44, borderRadius: 12, background: b, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

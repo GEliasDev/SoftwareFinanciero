@@ -52,21 +52,6 @@ const BankCreditEdit = lazyNamed(() => import('./pages/BankCreditEdit'), 'BankCr
 const Income = lazyNamed(() => import('./pages/Income'), 'Income');
 const IncomeForm = lazyNamed(() => import('./pages/IncomeForm'), 'IncomeForm');
 
-// Obligaciones personales
-const PersonalDebts = lazyNamed(() => import('./pages/PersonalDebts'), 'PersonalDebts');
-const PersonalDebtNew = lazyNamed(() => import('./pages/PersonalDebtNew'), 'PersonalDebtNew');
-const PersonalDebtDetail = lazyNamed(() => import('./pages/PersonalDebtDetail'), 'PersonalDebtDetail');
-const PersonalDebtEdit = lazyNamed(() => import('./pages/PersonalDebtEdit'), 'PersonalDebtEdit');
-
-// Metas de ahorro
-const Savings = lazyNamed(() => import('./pages/Savings'), 'Savings');
-const SavingsNew = lazyNamed(() => import('./pages/SavingsNew'), 'SavingsNew');
-const SavingsDetail = lazyNamed(() => import('./pages/SavingsDetail'), 'SavingsDetail');
-const SavingsEdit = lazyNamed(() => import('./pages/SavingsEdit'), 'SavingsEdit');
-
-// Presupuesto
-const Budget = lazyNamed(() => import('./pages/Budget'), 'Budget');
-
 // Herramientas
 const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
 const Profile = lazyNamed(() => import('./pages/Profile'), 'Profile');
@@ -148,19 +133,6 @@ function App() {
 
           {/* Obligaciones personales */}
           <Route path="card-inbox" element={<CardInbox />} />
-          <Route path="fixed-commitments" element={<PersonalDebts />} />
-          <Route path="fixed-commitments/new" element={<PersonalDebtNew />} />
-          <Route path="fixed-commitments/:id" element={<PersonalDebtDetail />} />
-          <Route path="fixed-commitments/:id/edit" element={<PersonalDebtEdit />} />
-
-          {/* Metas de ahorro */}
-          <Route path="savings" element={<Savings />} />
-          <Route path="savings/new" element={<SavingsNew />} />
-          <Route path="savings/:id" element={<SavingsDetail />} />
-          <Route path="savings/:id/edit" element={<SavingsEdit />} />
-
-          {/* Presupuesto */}
-          <Route path="budget" element={<Budget />} />
 
           {/* Herramientas */}
           <Route path="reports" element={<Reports />} />
