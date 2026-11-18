@@ -6,13 +6,13 @@ Cada recurso: `backend/src/modules/<nombre>/` con
 `.controller.js` (req/res → service) · `.routes.js` (Express + JWT) · `utils/` (cálculos puros).
 El service lanza `throw new AppError('msg', status)`; `errorHandler` (`main.js`) lo vuelve JSON.
 
-Módulos: `user | creditCard | bankCredit | suscription | analytics | income | personalDebt |
-savingsGoal | budget | search | pushSubscription | netWorth`.
+Módulos: `user | creditCard | bankCredit | suscription | analytics | income | search |
+pushSubscription | netWorth | cardInbox`.
 Typo histórico: la carpeta es `suscription` (sin "b").
 
 Utils en `backend/src/utils/`: `emailService.js`, `logger.js` (winston), `currency.js`
 (`toCOP(monto, moneda)`, env `TRM_USD`/`TRM_EUR`), `categories.js` (`CATEGORIAS`, taxonomía única de
-gasto; la comparten `creditCard.schema.js` y `personalDebt.schema.js`; el frontend tiene su
+gasto; la usa `creditCard.schema.js`; el frontend tiene su
 propio `CATEGORIES` en `utils/creditCard.js` — mantener en sync a mano), `cycleDay.js`
 (`effectiveDayInMonth`), `localDate.js` (`localToday`, `localMonth`).
 
@@ -60,7 +60,7 @@ se revierte en `undoPurchasePayment` y al cancelar el avance por abono. No es cu
 ## Suscripciones ↔ tarjeta
 `Subscription.creditCardId` (nullable; validado en `assertCardOwnership` en create y update; `null` desvincula).
 Con tarjeta, `subscriptionChargeJob` crea un `CreditCardPurchase` normal (`tipo:'compra'`, 1 cuota, sin interés,
-`subscriptionId` seteado — NO un `tipo` nuevo, para que entre solo a Presupuesto/analytics).
+`subscriptionId` seteado — NO un `tipo` nuevo, para que entre solo a analytics).
 - Idempotente (busca compra con ese `subscriptionId` y `fechaCompra` en el ciclo actual).
 - `mensual` cobra cada mes en `diaCobro`; `anual` solo en el mes de `fechaInicio`.
 - Monto a COP con `toCOP()`; sin cupo → salta esa suscripción ese ciclo (warning, sin reintento a mitad de mes).
@@ -68,19 +68,21 @@ Con tarjeta, `subscriptionChargeJob` crea un `CreditCardPurchase` normal (`tipo:
 - **Doble conteo**: con `creditCardId` se excluyen de la suma de `montoMensual` en `analytics.service.js`
   (`getSummary`, `getMonthlyTrend`) y en la proyección de `Reports.jsx`. `SubscriptionService.getSummary`
   (total en `/subscriptions`) sí suma todas (informativo).
-- `Subscription.status` es `'activa'` (femenino); `BankCredit`/`PersonalDebt`/`Income` usan `'activo'`;
+- `Subscription.status` es `'activa'` (femenino); `BankCredit`/`Income` usan `'activo'`;
   `CreditCardPurchase` `'activa'`. Verificar el enum antes de filtrar.
 - Costo mensual = `montoMensual` (no `monto`) convertido con `subMonthlyCOP()` (front: `utils/currency.js`, espejo del backend).
 
-## Compromisos fijos (módulo `personalDebt`)
-Se presenta como **"Compromisos fijos"** (lo que se paga sí o sí cada mes). Ruta frontend `/fixed-commitments`;
-backend/modelo/servicios siguen `personal-debts`/`personalDebt`.
-El tipo `deuda` (préstamo con saldo/abonos) se retiró el 2026-10-29: sin alta, sin endpoints de abono,
-fuera de `getSummary` y `netWorth`. El service solo lista/crea/lee `tipo:'gasto'`; filas `deuda` viejas y la
-tabla `personal_debt_abonos` siguen en la BD, invisibles (sin modelo en el código).
-`updateSchema` solo acepta `status` `activo|inactivo`. Tiene `categoria` opcional (mismo enum que tarjetas).
-Presupuesto: `budget.service.js::getMonth` los suma a `gastadoPorCategoria` solo si el mes consultado es el
-mes real en curso (`currentMes()`), porque no registran desde/hasta cuándo estuvieron activos.
+## Módulos eliminados (2026-11-18)
+Compromisos fijos (`personalDebt`), Metas de ahorro (`savingsGoal`) y Presupuesto (`budget`) se quitaron del
+código (backend, frontend y dependientes: analytics, netWorth, búsqueda, export, Dashboard, Reportes, onboarding).
+Las migraciones `20261118130000-drop-personal-debts` y `20261118140000-drop-savings-goals-and-budgets` borran las
+tablas `personal_debts` (y `personal_debt_abonos`), `savings_goals`, `budgets` y `budget_expenses`; su `down`
+solo recrea la estructura, no los datos.
+
+## Tarjetas con número físico y digital
+`CreditCard.ultimos4` (digital) y `ultimos4Fisica` (plástico, opcional). `cardInbox.service.js::resolverTarjeta`
+compara el número del correo contra ambos; el avance (sin número) y un número desconocido caen a la única
+tarjeta Rappi si hay una sola. Campo editable en `CreditCardEdit.jsx`.
 
 ## Jobs (`backend/src/jobs/`)
 - `dailyChargesJob.js` — arranca en `main.js`; tick diario 8 AM → `cuotaManejoJob` + `subscriptionChargeJob`.
@@ -89,12 +91,12 @@ mes real en curso (`currentMes()`), porque no registran desde/hasta cuándo estu
 - `bankCreditMoraJob.js` — marca créditos en mora.
 - `weeklyDigestJob.js` — resumen semanal por email (opt-in `User.emailDigest`).
 - `netWorthSnapshotJob.js` — día 1 congela `NetWorthSnapshot` del mes cerrado; el mes en curso se calcula en vivo
-  (`netWorth.service.js::getHistory`). Activos = `SavingsGoal.montoAcumulado`; pasivos = cupo de tarjeta usado +
+  (`netWorth.service.js::getHistory`). Activos = 0 (ya no hay fuente: se eliminó Metas de ahorro); pasivos = cupo de tarjeta usado +
   saldo de créditos.
 
 ## Analytics y Dashboard
 `analytics.service.js::getSummary` devuelve totales + `breakdown` (cuotas mensuales por ítem: `creditCards`,
-`bankCredits`, `subscriptions`, `personalDebts`, `savings`; **la suma de cada lista = su total en `obligations`**)
+`bankCredits`, `subscriptions`; **la suma de cada lista = su total en `obligations`**)
 + `debtBreakdown` (SALDOS: `creditCards`, `bankCredits`). Ítem = `{ id, nombre, detalle, monto }`. Categoría
 nueva → añadirla a las dos listas.
 
@@ -108,9 +110,7 @@ lo consumen; si se toca, unificar ahí también.
 dineroLibre = Σ Income.monto (activos)
             − (Subscription.montoMensual activas [sin creditCardId]
                + BankCredit.valorCuota + cuotaAdministracion (activos)
-               + CreditCardPurchase.valorCuotaMensual (activas)
-               + PersonalDebt.montoCuota (activos))
-            − Σ SavingsGoal.aporteMensual (activas)
+               + CreditCardPurchase.valorCuotaMensual (activas))
 ```
 
 ## Otros

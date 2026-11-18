@@ -19,15 +19,12 @@ de un rediseño; no hay reglas visuales vigentes.
 /bank-credits/:id          BankCreditLayout: index=BankCreditOverview, /schedule, /analysis
 /bank-credits/:id/edit
 /income                    lista | /new | /:id/edit
-/fixed-commitments         Compromisos fijos: lista | /new | /:id | /:id/edit
-/savings                   lista | /new | /:id | /:id/edit
 /card-inbox                Movimientos por aprobar (alertas de tarjetas detectadas en Gmail)
-/budget  /reports  /profile  /onboarding
+/reports  /profile  /onboarding
 /login /register /forgot-password /reset-password   (públicas)
 /privacy                   política de privacidad (pública; la exige Google para publicar la app OAuth de Gmail)
 ```
 Detalles con pestañas = layout + rutas anidadas reales; estado compartido con `<Outlet context>` + `useOutletContext`.
-Archivos de Compromisos fijos: `pages/PersonalDebts.jsx` (lista), `PersonalDebtNew/Edit/Detail.jsx`, `services/personalDebtService.js`.
 
 ## Piezas
 - Code-splitting: páginas protegidas con `React.lazy` vía `lazyNamed(loader, name)` (adapta `export const X` a `default`); `Suspense`

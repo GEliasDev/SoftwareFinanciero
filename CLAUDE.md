@@ -1,7 +1,7 @@
 # Debti
 
 App de **finanzas personales** (es-CO, COP): tarjetas de crédito, créditos bancarios, suscripciones, ingresos,
-compromisos fijos, metas de ahorro, presupuesto, reportes. Las reglas globales (`~/.claude/CLAUDE.md`) aplican; este
+reportes y movimientos por aprobar desde Gmail. Las reglas globales (`~/.claude/CLAUDE.md`) aplican; este
 archivo solo agrega contexto del proyecto y se mantiene corto a propósito (se carga en cada sesión).
 
 ## Stack y comandos
@@ -12,9 +12,9 @@ archivo solo agrega contexto del proyecto y se mantiene corto a propósito (se c
 
 ## Mapa del backend
 `backend/src/modules/<nombre>/` con `.model.js` · `.schema.js` (Zod) · `.service.js` (lógica; lanza `AppError`) ·
-`.controller.js` · `.routes.js`. Módulos: `user creditCard bankCredit suscription(sin "b") analytics income personalDebt
-savingsGoal budget search pushSubscription netWorth`. Cron en `backend/src/jobs/`. Utils en `backend/src/utils/`.
-`personalDebt` se muestra al usuario como **Compromisos fijos** (ruta frontend `/fixed-commitments`).
+`.controller.js` · `.routes.js`. Módulos: `user creditCard bankCredit suscription(sin "b") analytics income
+search pushSubscription netWorth cardInbox`. Cron en `backend/src/jobs/`. Utils en `backend/src/utils/`.
+Compromisos fijos, Metas de ahorro y Presupuesto se eliminaron el 2026-11-18 (código y tablas).
 
 ## Reglas que no se negocian
 - **Esquema**: `sequelize.sync()` no modifica tablas existentes; cambios de esquema van por migración
@@ -26,7 +26,7 @@ savingsGoal budget search pushSubscription netWorth`. Cron en `backend/src/jobs/
 - **Seguridad**: todo endpoint que lee/escribe datos de un usuario verifica dueño (`req.user.id`, `findOwnedCard`/
   `findOwnedPurchase`); `authenticateToken` rechaza tokens con `purpose`.
 - **Zod** descarta claves desconocidas sin error: confirmar que el campo exista en el `updateSchema`.
-- **Estados**: `Subscription.status` = `'activa'`; `BankCredit`/`PersonalDebt`/`Income` = `'activo'`.
+- **Estados**: `Subscription.status` = `'activa'`; `BankCredit`/`Income` = `'activo'`.
 - Al corregir un bug de cálculo, agregar test de regresión (Vitest; foco en dinero y fechas).
 
 ## Documentación bajo demanda (leer solo lo que la tarea necesite)

@@ -36,7 +36,6 @@
   frontend `utils/format.js`). `new Date(y,m,31)` DESBORDA al mes siguiente (sí, incluso el constructor). Aplicado en
   `subscriptionChargeJob`, `cuotaManejoJob`, `analytics::nextPaymentDate`, `creditCard.service::getUpcomingPayments/getOverview`,
   `bankCreditMoraJob::expectedCuotasPagadas`, `bankCreditCalculation`. Si el mes puede salir de 0..11, normalizar con `new Date(y,m,1)`.
-- `budget.controller.js` calcula el mes por defecto en hora local (antes UTC).
 - `text-transform: capitalize` capitaliza preposiciones; usar `capFirst(monthLabel(m))`.
 - Selector de día de ciclo: `<DayOfMonthPicker>` (avisa 29-31), no `<input type=number>`.
 
