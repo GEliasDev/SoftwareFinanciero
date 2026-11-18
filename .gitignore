@@ -24,3 +24,7 @@ yarn-debug.log*
 
 # Claude Code
 .claude/
+
+# Artefactos locales
+.superpowers/
+shot_*.png
