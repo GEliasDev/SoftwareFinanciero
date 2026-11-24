@@ -4,6 +4,10 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { CreditCardService } from '../services/creditCardService';
 import { CardInboxService } from '../services/cardInboxService';
 import { PendingList } from '../components/credit-cards/PendingMovements';
+import { accionesTarjeta } from '../components/credit-cards/cardMenu';
+import { RowMenu, RowMenuButton } from '../components/ui/RowMenu';
+import { useRowMenuTip } from '../hooks/useRowMenuTip';
+import Swal from '../utils/alerts';
 import { Plus, CreditCard as CardIcon, Inbox, ChevronRight, X } from 'lucide-react';
 import { getCardColor } from '../utils/cardColors';
 import { LoadError } from '../components/ui/LoadError';
@@ -39,6 +43,19 @@ export const CreditCards = () => {
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+  useRowMenuTip(cards.length > 0);
+
+  const eliminarTarjeta = async (card) => {
+    const { isConfirmed } = await Swal.fire({
+      title: `¿Eliminar "${card.nombre}"?`,
+      text: 'Se eliminarán también todas las compras registradas. Esta acción no se puede deshacer.',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
+    try { await CreditCardService.delete(card.id); Swal.fire({ icon: 'success', title: 'Tarjeta eliminada' }); load(); }
+    catch { Swal.fire({ icon: 'error', title: 'No se pudo eliminar la tarjeta' }); }
+  };
+  const acciones = (card, { obl, nPend }) => accionesTarjeta(card, { navigate, porPagar: obl, pendientes: nPend, onDelete: eliminarTarjeta });
 
   const sinTarjeta = pending.filter(p => !p.creditCardId);
   const cardsActivas = cards.filter(c => c.status === 'activa');
@@ -223,7 +240,8 @@ export const CreditCards = () => {
                   const [tone, label] = dueBadge(st?.dPago ?? 99);
                   const statusLabel = STATUS_LABEL[card.status];
                   return (
-                    <tr key={card.id} className="clickable" onClick={() => navigate(`/credit-cards/${card.id}`)}>
+                    <RowMenu key={card.id} actions={acciones(card, { obl, nPend })}>
+                    <tr className="clickable" onClick={() => navigate(`/credit-cards/${card.id}`)}>
                       <td>
                         <div className="row" style={{ gap: 12 }}>
                           <CardBrand card={card} />
@@ -266,8 +284,9 @@ export const CreditCards = () => {
                       <td className="n" style={{ textAlign: 'right' }}>
                         {obl > 0 ? <b style={{ fontSize: 16 }}>{fmt(obl)}</b> : <span className="text-muted">Sin deuda activa</span>}
                       </td>
-                      <td style={{ width: 40 }}><ChevronRight size={18} className="text-muted" /></td>
+                      <td style={{ width: 48 }}><RowMenuButton actions={acciones(card, { obl, nPend })} label={`Acciones de ${card.nombre}`} /></td>
                     </tr>
+                    </RowMenu>
                   );
                 })}
               </tbody>
@@ -278,7 +297,8 @@ export const CreditCards = () => {
                 const { usagePct, st, obl, nPend } = rowData(card);
                 const [tone, label] = dueBadge(st?.dPago ?? 99);
                 return (
-                  <button key={card.id} className="cc-mrow" onClick={() => navigate(`/credit-cards/${card.id}`)}>
+                  <RowMenu key={card.id} actions={acciones(card, { obl, nPend })}>
+                  <button className="cc-mrow" onClick={() => navigate(`/credit-cards/${card.id}`)}>
                     <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
                       <CardBrand card={card} />
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -302,6 +322,7 @@ export const CreditCards = () => {
                       {nPend > 0 ? <span className="badge badge-primary">{nPend} por aprobar</span> : obl === 0 ? <span className="text-sm text-secondary">Corte día {card.fechaCorte}</span> : null}
                     </div>
                   </button>
+                  </RowMenu>
                 );
               })}
             </div>

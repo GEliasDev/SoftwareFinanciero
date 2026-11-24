@@ -159,7 +159,7 @@
 .pu-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-3); pointer-events: none; }
 .pu-search .form-input { padding-left: 36px; }
 .pu-table { border-top: 1px solid var(--divider); }
-.pu-row { display: grid; grid-template-columns: minmax(0, 2.6fr) 1fr 1fr 0.9fr 0.9fr 0.8fr 24px; gap: 12px; align-items: center; padding: 12px 20px; }
+.pu-row { display: grid; grid-template-columns: minmax(0, 2.6fr) 1fr 1fr 0.9fr 0.9fr 0.8fr 32px; gap: 12px; align-items: center; padding: 12px 20px; }
 .pu-thead { background: var(--surface-3); font-size: 13px; color: var(--text-3); padding-top: 10px; padding-bottom: 10px; }
 .pu-row .r { text-align: right; }
 .pu-item { border-top: 1px solid var(--divider); cursor: pointer; font-size: 14px; }

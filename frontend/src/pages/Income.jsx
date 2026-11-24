@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { IncomeService } from '../services/incomeService';
 import { LoadError } from '../components/ui/LoadError';
-import { Plus, Wallet, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { Plus, Wallet, Pencil, Trash2, Power } from 'lucide-react';
+import { RowMenu, RowMenuButton } from '../components/ui/RowMenu';
+import { useRowMenuTip } from '../hooks/useRowMenuTip';
 import { fmt } from '../utils/format';
 import Swal from '../utils/alerts';
 
@@ -15,23 +16,21 @@ const isThisMonth = (createdAt) => {
 const shortDay = (createdAt) => new Date(createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }).replace('.', '');
 const mesActual = () => new Date().toLocaleDateString('es-CO', { month: 'long' });
 
-const RowActions = ({ inc, onEdit, onDelete }) => (
+// Menú del ingreso (clic derecho y ⋯).
+const accionesIngreso = (inc, { onEdit, onToggle, onDelete }) => [
+  { label: 'Editar', icon: Pencil, onSelect: () => onEdit(inc.id) },
+  { label: inc.status === 'activo' ? 'Desactivar' : 'Activar', icon: Power, onSelect: () => onToggle(inc) },
+  'sep',
+  { label: 'Eliminar', icon: Trash2, danger: true, onSelect: () => onDelete(inc.id) },
+];
+
+const RowActions = ({ inc, acciones, onEdit, onDelete }) => (
   <>
     <span className="row desktop-flex" style={{ gap: 4, justifyContent: 'flex-end' }}>
       <button className="icon-btn ghost sm" onClick={() => onEdit(inc.id)} aria-label={`Editar ${inc.nombre}`} title="Editar"><Pencil size={16} /></button>
       <button className="icon-btn ghost sm" onClick={() => onDelete(inc.id)} aria-label={`Eliminar ${inc.nombre}`} title="Eliminar" style={{ color: 'var(--neg-600)' }}><Trash2 size={16} /></button>
     </span>
-    <span className="mobile-only">
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild><button className="icon-btn ghost sm" aria-label={`Acciones de ${inc.nombre}`}><MoreHorizontal size={18} /></button></DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content className="menu-content" align="end" sideOffset={4}>
-            <DropdownMenu.Item className="menu-item" onSelect={() => onEdit(inc.id)}><Pencil size={16} /> Editar</DropdownMenu.Item>
-            <DropdownMenu.Item className="menu-item danger" onSelect={() => onDelete(inc.id)}><Trash2 size={16} /> Eliminar</DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
-    </span>
+    <span className="mobile-only"><RowMenuButton actions={acciones} label={`Acciones de ${inc.nombre}`} /></span>
   </>
 );
 
@@ -71,6 +70,16 @@ export const Income = () => {
     load();
   };
   const handleEdit = (id) => navigate(`/income/${id}/edit`);
+  const handleToggle = async (inc) => {
+    const status = inc.status === 'activo' ? 'inactivo' : 'activo';
+    try {
+      await IncomeService.update(inc.id, { status });
+      Swal.fire({ icon: 'success', title: status === 'activo' ? 'Ingreso activado' : 'Ingreso desactivado' });
+      load();
+    } catch { Swal.fire({ icon: 'error', title: 'No se pudo cambiar el estado' }); }
+  };
+  const handlers = { onEdit: handleEdit, onToggle: handleToggle, onDelete: handleDelete };
+  useRowMenuTip(incomes.length > 0);
 
   const header = (
     <div className="page-header">
@@ -121,27 +130,31 @@ export const Income = () => {
               <thead><tr><th>Fuente</th><th>Día en que llega</th><th>Estado</th><th style={{ textAlign: 'right' }}>Monto mensual</th><th style={{ textAlign: 'right', width: 110 }}>Acciones</th></tr></thead>
               <tbody>
                 {fijos.map(inc => (
-                  <tr key={inc.id} className={inc.status === 'activo' ? '' : 'muted-row'}>
+                  <RowMenu key={inc.id} actions={accionesIngreso(inc, handlers)}>
+                  <tr className={inc.status === 'activo' ? '' : 'muted-row'}>
                     <td className="cell-title" style={{ display: 'table-cell' }}>{inc.nombre}</td>
                     <td className="text-secondary">Día {inc.diaCobro}</td>
                     <td><span className={`badge badge-${inc.status === 'activo' ? 'success' : 'neutral'}`}>{inc.status === 'activo' ? 'Activo' : 'Inactivo'}</span></td>
                     <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(inc.monto)}</td>
-                    <td><RowActions inc={inc} onEdit={handleEdit} onDelete={handleDelete} /></td>
+                    <td><RowActions inc={inc} acciones={accionesIngreso(inc, handlers)} onEdit={handleEdit} onDelete={handleDelete} /></td>
                   </tr>
+                  </RowMenu>
                 ))}
               </tbody>
               <tfoot><tr><td colSpan={3}><b>Total mensual</b></td><td className="n" style={{ textAlign: 'right' }}><b>{fmt(totalFijo)}</b></td><td /></tr></tfoot>
             </table>
             <div className="mobile-list row-list">
               {fijos.map(inc => (
-                <div key={inc.id} className={`pay-row ${inc.status === 'activo' ? '' : 'muted-row'}`}>
+                <RowMenu key={inc.id} actions={accionesIngreso(inc, handlers)}>
+                <div className={`pay-row ${inc.status === 'activo' ? '' : 'muted-row'}`}>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span className="cell-title">{inc.nombre}</span>
                     <span className="cell-sub">Día {inc.diaCobro}{inc.status !== 'activo' ? ' · inactivo' : ''}</span>
                   </span>
                   <b className="n">{fmt(inc.monto)}</b>
-                  <RowActions inc={inc} onEdit={handleEdit} onDelete={handleDelete} />
+                  <RowActions inc={inc} acciones={accionesIngreso(inc, handlers)} onEdit={handleEdit} onDelete={handleDelete} />
                 </div>
+                </RowMenu>
               ))}
             </div>
           </>
@@ -163,13 +176,15 @@ export const Income = () => {
                 {extras.map(inc => {
                   const cuenta = isThisMonth(inc.createdAt);
                   return (
-                    <tr key={inc.id} className={cuenta ? '' : 'muted-row'}>
+                    <RowMenu key={inc.id} actions={accionesIngreso(inc, handlers)}>
+                    <tr className={cuenta ? '' : 'muted-row'}>
                       <td>{inc.nombre}</td>
                       <td className="text-secondary n">{shortDay(inc.createdAt)}</td>
                       <td>{cuenta ? <span className="badge badge-warning">Cuenta este mes</span> : <span className="badge badge-neutral">Ya no cuenta</span>}</td>
                       <td className="n" style={{ textAlign: 'right', fontWeight: cuenta ? 600 : 400 }}>{fmt(inc.monto)}</td>
-                      <td><RowActions inc={inc} onEdit={handleEdit} onDelete={handleDelete} /></td>
+                      <td><RowActions inc={inc} acciones={accionesIngreso(inc, handlers)} onEdit={handleEdit} onDelete={handleDelete} /></td>
                     </tr>
+                    </RowMenu>
                   );
                 })}
               </tbody>
@@ -178,14 +193,16 @@ export const Income = () => {
               {extras.map(inc => {
                 const cuenta = isThisMonth(inc.createdAt);
                 return (
-                  <div key={inc.id} className={`pay-row ${cuenta ? '' : 'muted-row'}`}>
+                  <RowMenu key={inc.id} actions={accionesIngreso(inc, handlers)}>
+                  <div className={`pay-row ${cuenta ? '' : 'muted-row'}`}>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span className="cell-title">{inc.nombre}</span>
                       <span className={`cell-sub ${cuenta ? 'tone-warning' : ''}`}>{shortDay(inc.createdAt)} · {cuenta ? 'cuenta este mes' : 'ya no cuenta'}</span>
                     </span>
                     <b className="n">{fmt(inc.monto)}</b>
-                    <RowActions inc={inc} onEdit={handleEdit} onDelete={handleDelete} />
+                    <RowActions inc={inc} acciones={accionesIngreso(inc, handlers)} onEdit={handleEdit} onDelete={handleDelete} />
                   </div>
+                  </RowMenu>
                 );
               })}
             </div>

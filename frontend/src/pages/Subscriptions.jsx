@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SubscriptionService } from '../services/subscriptionService';
-import { Plus, Repeat, ChevronRight, CreditCard } from 'lucide-react';
+import { Plus, Repeat, CreditCard, Eye, Pencil, Pause, Play, Ban, Trash2 } from 'lucide-react';
+import { RowMenu, RowMenuButton } from '../components/ui/RowMenu';
+import { useRowMenuTip } from '../hooks/useRowMenuTip';
+import Swal from '../utils/alerts';
 import { LoadError } from '../components/ui/LoadError';
 import { fmt, fmtShort, nextOccurrence, daysUntil, parseLocalDate, effectiveDayInMonth } from '../utils/format';
 import { subMonthlyCOP, subAnnualCOP } from '../utils/currency';
@@ -42,6 +45,39 @@ export const Subscriptions = () => {
   };
 
   useEffect(() => { load(); }, []);
+  useRowMenuTip(subscriptions.length > 0);
+
+  // ── Acciones rápidas (clic derecho / ⋯) ──
+  const cambiarEstado = async (sub, status, okMsg) => {
+    try { await SubscriptionService.update(sub.id, { status }); Swal.fire({ icon: 'success', title: okMsg }); load(); }
+    catch { Swal.fire({ icon: 'error', title: 'No se pudo cambiar el estado' }); }
+  };
+  const cancelar = async (sub) => {
+    const { isConfirmed } = await Swal.fire({
+      title: `¿Cancelar "${sub.nombre}"?`, text: 'Deja de contar en tus gastos y de cobrarse. Puedes reactivarla después.',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'Cancelar suscripción', cancelButtonText: 'Volver',
+    });
+    if (isConfirmed) cambiarEstado(sub, 'cancelada', 'Suscripción cancelada');
+  };
+  const eliminar = async (sub) => {
+    const { isConfirmed } = await Swal.fire({
+      title: `¿Eliminar "${sub.nombre}"?`, text: 'Esta acción no se puede deshacer.',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
+    try { await SubscriptionService.delete(sub.id); Swal.fire({ icon: 'success', title: 'Suscripción eliminada' }); load(); }
+    catch { Swal.fire({ icon: 'error', title: 'No se pudo eliminar la suscripción' }); }
+  };
+  const acciones = (sub) => [
+    { label: 'Ver detalle', icon: Eye, onSelect: () => navigate(`/subscriptions/${sub.id}`) },
+    { label: 'Editar', icon: Pencil, onSelect: () => navigate(`/subscriptions/${sub.id}/edit`) },
+    sub.status === 'activa'
+      ? { label: 'Pausar', icon: Pause, onSelect: () => cambiarEstado(sub, 'pausada', 'Suscripción pausada') }
+      : { label: 'Reactivar', icon: Play, onSelect: () => cambiarEstado(sub, 'activa', 'Suscripción reactivada') },
+    sub.status !== 'cancelada' && { label: 'Cancelar suscripción', icon: Ban, onSelect: () => cancelar(sub) },
+    'sep',
+    { label: 'Eliminar', icon: Trash2, danger: true, onSelect: () => eliminar(sub) },
+  ];
 
   // Los totales cuentan SOLO las activas: una suscripción cancelada o pausada
   // ya no se cobra, incluirla inflaba el costo mensual del usuario.
@@ -129,7 +165,8 @@ export const Subscriptions = () => {
               const dias = daysUntil(nextCharge(sub));
               const foreign = sub.moneda && sub.moneda !== 'COP';
               return (
-                <tr key={sub.id} className={`clickable ${active ? '' : 'muted-row'}`} onClick={() => navigate(`/subscriptions/${sub.id}`)}>
+                <RowMenu key={sub.id} actions={acciones(sub)}>
+                <tr className={`clickable ${active ? '' : 'muted-row'}`} onClick={() => navigate(`/subscriptions/${sub.id}`)}>
                   <td>
                     <div className="row" style={{ gap: 12 }}>
                       <span className="list-icon letter">{sub.nombre.charAt(0).toUpperCase()}</span>
@@ -157,8 +194,9 @@ export const Subscriptions = () => {
                       ? <span className="row text-secondary" style={{ gap: 6 }} title={`Se cobra automáticamente en ${sub.CreditCard.nombre}`}><CreditCard size={16} /> {sub.CreditCard.nombre}</span>
                       : <span className="badge badge-neutral">Manual</span>}
                   </td>
-                  <td style={{ width: 40 }}><ChevronRight size={18} className="text-muted" /></td>
+                  <td style={{ width: 48 }}><RowMenuButton actions={acciones(sub)} label={`Acciones de ${sub.nombre}`} /></td>
                 </tr>
+                </RowMenu>
               );
             })}
           </tbody>
@@ -170,7 +208,8 @@ export const Subscriptions = () => {
             const active = sub.status === 'activa';
             const dias = daysUntil(nextCharge(sub));
             return (
-              <button key={sub.id} className={`cc-mrow row ${active ? '' : 'muted-row'}`} style={{ gap: 12 }} onClick={() => navigate(`/subscriptions/${sub.id}`)}>
+              <RowMenu key={sub.id} actions={acciones(sub)}>
+              <button className={`cc-mrow row ${active ? '' : 'muted-row'}`} style={{ gap: 12 }} onClick={() => navigate(`/subscriptions/${sub.id}`)}>
                 <span className="list-icon letter">{sub.nombre.charAt(0).toUpperCase()}</span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="cell-title">{sub.nombre}</span>
@@ -178,6 +217,7 @@ export const Subscriptions = () => {
                 </span>
                 <b className="n">{fmt(sub.monto, sub.moneda)}</b>
               </button>
+              </RowMenu>
             );
           })}
         </div>

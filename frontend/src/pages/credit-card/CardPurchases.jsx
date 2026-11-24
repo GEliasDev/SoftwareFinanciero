@@ -2,14 +2,66 @@ import { useState, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   ShoppingBag, Check, Plus, Search, X, SlidersHorizontal, ChevronDown, ChevronRight, Banknote, Upload,
+  Eye, Undo2, Pencil, Trash2,
 } from 'lucide-react';
 import { fmt, fmtDate, monthLabel, capFirst } from '../../utils/format';
 import { rememberCard } from '../../utils/lastCard';
 import { getMovimientoVisual, CATEGORIES } from '../../utils/creditCard';
+import { CreditCardService } from '../../services/creditCardService';
+import { RowMenu, RowMenuButton } from '../../components/ui/RowMenu';
+import { useRowMenuTip } from '../../hooks/useRowMenuTip';
+import Swal from '../../utils/alerts';
+
+const errText = (err, fallback) => err?.response?.data?.message || fallback;
 
 export const CardPurchases = () => {
-  const { purchases, activePurchases, id, handlePayAll, payableCount } = useOutletContext();
+  const { purchases, activePurchases, id, handlePayAll, payableCount, reload } = useOutletContext();
   const navigate = useNavigate();
+  useRowMenuTip(purchases.length > 0);
+
+  // ── Acciones rápidas de una compra (clic derecho / ⋯); mismas confirmaciones que el detalle ──
+  const pagarCuota = async (p) => {
+    const pag = Number(p.cuotasPagadas), tot = Number(p.numeroCuotas);
+    const { isConfirmed } = await Swal.fire({
+      title: 'Registrar pago de cuota',
+      html: `<b>${p.descripcion}</b><br/>Cuota ${pag + 1} de ${tot} — <b>${fmt(p.valorCuotaMensual)}</b><br/>${tot - pag - 1} cuota${tot - pag - 1 !== 1 ? 's' : ''} quedarán pendientes`,
+      icon: 'question', showCancelButton: true, confirmButtonText: 'Registrar pago', cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
+    try {
+      await CreditCardService.registerPurchasePayment(id, p.id);
+      await reload();
+      Swal.fire({ icon: 'success', title: pag + 1 >= tot ? '¡Compra pagada!' : `Cuota ${pag + 1}/${tot} registrada` });
+    } catch (err) { Swal.fire({ icon: 'error', title: errText(err, 'No se pudo registrar el pago.') }); }
+  };
+  const deshacerPago = async (p) => {
+    const { isConfirmed } = await Swal.fire({
+      title: 'Deshacer último pago',
+      html: `Se revertirá la cuota ${p.cuotasPagadas} de "<b>${p.descripcion}</b>".<br/>El cupo de la tarjeta se descontará.`,
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'Deshacer pago', cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
+    try { await CreditCardService.undoPay(id, p.id); await reload(); Swal.fire({ icon: 'success', title: 'Pago revertido' }); }
+    catch (err) { Swal.fire({ icon: 'error', title: errText(err, 'No se pudo revertir el pago.') }); }
+  };
+  const eliminar = async (p) => {
+    const { isConfirmed } = await Swal.fire({
+      title: `¿Eliminar "${p.descripcion}"?`,
+      text: 'El cupo utilizado será restaurado. Esta acción no se puede deshacer.',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
+    try { await CreditCardService.deletePurchase(id, p.id); await reload(); Swal.fire({ icon: 'success', title: 'Compra eliminada' }); }
+    catch (err) { Swal.fire({ icon: 'error', title: errText(err, 'No se pudo eliminar la compra.') }); }
+  };
+  const acciones = (p) => [
+    { label: 'Ver detalle', icon: Eye, onSelect: () => navigate(`/credit-cards/${id}/purchases/${p.id}`) },
+    p.status !== 'pagada' && { label: 'Registrar pago de cuota', icon: Check, onSelect: () => pagarCuota(p) },
+    Number(p.cuotasPagadas) > 0 && { label: 'Deshacer último pago', icon: Undo2, onSelect: () => deshacerPago(p) },
+    { label: 'Editar', icon: Pencil, onSelect: () => navigate(`/credit-cards/${id}/purchases/${p.id}/edit`) },
+    'sep',
+    { label: 'Eliminar', icon: Trash2, danger: true, onSelect: () => eliminar(p) },
+  ];
 
   const [searchText, setSearchText]     = useState('');
   const [filterCat, setFilterCat]       = useState('all');
@@ -122,7 +174,8 @@ export const CardPurchases = () => {
                   const progress = isPaid ? 1 : tot > 0 ? pag / tot : 0;
                   const isOther = p.tipo && p.tipo !== 'compra';
                   return (
-                    <div key={p.id} role="row" tabIndex={0} className={`pu-row pu-item ${isPaid ? 'paid' : ''}`}
+                    <RowMenu key={p.id} actions={acciones(p)}>
+                    <div role="row" tabIndex={0} className={`pu-row pu-item ${isPaid ? 'paid' : ''}`}
                       onClick={() => navigate(`/credit-cards/${id}/purchases/${p.id}`)}
                       onKeyDown={e => e.key === 'Enter' && navigate(`/credit-cards/${id}/purchases/${p.id}`)}>
                       <span role="cell" className="pu-name">
@@ -143,8 +196,9 @@ export const CardPurchases = () => {
                       <span role="cell" className="n r desktop-only">{fmt(p.valorCuotaMensual)}</span>
                       <span role="cell" className="n r pu-val">{fmt(p.montoTotal)}</span>
                       <span role="cell" className="desktop-only">{isPaid ? <span className="badge badge-success">Pagada</span> : <span className="badge badge-neutral">Activa</span>}</span>
-                      <ChevronRight size={16} className="text-muted desktop-only" />
+                      <RowMenuButton actions={acciones(p)} label={`Acciones de ${p.descripcion}`} />
                     </div>
+                    </RowMenu>
                   );
                 })}
               </div>

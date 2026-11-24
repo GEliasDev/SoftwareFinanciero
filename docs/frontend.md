@@ -75,3 +75,8 @@ En la lista `CreditCards.jsx` cada tarjeta con pendientes muestra el badge "N po
 - Avisos y confirmaciones: `utils/alerts.js` conserva la forma `Swal.fire(opts)` → toast de `sonner` o diálogo Radix (`ConfirmHost`
   montado en `App.jsx`). `html` se muestra como texto plano (contenido del usuario). Acciones destructivas van en el menú ⋯.
 - `fmt` (COP) devuelve `$1.250.000` sin espacio tras el signo.
+- Acciones rápidas por fila: `components/ui/RowMenu.jsx`. `<RowMenu actions>` envuelve la fila (clic derecho en PC, mantener
+  presionado en teléfono, Radix Context Menu) y `<RowMenuButton actions>` es el ⋯ con la MISMA lista; `useRowMenuTip` muestra una
+  sola vez el aviso de cómo abrirlo. Las acciones de tarjeta viven en `components/credit-cards/cardMenu.js` (lista e Inicio).
+  En uso: compras, Por aprobar, Balance, Tarjetas, Ingresos, Suscripciones, Créditos e Inicio (tarjetas, próximos pagos, por aprobar).
+  Ojo: el menú está en un portal pero sus eventos suben en React hasta la fila; `RowMenu` los frena para que no navegue.

@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { RefreshCw, Check, X } from 'lucide-react';
+import { RefreshCw, Check, X, CheckSquare, Square, EyeOff } from 'lucide-react';
+import { RowMenu } from '../ui/RowMenu';
+import { useRowMenuTip } from '../../hooks/useRowMenuTip';
 import Swal from '../../utils/alerts';
 import { CardInboxService } from '../../services/cardInboxService';
 import { fmt, parseLocalDate } from '../../utils/format';
@@ -32,7 +34,18 @@ const PendingRow = ({ item, cards, valores, onChange, selected, onToggle, busy, 
   const esPago = item.tipo === 'pago';
   const card = cards?.find(c => String(c.id) === String(valores.cardId));
 
+  // Clic derecho / mantener presionado: las mismas acciones de la fila.
+  const acciones = [
+    !esPago && { label: 'Aprobar', icon: Check, disabled: busy || !valores.cardId, onSelect: onApprove },
+    { label: selected ? 'Quitar de la selección' : 'Seleccionar', icon: selected ? Square : CheckSquare, disabled: busy, onSelect: onToggle },
+    'sep',
+    esPago
+      ? { label: 'Marcar como visto', icon: EyeOff, disabled: busy, onSelect: onDiscard }
+      : { label: 'Descartar', icon: X, danger: true, disabled: busy, onSelect: onDiscard },
+  ];
+
   return (
+    <RowMenu actions={acciones}>
     <div className={`pend-row ${selected ? 'selected' : ''} ${esPago ? 'info' : ''}`}>
       <input type="checkbox" className="check" checked={selected} onChange={onToggle} disabled={busy}
         aria-label={`Seleccionar ${item.comercio || TIPO_LABEL[item.tipo]}`} />
@@ -87,6 +100,7 @@ const PendingRow = ({ item, cards, valores, onChange, selected, onToggle, busy, 
         {!esPago && cards && !valores.cardId && <p className="form-hint" style={{ margin: '6px 0 0' }}>Elige una tarjeta para poder aprobarlo.</p>}
       </div>
     </div>
+    </RowMenu>
   );
 };
 
@@ -96,6 +110,7 @@ export const PendingList = ({ items, cards, onDone }) => {
   const [edits, setEdits] = useState({});
   const [selected, setSelected] = useState(new Set());
   const [busy, setBusy] = useState(false);
+  useRowMenuTip(items.length > 0);
 
   const valores = (item) => valoresDe(item, edits[item.id]);
   const cambiar = (id, patch) => setEdits(e => ({ ...e, [id]: { ...e[id], ...patch } }));

@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BankCreditService } from '../services/bankCreditService';
-import { Plus, Landmark, ChevronRight } from 'lucide-react';
+import { Plus, Landmark, Eye, Check, Table2, Pencil, Trash2 } from 'lucide-react';
+import { RowMenu, RowMenuButton } from '../components/ui/RowMenu';
+import { useRowMenuTip } from '../hooks/useRowMenuTip';
+import Swal from '../utils/alerts';
 import { LoadError } from '../components/ui/LoadError';
 import { fmt, fmtShort, nextOccurrence, daysUntil } from '../utils/format';
 
@@ -30,6 +33,26 @@ export const BankCredits = () => {
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+  useRowMenuTip(credits.length > 0);
+
+  // ── Acciones rápidas (clic derecho / ⋯). "Pagar cuota" reutiliza la confirmación del detalle (?accion=pagar). ──
+  const eliminar = async (c) => {
+    const { isConfirmed } = await Swal.fire({
+      title: `¿Eliminar "${c.nombre}"?`, text: 'Esta acción no se puede deshacer.',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
+    try { await BankCreditService.delete(c.id); Swal.fire({ icon: 'success', title: 'Crédito eliminado' }); load(); }
+    catch { Swal.fire({ icon: 'error', title: 'No se pudo eliminar el crédito' }); }
+  };
+  const acciones = (c) => [
+    { label: 'Ver detalle', icon: Eye, onSelect: () => navigate(`/bank-credits/${c.id}`) },
+    ['activo', 'en_mora'].includes(c.status) && { label: 'Pagar cuota', icon: Check, onSelect: () => navigate(`/bank-credits/${c.id}?accion=pagar`) },
+    { label: 'Tabla de amortización', icon: Table2, onSelect: () => navigate(`/bank-credits/${c.id}/schedule`) },
+    { label: 'Editar', icon: Pencil, onSelect: () => navigate(`/bank-credits/${c.id}/edit`) },
+    'sep',
+    { label: 'Eliminar', icon: Trash2, danger: true, onSelect: () => eliminar(c) },
+  ];
 
   const activos       = credits.filter(c => c.status === 'activo');
   const totalDebt     = credits.reduce((a, c) => a + parseFloat(c.saldoPendiente ?? 0), 0);
@@ -101,7 +124,8 @@ export const BankCredits = () => {
               const next = active ? nextOccurrence(c.diaPago) : null;
               const days = next ? daysUntil(next) : null;
               return (
-                <tr key={c.id} className="clickable" onClick={() => navigate(`/bank-credits/${c.id}`)}>
+                <RowMenu key={c.id} actions={acciones(c)}>
+                <tr className="clickable" onClick={() => navigate(`/bank-credits/${c.id}`)}>
                   <td>
                     <div className="row" style={{ gap: 12 }}>
                       <span className="list-icon"><Landmark size={18} /></span>
@@ -123,8 +147,9 @@ export const BankCredits = () => {
                   </td>
                   <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(c.valorCuota)}</td>
                   <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(c.saldoPendiente)}</td>
-                  <td style={{ width: 40 }}><ChevronRight size={18} className="text-muted" /></td>
+                  <td style={{ width: 48 }}><RowMenuButton actions={acciones(c)} label={`Acciones de ${c.nombre}`} /></td>
                 </tr>
+                </RowMenu>
               );
             })}
           </tbody>
@@ -137,7 +162,8 @@ export const BankCredits = () => {
             const active = c.status === 'activo';
             const days = active ? daysUntil(nextOccurrence(c.diaPago)) : null;
             return (
-              <button key={c.id} className="cc-mrow" onClick={() => navigate(`/bank-credits/${c.id}`)}>
+              <RowMenu key={c.id} actions={acciones(c)}>
+              <button className="cc-mrow" onClick={() => navigate(`/bank-credits/${c.id}`)}>
                 <div className="row-between" style={{ alignItems: 'flex-start' }}>
                   <span style={{ minWidth: 0 }}>
                     <span className="cell-title">{c.nombre}</span>
@@ -153,6 +179,7 @@ export const BankCredits = () => {
                 </div>
                 <div className="row-between text-sm text-secondary n"><span>{Math.round(pct)} % pagado</span><span>Saldo {fmt(c.saldoPendiente)}</span></div>
               </button>
+              </RowMenu>
             );
           })}
         </div>

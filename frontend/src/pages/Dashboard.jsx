@@ -1,6 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Inbox, ChevronRight, ChevronDown, BarChart3, Wallet, CreditCard, Mail } from 'lucide-react';
+import { Search, Inbox, ChevronRight, ChevronDown, BarChart3, Wallet, CreditCard, Mail, Eye, Check, X } from 'lucide-react';
+import { RowMenu } from '../components/ui/RowMenu';
+import { useRowMenuTip } from '../hooks/useRowMenuTip';
+import { accionesTarjeta } from '../components/credit-cards/cardMenu';
+import Swal from '../utils/alerts';
 import { BankCreditService } from '../services/bankCreditService';
 import { CreditCardService } from '../services/creditCardService';
 import { CardInboxService } from '../services/cardInboxService';
@@ -205,6 +209,27 @@ export const Dashboard = () => {
   const totalDebt     = summary?.debt?.total ?? 0;
   const cardById      = Object.fromEntries(cards.map(c => [c.id, c]));
 
+  // ── Acciones rápidas (clic derecho / mantener presionado) ──
+  useRowMenuTip(cards.length > 0 || upcoming.length > 0);
+  const pendientesDe = (cardId) => inbox.filter(i => i.creditCardId === cardId).length;
+  // Próximo pago: ir al detalle y pagar con la confirmación de cada vista (?accion=pagar).
+  const accionesPago = (u) => [
+    { label: u.type === 'subscription' ? 'Ver suscripciones' : 'Ver detalle', icon: Eye, onSelect: () => navigate(u.to) },
+    u.type === 'credit_card' && { label: 'Pagar corte', icon: Check, onSelect: () => navigate(`${u.to}?accion=pagar`) },
+    u.type === 'bank_credit' && u.to !== '/bank-credits' && { label: 'Pagar cuota', icon: Check, onSelect: () => navigate(`${u.to}?accion=pagar`) },
+  ];
+  // Por aprobar: aprobar tal cual llegó del correo o descartar, sin salir de Inicio.
+  const resolverInbox = async (it, fn, okMsg) => {
+    try { await fn(); setInbox(list => list.filter(x => x.id !== it.id)); Swal.fire({ icon: 'success', title: okMsg }); }
+    catch (err) { Swal.fire({ icon: 'error', title: err.response?.data?.message || 'No se pudo completar' }); }
+  };
+  const accionesInbox = (it) => [
+    it.tipo !== 'pago' && it.creditCardId && { label: 'Aprobar tal cual', icon: Check, onSelect: () => resolverInbox(it, () => CardInboxService.approve(it.id, {}), 'Movimiento registrado') },
+    { label: 'Revisar y ajustar', icon: Eye, onSelect: () => navigate(it.creditCardId ? `/credit-cards/${it.creditCardId}/pending` : '/credit-cards?tab=por-aprobar') },
+    'sep',
+    { label: it.tipo === 'pago' ? 'Marcar como visto' : 'Descartar', icon: X, danger: it.tipo !== 'pago', onSelect: () => resolverInbox(it, () => CardInboxService.discard(it.id), it.tipo === 'pago' ? 'Marcado como visto' : 'Movimiento descartado') },
+  ];
+
   const hasIncome = totalIncome > 0;
   const hasDebt   = cards.length > 0 || credits.length > 0;
   const isEmpty   = !loading && !hasIncome && !hasDebt;
@@ -408,7 +433,8 @@ export const Dashboard = () => {
                   {upcoming.slice(0, 6).map((u, i) => {
                     const d = daysUntil(u.date); const tone = dueTone(d); const dm = dayMonth(u.date);
                     return (
-                      <tr key={i} className="clickable" onClick={() => navigate(u.to)}>
+                      <RowMenu key={i} actions={accionesPago(u)}>
+                      <tr className="clickable" onClick={() => navigate(u.to)}>
                         <td className="text-secondary n" style={{ whiteSpace: 'nowrap' }}>{dm.day} {dm.mon}</td>
                         <td>
                           <span className="cell-title">{u.name}</span>
@@ -417,6 +443,7 @@ export const Dashboard = () => {
                         <td>{tone ? <span className={`badge badge-${tone}`}>{dueLabel(d)}</span> : <span className="text-secondary text-sm">{dueLabel(d)}</span>}</td>
                         <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(u.amount)}</td>
                       </tr>
+                      </RowMenu>
                     );
                   })}
                 </tbody>
@@ -425,7 +452,8 @@ export const Dashboard = () => {
                 {upcoming.slice(0, 4).map((u, i) => {
                   const d = daysUntil(u.date); const tone = dueTone(d); const dm = dayMonth(u.date);
                   return (
-                    <Link key={i} to={u.to} className="pay-row">
+                    <RowMenu key={i} actions={accionesPago(u)}>
+                    <Link to={u.to} className="pay-row">
                       <span className="pay-date"><b className="n">{dm.day}</b><span>{dm.mon}</span></span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span className="cell-title">{u.name}</span>
@@ -433,6 +461,7 @@ export const Dashboard = () => {
                       </span>
                       <b className="n">{fmt(u.amount)}</b>
                     </Link>
+                    </RowMenu>
                   );
                 })}
               </div>
@@ -493,7 +522,8 @@ export const Dashboard = () => {
                 const total = parseFloat(c.cupoTotal) || 0;
                 const used = total ? Math.min(100, Math.max(0, ((total - parseFloat(c.cupoDisponible)) / total) * 100)) : 0;
                 return (
-                  <Link key={cs.cardId} to={`/credit-cards/${cs.cardId}`} className="dash-card-row">
+                  <RowMenu key={cs.cardId} actions={accionesTarjeta(c, { navigate, porPagar: cs.cardOblMes, pendientes: pendientesDe(cs.cardId) })}>
+                  <Link to={`/credit-cards/${cs.cardId}`} className="dash-card-row">
                     <div className="row-between">
                       <span className="row" style={{ gap: 10, minWidth: 0 }}>
                         <span className="card-chip" style={{ background: getCardColor(c.color) }} />
@@ -509,6 +539,7 @@ export const Dashboard = () => {
                       {cs.cardOblMes > 0 && <span>pago del corte</span>}
                     </div>
                   </Link>
+                  </RowMenu>
                 );
               })}
             </div>
@@ -533,13 +564,15 @@ export const Dashboard = () => {
             <>
               <div className="row-list">
                 {inbox.slice(0, 3).map(it => (
-                  <div key={it.id} className="row-between" style={{ padding: '10px 0' }}>
+                  <RowMenu key={it.id} actions={accionesInbox(it)}>
+                  <div className="row-between" style={{ padding: '10px 0' }}>
                     <span style={{ minWidth: 0 }}>
                       <span className="cell-title">{it.comercio || (it.tipo === 'avance' ? 'Avance' : 'Movimiento')}{it.numeroCuotas > 1 ? ` · ${it.numeroCuotas} cuotas` : ''}</span>
                       <span className="cell-sub">{cardById[it.creditCardId]?.nombre ?? 'Sin tarjeta'} · {dayMonth(it.fechaMovimiento).day} {dayMonth(it.fechaMovimiento).mon}</span>
                     </span>
                     <b className="n">{fmt(it.monto)}</b>
                   </div>
+                  </RowMenu>
                 ))}
               </div>
               <div className="row-between" style={{ borderTop: '1px solid var(--divider)', paddingTop: 14, marginTop: 8 }}>

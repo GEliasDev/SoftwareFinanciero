@@ -1311,6 +1311,17 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
 .menu-item.danger[data-highlighted] { background: var(--neg-50); }
 .menu-sep { height: 1px; background: var(--divider); margin: 4px; }
 .menu-label { padding: 6px 10px 4px; font-size: 12px; color: var(--text-3); }
+.menu-hint { margin: 4px 0 0; padding: 6px 10px 4px; border-top: 1px solid var(--divider); font-size: 11px; color: var(--text-4); }
+
+/* ── Filas con acciones rápidas (RowMenu) ── */
+[data-row-menu] { -webkit-touch-callout: none; }
+tr[data-row-menu][data-state="open"] > td,
+[data-row-menu]:not(tr)[data-state="open"] { background: var(--surface-2); }
+/* ⋯ tenue en PC; se resalta al pasar por la fila o con el teclado */
+@media (hover: hover) {
+  .row-menu-btn { opacity: 0.45; transition: opacity 0.12s ease; }
+  [data-row-menu]:hover .row-menu-btn, .row-menu-btn:focus-visible, .row-menu-btn[data-state="open"] { opacity: 1; }
+}
 
 /* Bottom sheet (vaul) */
 .sheet-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(16, 24, 40, 0.32); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }

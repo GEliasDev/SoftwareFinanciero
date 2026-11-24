@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Drawer } from 'vaul';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2, MoreHorizontal, Copy, Wallet, X, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2, Copy, Wallet, X, Check, Circle } from 'lucide-react';
 import { BalanceService } from '../services/balanceService';
 import { LoadError } from '../components/ui/LoadError';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { RowMenu, RowMenuButton } from '../components/ui/RowMenu';
+import { useRowMenuTip } from '../hooks/useRowMenuTip';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { fmt } from '../utils/format';
 import {
@@ -81,23 +83,25 @@ const EstadoMenu = ({ fila, onChange }) => {
   );
 };
 
-const RowActions = ({ fila, onEdit, onDelete }) => (
+// Menú de la fila (clic derecho y ⋯): cambiar estado, editar, quitar.
+const accionesFila = (fila, { onEstado, onEdit, onDelete }) => [
+  { heading: 'Marcar como' },
+  ...ESTADOS[fila.tipo].map(e => ({
+    label: e.label, icon: e.value === fila.estado ? Check : Circle,
+    disabled: e.value === fila.estado, onSelect: () => onEstado(fila, e.value),
+  })),
+  'sep',
+  { label: 'Editar', icon: Pencil, onSelect: () => onEdit(fila) },
+  { label: 'Quitar del balance', icon: Trash2, danger: true, onSelect: () => onDelete(fila) },
+];
+
+const RowActions = ({ fila, acciones, onEdit, onDelete }) => (
   <>
     <span className="row desktop-flex" style={{ gap: 4, justifyContent: 'flex-end' }}>
       <button className="icon-btn ghost sm" onClick={() => onEdit(fila)} aria-label={`Editar ${fila.descripcion}`} title="Editar"><Pencil size={16} /></button>
       <button className="icon-btn ghost sm" onClick={() => onDelete(fila)} aria-label={`Quitar ${fila.descripcion}`} title="Quitar del balance" style={{ color: 'var(--neg-600)' }}><Trash2 size={16} /></button>
     </span>
-    <span className="mobile-only">
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild><button className="icon-btn ghost sm" aria-label={`Acciones de ${fila.descripcion}`}><MoreHorizontal size={18} /></button></DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content className="menu-content" align="end" sideOffset={4}>
-            <DropdownMenu.Item className="menu-item" onSelect={() => onEdit(fila)}><Pencil size={16} /> Editar</DropdownMenu.Item>
-            <DropdownMenu.Item className="menu-item danger" onSelect={() => onDelete(fila)}><Trash2 size={16} /> Quitar del balance</DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
-    </span>
+    <span className="mobile-only"><RowMenuButton actions={acciones} label={`Acciones de ${fila.descripcion}`} /></span>
   </>
 );
 
@@ -110,6 +114,7 @@ const origenTexto = (f) => {
 
 const Seccion = ({ id, titulo, filas, vacio, onEstado, onEdit, onDelete }) => {
   const total = filas.reduce((s, f) => s + f.valor, 0);
+  const handlers = { onEstado, onEdit, onDelete };
   return (
     <section className="card card-flush" aria-labelledby={id}>
       <div className="card-header">
@@ -122,20 +127,23 @@ const Seccion = ({ id, titulo, filas, vacio, onEstado, onEdit, onDelete }) => {
             <thead><tr><th>Descripción</th><th>Categoría</th><th>Estado</th><th style={{ textAlign: 'right' }}>Monto</th><th style={{ textAlign: 'right', width: 96 }} aria-label="Acciones" /></tr></thead>
             <tbody>
               {filas.map(f => (
-                <tr key={f.id}>
+                <RowMenu key={f.id} actions={accionesFila(f, handlers)}>
+                <tr>
                   <td><span className="bal-desc"><span className="cell-title">{f.descripcion}</span>{origenTexto(f) && <span className="cell-sub">{origenTexto(f)}</span>}</span></td>
                   <td className="text-secondary">{f.categoria}</td>
                   <td><EstadoMenu fila={f} onChange={onEstado} /></td>
                   <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(f.valor)}</td>
-                  <td><RowActions fila={f} onEdit={onEdit} onDelete={onDelete} /></td>
+                  <td><RowActions fila={f} acciones={accionesFila(f, handlers)} onEdit={onEdit} onDelete={onDelete} /></td>
                 </tr>
+                </RowMenu>
               ))}
             </tbody>
             <tfoot><tr><td colSpan={3}><b>Total</b></td><td className="n" style={{ textAlign: 'right' }}><b>{fmt(total)}</b></td><td /></tr></tfoot>
           </table>
           <div className="mobile-list row-list">
             {filas.map(f => (
-              <div key={f.id} className="pay-row bal-row">
+              <RowMenu key={f.id} actions={accionesFila(f, handlers)}>
+              <div className="pay-row bal-row">
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="cell-title">{f.descripcion}</span>
                   <span className="cell-sub">{f.categoria}{f.origen !== 'manual' && f.monto == null ? ' · automático' : ''}</span>
@@ -144,8 +152,9 @@ const Seccion = ({ id, titulo, filas, vacio, onEstado, onEdit, onDelete }) => {
                   <b className="n">{fmt(f.valor)}</b>
                   <EstadoMenu fila={f} onChange={onEstado} />
                 </span>
-                <RowActions fila={f} onEdit={onEdit} onDelete={onDelete} />
+                <RowActions fila={f} acciones={accionesFila(f, handlers)} onEdit={onEdit} onDelete={onDelete} />
               </div>
+              </RowMenu>
             ))}
           </div>
         </>
@@ -345,6 +354,7 @@ export const Balance = () => {
     valor: montoFila(it, fuentes),
     huerfana: it.origen !== 'manual' && !fuenteDe(it, fuentes),
   })), [items, fuentes]);
+  useRowMenuTip(items.length > 0);
   const ingresos = filas.filter(f => f.tipo === 'ingreso');
   const gastos = filas.filter(f => f.tipo === 'gasto');
   const resumen = useMemo(() => resumenBalance(filas), [filas]);
