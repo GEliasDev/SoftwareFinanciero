@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useThemeState } from '../components/layout/ShellContext';
 import Swal from '../utils/alerts';
 import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
 import { TwoFactorService } from '../services/twoFactorService';
 import { GmailService } from '../services/gmailService';
-import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Mail, MailX, ShieldCheck, Shield, Download, Inbox } from 'lucide-react';
+import { User, Lock, Save, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Mail, MailX, ShieldCheck, Shield, Download, Inbox, LogOut } from 'lucide-react';
 
 const Alert = ({ type, message, onClose }) => (
   <div className={`info-box ${type === 'success' ? 'success' : 'danger'}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -19,6 +20,8 @@ const Alert = ({ type, message, onClose }) => (
 
 export const Profile = () => {
   const navigate = useNavigate();
+  const { hash } = useLocation();
+  const [theme, setTheme] = useThemeState();
   const currentUser = AuthService.getCurrentUser();
   const userId = currentUser?.id;
 
@@ -211,6 +214,13 @@ export const Profile = () => {
       .finally(() => setLoadingProfile(false));
   }, [userId]);
 
+  // Enlaces a una sección (/profile#gmail): llevarla a la vista cuando ya cargó.
+  useEffect(() => {
+    if (loadingProfile || !hash) return;
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' }), 50);
+    return () => clearTimeout(t);
+  }, [loadingProfile, hash]);
+
   const handleProfileChange = e => {
     const { name, value } = e.target;
     setProfile(prev => ({ ...prev, [name]: value }));
@@ -269,47 +279,49 @@ export const Profile = () => {
     .map(s => s[0].toUpperCase())
     .join('') || '?';
 
+  const SECTIONS = [
+    ['personal', 'Datos personales'], ['seguridad', 'Seguridad'], ['gmail', 'Movimientos desde Gmail'],
+    ['resumen', 'Resumen semanal'], ['apariencia', 'Apariencia'], ['exportar', 'Exporta tus datos'],
+    ['sesion', 'Sesión'], ['peligro', 'Zona de peligro'],
+  ];
+  const goSection = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   return (
-    <div>
+    <div className="pf">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Mi Perfil</h1>
-          <p style={{ color: 'var(--color-text-muted)', marginTop: '0.25rem', fontSize: 13 }}>
-            Administra tu información personal y seguridad de cuenta
-          </p>
+          <h1 className="page-title">Perfil y ajustes</h1>
+          <p className="page-subtitle">Tu información personal, la seguridad de tu cuenta y tus preferencias</p>
         </div>
       </div>
+
+      <div className="pf-layout">
+      <nav className="pf-nav desktop-only" aria-label="Secciones del perfil">
+        {SECTIONS.map(([id, label]) => (
+          <button key={id} className={id === 'peligro' ? 'danger' : ''} onClick={() => goSection(id)}>{label}</button>
+        ))}
+      </nav>
+      <div className="pf-main">
 
       {/* Avatar + resumen */}
-      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-        <div style={{
-          width: 72, height: 72, borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--brand-500), var(--brand-700))', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          fontSize: '1.5rem', fontWeight: 700, color: '#fff',
-          flexShrink: 0, boxShadow: '0 4px 12px rgba(91,77,241,0.3)',
-        }}>
-          {initials}
-        </div>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+      <div className="card row" style={{ gap: 16 }}>
+        <span className="avatar lg" style={{ width: 56, height: 56, fontSize: 18 }}>{initials}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>
             {[profile.primerNombre, profile.primerApellido].filter(Boolean).join(' ') || 'Sin nombre'}
           </div>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: 13, marginTop: 2 }}>{profile.email}</div>
-          {profile.ciudad && profile.pais && (
-            <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2 }}>
-              {profile.ciudad}, {profile.pais}
-            </div>
-          )}
+          <div className="text-sm text-secondary truncate">
+            {profile.email}{profile.ciudad && profile.pais ? ` · ${profile.ciudad}, ${profile.pais}` : ''}
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
+      <div className="pf-grid">
         {/* Información personal */}
-        <div className="card">
+        <div className="card" id="personal">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <User size={18} style={{ color: 'var(--color-primary)' }} />
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+            <User size={18} style={{ color: 'var(--text-3)' }} />
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
               Información personal
             </h2>
           </div>
@@ -426,10 +438,10 @@ export const Profile = () => {
         </div>
 
         {/* Cambiar contraseña */}
-        <div className="card">
+        <div className="card" id="seguridad">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Lock size={18} style={{ color: 'var(--color-primary)' }} />
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+            <Lock size={18} style={{ color: 'var(--text-3)' }} />
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
               Cambiar contraseña
             </h2>
           </div>
@@ -478,8 +490,8 @@ export const Profile = () => {
         {/* Verificación en dos pasos (2FA) */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <ShieldCheck size={18} style={{ color: 'var(--color-primary)' }} />
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+            <ShieldCheck size={18} style={{ color: 'var(--text-3)' }} />
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
               Verificación en dos pasos
             </h2>
           </div>
@@ -544,10 +556,10 @@ export const Profile = () => {
         </div>
       </div>
       {/* Resumen semanal por email */}
-      <div className="card" style={{ marginTop: '1.5rem' }}>
+      <div className="card" id="resumen">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <Mail size={18} style={{ color: 'var(--brand-600)' }} />
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Resumen semanal por email</h2>
+          <Mail size={18} style={{ color: 'var(--text-3)' }} />
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Resumen semanal por email</h2>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
           Recibe cada lunes un correo con tu dinero libre, obligaciones del mes y próximos pagos.
@@ -577,10 +589,10 @@ export const Profile = () => {
 
       {/* Conexión con Gmail (movimientos de tarjetas por correo) */}
       {gmail && (
-        <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div className="card" id="gmail">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <Inbox size={16} style={{ color: 'var(--color-primary)' }} />
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Movimientos desde Gmail</h2>
+            <Inbox size={16} style={{ color: 'var(--text-3)' }} />
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Movimientos desde Gmail</h2>
           </div>
           {gmailAlert && <Alert type={gmailAlert.type} message={gmailAlert.message} onClose={() => setGmailAlert(null)} />}
           <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
@@ -605,11 +617,28 @@ export const Profile = () => {
         </div>
       )}
 
+      {/* Apariencia */}
+      <div className="card" id="apariencia">
+        <h2 className="card-title" style={{ marginBottom: 12 }}>Apariencia</h2>
+        <div className="theme-choices" role="radiogroup" aria-label="Tema">
+          {[['light', 'Claro'], ['dark', 'Oscuro']].map(([v, label]) => (
+            <label key={v} className={`theme-choice ${theme === v ? 'selected' : ''}`}>
+              <span className={`theme-preview ${v}`} aria-hidden="true"><i /><i /></span>
+              <span className="row" style={{ gap: 8 }}>
+                <input type="radio" name="theme" value={v} checked={theme === v} onChange={() => setTheme(v)} />
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="pf-two">
       {/* Exportar datos */}
-      <div className="card" style={{ marginTop: '1.5rem' }}>
+      <div className="card" id="exportar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <Download size={16} style={{ color: 'var(--color-primary)' }} />
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>Exporta tus datos</h2>
+          <Download size={16} style={{ color: 'var(--text-3)' }} />
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Exporta tus datos</h2>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
           Descarga toda tu información (tarjetas, créditos, suscripciones, ingresos e historial) en un solo archivo .json.
@@ -619,11 +648,21 @@ export const Profile = () => {
         </button>
       </div>
 
+      {/* Sesión */}
+      <div className="card" id="sesion">
+        <h2 className="card-title" style={{ marginBottom: 8 }}>Sesión</h2>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 16px', lineHeight: 1.5 }}>
+          Sesión iniciada como {profile.email} en este dispositivo.
+        </p>
+        <button className="btn btn-secondary" onClick={() => AuthService.logout()}><LogOut size={16} /> Cerrar sesión</button>
+      </div>
+      </div>
+
       {/* Zona de peligro */}
-      <div className="card" style={{ marginTop: '1.5rem', border: '1px solid rgba(220,38,38,0.2)' }}>
+      <div className="card" id="peligro" style={{ border: '1px solid var(--neg-200)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
           <Trash2 size={16} style={{ color: 'var(--neg-600)' }} />
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--neg-600)', margin: 0 }}>Zona de peligro</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--neg-600)', margin: 0 }}>Zona de peligro</h2>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 1rem', lineHeight: 1.5 }}>
           Una vez que elimines tu cuenta, todos tus datos serán borrados permanentemente. Esta acción no se puede deshacer.
@@ -637,8 +676,7 @@ export const Profile = () => {
               icon: 'warning',
               showCancelButton: true,
               confirmButtonColor: '#DC2626',
-              cancelButtonColor: '#64748B',
-              confirmButtonText: 'Sí, eliminar mi cuenta',
+                            confirmButtonText: 'Sí, eliminar mi cuenta',
               cancelButtonText: 'Cancelar',
               reverseButtons: true,
             });
@@ -656,6 +694,8 @@ export const Profile = () => {
         </button>
       </div>
 
+      </div>
+      </div>
     </div>
   );
 };
