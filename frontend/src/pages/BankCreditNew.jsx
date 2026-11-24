@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BankCreditService } from '../services/bankCreditService';
 import {
-  ArrowLeft, Info, Landmark, ChevronRight, ChevronLeft, Check, AlertCircle, Wallet,
+  Info, Landmark, ChevronRight, ChevronLeft, Check, AlertCircle, Wallet,
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
+import { FormHeader } from '../components/ui/FormLayout';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt, fmtDateLong, localISODate } from '../utils/format';
@@ -119,23 +120,15 @@ export const BankCreditNew = () => {
     : null;
 
   return (
-    <div className="animate-fade-in">
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={() => navigate('/bank-credits')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>
-          <div>
-            <h1 className="page-title" style={{ margin: 0 }}>Nuevo Crédito Bancario</h1>
-            <p className="page-subtitle">Registra tu crédito en 3 pasos y mira la cuota estimada en vivo</p>
-          </div>
-        </div>
-      </div>
+    <div className="animate-fade-in form-page">
+      <FormHeader crumbs={[{ to: '/bank-credits', label: 'Créditos' }, { label: 'Nuevo crédito' }]} title={'Nuevo crédito'} subtitle={'Regístralo en 3 pasos y mira la cuota estimada en vivo.'} onBack={() => navigate('/bank-credits')} />
 
-      {error && <div className="info-box danger" style={{ marginBottom: '1rem' }}><Info size={14} />{error}</div>}
+      {error && <div className="notice warn" role="alert"><Info size={16} />{error}</div>}
 
       <div className="wizard-grid">
         {/* Preview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ borderRadius: 16, background: 'linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%)', padding: '1.5rem', color: 'white', boxShadow: '0 16px 40px rgba(91,77,241,0.3)' }}>
+          <div style={{ borderRadius: 12, background: 'var(--cat-1)', padding: '1.5rem', color: 'white' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
               <Landmark size={18} style={{ color: 'rgba(255,255,255,0.85)' }} />
               <div>

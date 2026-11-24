@@ -1,18 +1,19 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BankCreditService } from '../services/bankCreditService';
-import { Plus, Landmark, ChevronRight, CalendarClock, Wallet, TrendingDown } from 'lucide-react';
-import { PageHeader } from '../components/ui/PageHeader';
-import { StatCard } from '../components/ui/StatCard';
+import { Plus, Landmark, ChevronRight } from 'lucide-react';
 import { LoadError } from '../components/ui/LoadError';
-import { fmt, nextOccurrence, daysUntil, urgencyStyle } from '../utils/format';
+import { fmt, fmtShort, nextOccurrence, daysUntil } from '../utils/format';
 
 const STATUS = {
-  activo:    { label: 'Activo',    cls: 'badge badge-success' },
-  pagado:    { label: 'Pagado',    cls: 'badge badge-primary' },
-  en_mora:   { label: 'En mora',   cls: 'badge badge-danger' },
-  cancelado: { label: 'Cancelado', cls: 'badge badge-neutral' },
+  activo:    { label: 'Activo',    tone: 'success' },
+  pagado:    { label: 'Pagado',    tone: 'neutral' },
+  en_mora:   { label: 'En mora',   tone: 'danger' },
+  cancelado: { label: 'Cancelado', tone: 'neutral' },
 };
+
+const rateLabel = (c) => `${Number(c.tasaInteres).toLocaleString('es-CO', { maximumFractionDigits: 2 })} % ${c.tipoTasa === 'mensual' ? 'M.V.' : 'E.A.'}`;
+const whenText = (d) => d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`;
 
 export const BankCredits = () => {
   const navigate = useNavigate();
@@ -43,101 +44,119 @@ export const BankCredits = () => {
     return 0;
   }), [credits]);
 
+  const header = (
+    <div className="page-header">
+      <div>
+        <h1 className="page-title">Créditos</h1>
+        <p className="page-subtitle">Seguimiento de cuotas, saldos y amortización</p>
+      </div>
+      <button className="btn btn-primary desktop-flex" onClick={() => navigate('/bank-credits/new')}><Plus size={18} /> Nuevo crédito</button>
+      <button className="icon-btn mobile-only" onClick={() => navigate('/bank-credits/new')} aria-label="Nuevo crédito"><Plus size={20} /></button>
+    </div>
+  );
+
+  if (loading) return (
+    <div aria-busy="true">{header}
+      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)', marginBottom: 20 }} />
+      <div className="skeleton" style={{ height: 240, borderRadius: 'var(--radius-lg)' }} />
+    </div>
+  );
+  if (error) return <div>{header}<LoadError onRetry={load} title="No se pudieron cargar tus créditos" /></div>;
+  if (credits.length === 0) return (
+    <div className="animate-fade-in">{header}
+      <div className="card empty-state">
+        <div className="empty-state-icon"><Landmark size={24} /></div>
+        <p className="empty-state-title">Agrega tu primer crédito</p>
+        <p>Con el monto, la tasa y el número de cuotas calculamos tu plan de pagos y te avisamos antes de cada cuota.</p>
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => navigate('/bank-credits/new')}><Plus size={16} /> Agregar crédito</button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="Créditos Bancarios"
-        subtitle="Seguimiento de cuotas, saldos y amortización"
-        actions={
-          <button className="btn btn-primary" onClick={() => navigate('/bank-credits/new')}>
-            <Plus size={15} /> Nuevo Crédito
-          </button>
-        }
-      />
+      {header}
 
-      {!loading && !error && credits.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 18 }}>
-          <StatCard label="Deuda total" value={fmt(totalDebt)} delta="Saldo pendiente" icon={TrendingDown} tone="neg" />
-          <StatCard label="Cuota mensual total" value={fmt(monthlyCuotas)} delta="Comprometido por mes" icon={Wallet} tone="warn" />
-          <StatCard label="Créditos activos" value={`${activos.length}`} delta={`de ${credits.length} registrado${credits.length !== 1 ? 's' : ''}`} icon={Landmark} tone="brand" />
-        </div>
-      )}
+      <section className="card stat-strip" aria-label="Resumen de créditos">
+        <div><p>Deuda total</p><b className="n">{fmt(totalDebt)}</b><span>Saldo pendiente de {credits.length} crédito{credits.length !== 1 ? 's' : ''}</span></div>
+        <div><p>Cuota mensual total</p><b className="n">{fmt(monthlyCuotas)}</b><span>Comprometido por mes</span></div>
+        <div className="desktop-only"><p>Créditos activos</p><b className="n">{activos.length}</b><span>de {credits.length} registrado{credits.length !== 1 ? 's' : ''}</span></div>
+      </section>
 
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 116, borderRadius: 'var(--radius-md)' }} />)}
+      <section className="card card-flush" aria-labelledby="tus-creditos">
+        <div className="card-header">
+          <h2 className="card-title" id="tus-creditos">Tus créditos</h2>
+          <span className="text-sm text-muted desktop-only">Activos primero, por fecha de pago</span>
         </div>
-      ) : error ? (
-        <LoadError onRetry={load} title="No se pudieron cargar tus créditos" />
-      ) : credits.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon"><Landmark size={24} /></div>
-            <p className="empty-state-title">Sin créditos</p>
-            <p>Registra tus créditos bancarios para hacer seguimiento de cuotas y saldos.</p>
-            <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/bank-credits/new')}>
-              <Plus size={14} /> Agregar crédito
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {ordered.map(credit => {
-            const pct = credit.numeroCuotas ? (credit.cuotasPagadas / credit.numeroCuotas) * 100 : 0;
-            const statusInfo = STATUS[credit.status] || STATUS.activo;
-            const isActive = credit.status === 'activo';
-            const days = isActive ? daysUntil(nextOccurrence(credit.diaPago)) : null;
-            const u = isActive ? urgencyStyle(days) : null;
 
+        <table className="cc-table desktop-table">
+          <thead>
+            <tr><th>Crédito</th><th>Estado</th><th>Próximo pago</th><th>Progreso</th><th style={{ textAlign: 'right' }}>Cuota mensual</th><th style={{ textAlign: 'right' }}>Saldo pendiente</th><th aria-label="Abrir" /></tr>
+          </thead>
+          <tbody>
+            {ordered.map(c => {
+              const pct = c.numeroCuotas ? (c.cuotasPagadas / c.numeroCuotas) * 100 : 0;
+              const st = STATUS[c.status] || STATUS.activo;
+              const active = c.status === 'activo';
+              const next = active ? nextOccurrence(c.diaPago) : null;
+              const days = next ? daysUntil(next) : null;
+              return (
+                <tr key={c.id} className="clickable" onClick={() => navigate(`/bank-credits/${c.id}`)}>
+                  <td>
+                    <div className="row" style={{ gap: 12 }}>
+                      <span className="list-icon"><Landmark size={18} /></span>
+                      <div style={{ minWidth: 0 }}>
+                        <span className="cell-title">{c.nombre}</span>
+                        <span className="cell-sub">{c.entidad} · {rateLabel(c)} · día {c.diaPago}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className={`badge badge-${st.tone}`}>{st.label}</span></td>
+                  <td>
+                    {next ? (<><span className="n">{fmtShort(next)}</span><span className={`cell-sub ${days <= 3 ? 'tone-warning' : ''}`}>{whenText(days)}</span></>) : <span className="text-muted">—</span>}
+                  </td>
+                  <td style={{ width: 180 }}>
+                    <div className="row-between text-sm"><span className="text-secondary n">{c.cuotasPagadas} de {c.numeroCuotas} cuotas</span><b className={`n ${active ? 'text-success' : ''}`}>{Math.round(pct)} %</b></div>
+                    <div className="progress-track" style={{ height: 4, marginTop: 6 }}>
+                      <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})`, background: active ? undefined : 'var(--text-4)' }} />
+                    </div>
+                  </td>
+                  <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(c.valorCuota)}</td>
+                  <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(c.saldoPendiente)}</td>
+                  <td style={{ width: 40 }}><ChevronRight size={18} className="text-muted" /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div className="mobile-list row-list">
+          {ordered.map(c => {
+            const pct = c.numeroCuotas ? (c.cuotasPagadas / c.numeroCuotas) * 100 : 0;
+            const st = STATUS[c.status] || STATUS.activo;
+            const active = c.status === 'activo';
+            const days = active ? daysUntil(nextOccurrence(c.diaPago)) : null;
             return (
-              <div key={credit.id} className="card clickable" style={{ padding: '1.125rem 1.25rem' }} onClick={() => navigate(`/bank-credits/${credit.id}`)}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 'var(--radius-md)', background: 'var(--brand-50)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Landmark size={18} />
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
-                      <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0, color: 'var(--text)' }}>{credit.nombre}</h3>
-                      <span className={statusInfo.cls}>{statusInfo.label}</span>
-                      {isActive && (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700,
-                          padding: '1px 8px', borderRadius: 99, background: u.bg, color: u.color, border: `1px solid ${u.border}`,
-                        }}>
-                          <CalendarClock size={10} />
-                          {days === 0 ? 'Paga hoy' : days === 1 ? 'Paga mañana' : `Paga en ${days}d`}
-                        </span>
-                      )}
-                    </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 0.875rem' }}>
-                      {credit.entidad} · {credit.tasaInteres}% {credit.tipoTasa === 'mensual' ? 'M.V.' : 'E.A.'} · Día {credit.diaPago}
-                    </p>
-
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                        <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)' }}>{credit.cuotasPagadas} de {credit.numeroCuotas} cuotas</span>
-                        <span className="tabular" style={{ fontSize: 12, fontWeight: 700, color: 'var(--pos-600)' }}>{pct.toFixed(0)}%</span>
-                      </div>
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 0.15rem' }}>Cuota mensual</p>
-                    <p className="tabular" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text)', margin: '0 0 0.4rem', letterSpacing: '-0.02em' }}>{fmt(credit.valorCuota)}</p>
-                    <p className="tabular" style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>Saldo: {fmt(credit.saldoPendiente)}</p>
-                  </div>
-
-                  <ChevronRight size={16} style={{ color: 'var(--text-3)', alignSelf: 'center', flexShrink: 0 }} />
+              <button key={c.id} className="cc-mrow" onClick={() => navigate(`/bank-credits/${c.id}`)}>
+                <div className="row-between" style={{ alignItems: 'flex-start' }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span className="cell-title">{c.nombre}</span>
+                    <span className="cell-sub">{c.entidad} · {c.cuotasPagadas} de {c.numeroCuotas} cuotas</span>
+                  </span>
+                  <span style={{ textAlign: 'right' }}>
+                    <b className="n" style={{ fontSize: 15 }}>{fmt(c.valorCuota)}</b>
+                    {active ? <span className={`cell-sub ${days <= 3 ? 'tone-warning' : ''}`}>{whenText(days)}</span> : <span className={`badge badge-${st.tone}`}>{st.label}</span>}
+                  </span>
                 </div>
-              </div>
+                <div className="progress-track" style={{ height: 4, margin: '10px 0 8px' }}>
+                  <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})`, background: active ? undefined : 'var(--text-4)' }} />
+                </div>
+                <div className="row-between text-sm text-secondary n"><span>{Math.round(pct)} % pagado</span><span>Saldo {fmt(c.saldoPendiente)}</span></div>
+              </button>
             );
           })}
         </div>
-      )}
+      </section>
     </div>
   );
 };

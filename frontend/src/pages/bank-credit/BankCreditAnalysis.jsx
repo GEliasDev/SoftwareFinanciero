@@ -1,20 +1,20 @@
 import { useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, AreaChart, Area,
+  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area, ReferenceLine, ReferenceDot,
 } from 'recharts';
-import { TrendingDown, Percent, Receipt, BarChart2 } from 'lucide-react';
-import { StatCard } from '../../components/ui/StatCard';
-import { SectionCard } from '../../components/ui/SectionCard';
 import { buildLoanSchedule } from '../../utils/bankCredit';
 import { fmt } from '../../utils/format';
 
 // Hex fijos para recharts (no soporta CSS vars en SVG fill)
-const C_CAPITAL  = '#059669'; // --pos-600
-const C_INTERES  = '#DC2626'; // --neg-600
-const C_SALDO    = '#047857'; // --brand-600
-const C_PAGADA   = '#CBD5E1'; // --border-strong — cuotas ya pagadas (atenuado)
+const C_CAPITAL   = '#12B76A'; // --pos-500
+const C_CAPITAL_P = '#A6F4C5'; // capital de cuotas ya pagadas (atenuado)
+const C_INTERES   = '#667085'; // --cat-2
+const C_INTERES_P = '#D0D5DD'; // interés de cuotas ya pagadas
+const C_SALDO     = '#047857'; // --brand-600
+const C_GRID      = '#EAECF0';
+const C_TICK      = '#98A2B3';
 
 const fmtK = (v) => {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
@@ -22,16 +22,22 @@ const fmtK = (v) => {
   return String(v);
 };
 
+const pctFmt = (n) => `${n.toLocaleString('es-CO', { maximumFractionDigits: 1 })} %`;
+const LegendItem = ({ color, label, dashed }) => (
+  <span className="chart-legend-item"><i style={{ background: dashed ? 'none' : color, borderTop: dashed ? `2px dashed ${color}` : 'none', height: dashed ? 0 : 8, width: dashed ? 14 : 8 }} />{label}</span>
+);
+
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: '#fff', border: '1px solid #E2E8F0', borderRadius: 8,
-      padding: '10px 14px', fontSize: 12, boxShadow: '0 4px 12px rgba(15,23,42,0.10)',
+      background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+      padding: '10px 14px', fontSize: 12, boxShadow: 'var(--shadow-lg)',
     }}>
-      <p style={{ fontWeight: 700, marginBottom: 6, color: '#0F172A' }}>{label}</p>
-      {payload.map(p => (
-        <p key={p.dataKey} style={{ color: p.color, margin: '2px 0' }}>
+      <p style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text)' }}>{label}</p>
+      {payload.filter(p => p.value != null).map(p => (
+        <p key={p.dataKey} style={{ color: 'var(--text-2)', margin: '2px 0' }}>
           {p.name}: <span style={{ fontWeight: 600 }}>{fmt(p.value)}</span>
         </p>
       ))}
@@ -64,10 +70,12 @@ export const BankCreditAnalysis = () => {
   const saldoCapital   = parseFloat(credit?.saldoPendiente ?? 0);
 
   // Para el AreaChart de saldo: incluye cuota 0 (inicio) como punto de partida
+  // Dos series: lo ya pagado (línea sólida con relleno) y lo que falta (punteada).
   const saldoData = useMemo(() => [
-    { cuota: 'Inicio', saldo: Math.round(parseFloat(credit?.montoTotal ?? 0)), pagada: true },
-    ...chartData.map(r => ({ cuota: r.cuota, saldo: r.saldo, pagada: r.pagada })),
-  ], [chartData, credit]);
+    { cuota: 'Inicio', k: 0, saldo: Math.round(parseFloat(credit?.montoTotal ?? 0)) },
+    ...chartData.map(r => ({ cuota: r.cuota, k: r.k, saldo: r.saldo })),
+  ].map(d => ({ ...d, pagado: d.k <= pagadas ? d.saldo : null, pendiente: d.k >= pagadas ? d.saldo : null })), [chartData, credit, pagadas]);
+  const hoy = saldoData[pagadas];
 
   // Intervalo de ticks: si hay muchas cuotas, saltar etiquetas
   const tickInterval = rows.length > 24 ? Math.ceil(rows.length / 12) - 1 : 0;
@@ -75,123 +83,77 @@ export const BankCreditAnalysis = () => {
   if (!credit || rows.length === 0) return null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="stack" style={{ gap: 20 }}>
+      <section className="card stat-strip" aria-label="Resumen del análisis">
+        <div><p>Capital pagado</p><b className="n">{fmt(capitalPagado)}</b><span>Interés pagado: {fmt(interesPagado)}</span></div>
+        <div><p>Saldo capital pendiente</p><b className="n">{fmt(saldoCapital)}</b><span>{credit.numeroCuotas - pagadas} cuotas restantes</span></div>
+        <div><p>Carga de intereses</p><b className="n">{pctFmt(cargaInteres)}</b><span>{fmt(totalIntereses)} del total a pagar</span></div>
+        <div><p>Total intereses</p><b className="n">{fmt(totalIntereses)}</b><span>sobre {fmt(parseFloat(credit?.montoTotal ?? 0))} de capital</span></div>
+      </section>
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <StatCard
-          label="Capital pagado" value={fmt(capitalPagado)}
-          delta={`Interés pagado: ${fmt(interesPagado)}`}
-          icon={TrendingDown} tone="pos"
-        />
-        <StatCard
-          label="Saldo capital pendiente" value={fmt(saldoCapital)}
-          delta={`${credit.numeroCuotas - pagadas} cuotas restantes`}
-          icon={TrendingDown} tone="neg"
-        />
-        <StatCard
-          label="Carga de intereses" value={`${cargaInteres.toFixed(1)}%`}
-          delta={`${fmt(totalIntereses)} del total pagado`}
-          icon={Percent} tone="warn"
-        />
-        <StatCard
-          label="Total intereses" value={fmt(totalIntereses)}
-          delta={`sobre ${fmt(parseFloat(credit?.montoTotal ?? 0))} de capital`}
-          icon={Receipt} tone="neutral"
-        />
-      </div>
-
-      {/* Composición capital vs interés por cuota */}
-      <SectionCard title="Composición de cada cuota" icon={BarChart2}>
-        <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>
-          Las primeras cuotas van mayoritariamente a interés; conforme avanza el crédito, más va a capital.
-          Las cuotas atenuadas ya fueron pagadas.
-        </p>
-        <div style={{ overflowX: rows.length > 36 ? 'auto' : 'visible', paddingBottom: 4 }}>
-          <div style={{ minWidth: rows.length > 36 ? rows.length * 24 : '100%', height: 280 }}>
+      <section className="card" aria-labelledby="an-comp">
+        <div className="row-between" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div>
+            <h2 className="card-title" id="an-comp">Composición de cada cuota</h2>
+            <p className="card-subtitle" style={{ fontSize: 14 }}>Las primeras cuotas van sobre todo a interés; con el tiempo, más va a capital. Las cuotas claras ya están pagadas.</p>
+          </div>
+          <div className="chart-legend">
+            <LegendItem color={C_CAPITAL} label="Capital" />
+            <LegendItem color={C_INTERES} label="Interés" />
+            <LegendItem color={C_INTERES_P} label="Pagadas" />
+          </div>
+        </div>
+        <div style={{ overflowX: rows.length > 36 ? 'auto' : 'visible', paddingBottom: 4, marginTop: 16 }}>
+          <div style={{ minWidth: rows.length > 36 ? rows.length * 18 : '100%', height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barSize={rows.length > 24 ? 8 : 14} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis
-                  dataKey="cuota"
-                  tick={{ fontSize: 10, fill: '#94A3B8' }}
-                  interval={tickInterval}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={fmtK}
-                  tick={{ fontSize: 10, fill: '#94A3B8' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={44}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  iconType="circle" iconSize={8}
-                  formatter={(v) => <span style={{ fontSize: 12, color: '#475569' }}>{v}</span>}
-                />
+              <BarChart data={chartData} barCategoryGap="20%" margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke={C_GRID} vertical={false} />
+                <XAxis dataKey="cuota" tick={{ fontSize: 11, fill: C_TICK }} interval={tickInterval} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: C_TICK }} axisLine={false} tickLine={false} width={44} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(16,24,40,0.04)' }} />
+                {pagadas > 0 && pagadas < rows.length && (
+                  <ReferenceLine x={`C${pagadas + 1}`} stroke="#101828" strokeDasharray="3 3" label={{ value: 'Hoy', position: 'top', fontSize: 11, fill: '#475467' }} />
+                )}
                 <Bar dataKey="capital" name="Capital" stackId="a" fill={C_CAPITAL}>
-                  {chartData.map((d, i) => (
-                    <Cell key={i} fill={d.pagada ? C_PAGADA : C_CAPITAL} />
-                  ))}
+                  {chartData.map((d, i) => <Cell key={i} fill={d.pagada ? C_CAPITAL_P : C_CAPITAL} />)}
                 </Bar>
-                <Bar dataKey="interes" name="Interés" stackId="a" fill={C_INTERES} radius={[3, 3, 0, 0]}>
-                  {chartData.map((d, i) => (
-                    <Cell key={i} fill={d.pagada ? '#FCA5A5' : C_INTERES} />
-                  ))}
+                <Bar dataKey="interes" name="Interés" stackId="a" fill={C_INTERES}>
+                  {chartData.map((d, i) => <Cell key={i} fill={d.pagada ? C_INTERES_P : C_INTERES} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-      </SectionCard>
+      </section>
 
-      {/* Curva de saldo pendiente */}
-      <SectionCard title="Curva de amortización — saldo capital" icon={TrendingDown}>
-        <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>
-          Cómo disminuye el saldo de capital con cada cuota pagada.
-        </p>
-        <div style={{ height: 240 }}>
+      <section className="card" aria-labelledby="an-curve">
+        <div className="row-between" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div>
+            <h2 className="card-title" id="an-curve">Curva de amortización · saldo de capital</h2>
+            <p className="card-subtitle" style={{ fontSize: 14 }}>Cómo baja el saldo de capital con cada cuota pagada.</p>
+          </div>
+          <div className="chart-legend">
+            <LegendItem color={C_SALDO} label="Pagado" />
+            <LegendItem color={C_INTERES} label="Por pagar" dashed />
+          </div>
+        </div>
+        <div style={{ height: 240, marginTop: 16 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={saldoData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradSaldo" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={C_SALDO} stopOpacity={0.18} />
-                  <stop offset="95%" stopColor={C_SALDO} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-              <XAxis
-                dataKey="cuota"
-                tick={{ fontSize: 10, fill: '#94A3B8' }}
-                interval={tickInterval}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={fmtK}
-                tick={{ fontSize: 10, fill: '#94A3B8' }}
-                axisLine={false}
-                tickLine={false}
-                width={44}
-              />
+            <AreaChart data={saldoData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={C_GRID} vertical={false} />
+              <XAxis dataKey="cuota" tick={{ fontSize: 11, fill: C_TICK }} interval={tickInterval} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: C_TICK }} axisLine={false} tickLine={false} width={44} />
               <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="saldo"
-                name="Saldo capital"
-                stroke={C_SALDO}
-                strokeWidth={2}
-                fill="url(#gradSaldo)"
-                dot={false}
-                activeDot={{ r: 4, fill: C_SALDO }}
-              />
+              <Area type="linear" dataKey="pagado" name="Saldo" stroke={C_SALDO} strokeWidth={2} fill="#ECFDF3" fillOpacity={1} dot={false} connectNulls={false} />
+              <Area type="linear" dataKey="pendiente" name="Saldo proyectado" stroke={C_INTERES} strokeWidth={2} strokeDasharray="5 5" fill="none" dot={false} connectNulls={false} />
+              {hoy && pagadas > 0 && (
+                <ReferenceDot x={hoy.cuota} y={hoy.saldo} r={4} fill={C_SALDO} stroke="#fff"
+                  label={{ value: `Hoy · ${fmtK(hoy.saldo)}`, position: 'top', fontSize: 11, fill: '#101828' }} />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </SectionCard>
-
+      </section>
     </div>
   );
 };

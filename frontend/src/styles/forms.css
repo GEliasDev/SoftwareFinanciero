@@ -65,7 +65,7 @@
 .step-summary > div span { display: block; font-size: 12px; color: var(--text-3); }
 .step-summary > div b { font-weight: 500; }
 .step-summary .btn-text { margin-left: auto; font-family: inherit; cursor: pointer; }
-.stepper { margin-bottom: 0; }
+.form-main > .stepper { margin-bottom: 0; }
 
 /* Campo con sufijo (% M.V., días…) */
 .suffix-field { position: relative; display: block; }

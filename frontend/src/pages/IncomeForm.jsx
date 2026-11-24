@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, AlertCircle, Wallet, Zap } from 'lucide-react';
+import { Check, AlertCircle, Wallet, Zap } from 'lucide-react';
 import { IncomeService } from '../services/incomeService';
-import { PageHeader } from '../components/ui/PageHeader';
+import { FormHeader } from '../components/ui/FormLayout';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
@@ -97,20 +97,15 @@ export const IncomeForm = () => {
   };
 
   const accentColor = form.tipo === 'extra' ? 'var(--warn-600)' : 'var(--pos-600)';
-  const accentDark  = form.tipo === 'extra' ? '#b45309' : 'var(--pos-700)';
-  const shadowColor = form.tipo === 'extra' ? 'rgba(217,119,6,0.25)' : 'rgba(5,150,105,0.25)';
   const TipoIcon    = form.tipo === 'extra' ? Zap : Wallet;
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader
+    <div className="animate-fade-in form-page">
+      <FormHeader
+        crumbs={[{ to: '/income', label: 'Ingresos' }, { label: isEdit ? 'Editar ingreso' : 'Nuevo ingreso' }]}
         title={isEdit ? 'Editar ingreso' : 'Nuevo ingreso'}
-        subtitle={isEdit ? 'Modifica los datos de este ingreso' : 'Registra una fuente de dinero'}
-        back={
-          <button onClick={() => navigate('/income')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
-            <ArrowLeft size={16} />
-          </button>
-        }
+        subtitle={isEdit ? 'Modifica los datos de este ingreso.' : 'Registra una fuente de dinero.'}
+        onBack={() => navigate('/income')}
       />
 
       {/* Selector de tipo — solo en creación */}
@@ -144,10 +139,9 @@ export const IncomeForm = () => {
         <div>
           <div style={{
             borderRadius: 16,
-            background: `linear-gradient(135deg, ${accentColor} 0%, ${accentDark} 100%)`,
+            background: 'var(--cat-1)',
             padding: '1.5rem',
             color: 'white',
-            boxShadow: `0 16px 40px ${shadowColor}`,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
               <TipoIcon size={18} style={{ color: 'rgba(255,255,255,0.85)' }} />

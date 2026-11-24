@@ -1,0 +1,72 @@
+/* ════════════════════════════════════════════════════════════════
+   CRÉDITOS · SUSCRIPCIONES · INGRESOS (listas y detalles)
+════════════════════════════════════════════════════════════════ */
+
+/* Franja de cifras resumen (3–4 celdas) */
+.stat-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 0; margin-bottom: 20px; overflow: hidden; }
+.stat-strip > div { padding: 20px 24px; }
+.stat-strip > div + div { border-left: 1px solid var(--divider); }
+.stat-strip p { margin: 0 0 6px; font-size: 14px; color: var(--text-2); }
+.stat-strip b { display: block; font-size: 32px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: var(--text); }
+.stat-strip span { display: block; margin-top: 4px; font-size: 13px; color: var(--text-3); }
+
+/* Ícono de fila en listas */
+.list-icon { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; background: var(--surface-2); color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; }
+.list-icon.lg { width: 44px; height: 44px; border-radius: 10px; }
+
+/* Detalle de crédito */
+.bc-grid { display: grid; grid-template-columns: 1fr 1fr 0.85fr; gap: 20px; align-items: stretch; }
+.bc-balance, .bc-next { display: flex; flex-direction: column; }
+.bc-foot { margin: auto 0 0; padding-top: 14px; border-top: 1px solid var(--divider); }
+.bc-balance .bc-foot { margin-top: 24px; }
+.bc-split { display: flex; gap: 2px; height: 8px; border-radius: 99px; overflow: hidden; margin: 18px 0 6px; }
+.bc-cost .row-list > * { padding: 14px 0; }
+.bc-info { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 32px; }
+.bc-info-item { padding: 12px 0; border-bottom: 1px solid var(--divider); }
+.bc-info-item span { display: block; font-size: 13px; color: var(--text-3); }
+.bc-info-item b { font-size: 15px; font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .bc-grid { grid-template-columns: 1fr 1fr; }
+  .bc-info { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 767px) {
+  .stat-strip { grid-auto-flow: row; grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
+  .stat-strip > div { padding: 16px; }
+  .stat-strip > div:nth-child(odd) { border-left: none; }
+  .stat-strip > div:nth-child(n+3) { border-top: 1px solid var(--divider); }
+  .stat-strip b { font-size: 20px; }
+  .stat-strip span { font-size: 12px; }
+  .bc-grid { grid-template-columns: 1fr; gap: 12px; }
+  .bc-info { grid-template-columns: 1fr 1fr; gap: 0 16px; }
+}
+
+/* Cronograma de crédito */
+.am-top { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: stretch; }
+.am-totals { display: flex; flex-direction: column; }
+.am-totals .kv { padding: 12px 0; }
+.am-legend { gap: 16px; align-items: center; font-size: 13px; color: var(--text-2); }
+.am-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.am-legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--brand-50); border: 1px solid var(--brand-200); }
+.am-table .r { text-align: right; }
+.am-table td { padding-top: 10px; padding-bottom: 10px; }
+.am-table tr.paid td { color: var(--text-3); }
+.am-table tr.next td { background: var(--brand-50); }
+.am-table tfoot td { border-top: 1px solid var(--divider); padding: 12px 16px; background: var(--surface-3); }
+.am-toggle td { padding: 8px 16px !important; }
+.am-toggle button { display: inline-flex; align-items: center; gap: 6px; border: none; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-text); cursor: pointer; padding: 0; }
+@media (max-width: 767px) {
+  .am-top { grid-template-columns: 1fr; gap: 12px; }
+  .desktop-cell { display: none; }
+  .am .table-container { overflow-x: auto; }
+  .am-table { font-size: 13px; }
+  .am-table th, .am-table td { padding-left: 8px; padding-right: 8px; white-space: nowrap; }
+  .am-table tr.next .badge { display: none; }
+}
+
+/* Leyenda de gráficas */
+.chart-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--text-2); }
+.chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend-item i { display: inline-block; border-radius: 2px; }
+@media (min-width: 768px) { .stat-strip.four b, .stat-strip > div:nth-child(4) ~ * b { font-size: 26px; } }
+.stack > .stat-strip { margin-bottom: 0; }

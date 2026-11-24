@@ -537,11 +537,11 @@ textarea.auth-input { height: auto !important; }
 /* ── Layout utilities ── */
 .wizard-grid {
   display: grid;
-  grid-template-columns: 5fr 7fr;
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
   align-items: start;
 }
-.wizard-grid > :first-child { position: sticky; top: 1rem; }
+.wizard-grid > :first-child { position: sticky; top: 0; order: 2; }
 
 .split-grid {
   display: grid;
@@ -658,7 +658,7 @@ textarea.auth-input { height: auto !important; }
   .page-subtitle { font-size: 13px; }
   .form-row-2 { grid-template-columns: 1fr; }
   .wizard-grid { grid-template-columns: 1fr; }
-  .wizard-grid > :first-child { position: static; order: -1; }
+  .wizard-grid > :first-child { position: static; order: 2; }
   .split-grid { grid-template-columns: 1fr; }
   .hero-split { grid-template-columns: 1fr; }
   .auth-form-section { padding: 24px 16px; }

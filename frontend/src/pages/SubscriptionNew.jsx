@@ -4,9 +4,10 @@ import Swal from '../utils/alerts';
 import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import {
-  ArrowLeft, Repeat, ChevronRight, ChevronLeft, Check, AlertCircle, CreditCard,
+  Repeat, ChevronRight, ChevronLeft, Check, AlertCircle, CreditCard,
 } from 'lucide-react';
 import { Stepper } from '../components/ui/Stepper';
+import { FormHeader } from '../components/ui/FormLayout';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
@@ -91,21 +92,13 @@ export const SubscriptionNew = () => {
   const anual = formData.frecuencia === 'anual' ? monto : monto * 12;
 
   return (
-    <div className="animate-fade-in">
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={() => navigate('/subscriptions')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>
-          <div>
-            <h1 className="page-title" style={{ margin: 0 }}>Nueva Suscripción</h1>
-            <p className="page-subtitle">Registra tu servicio recurrente y mira cuánto te cuesta al año</p>
-          </div>
-        </div>
-      </div>
+    <div className="animate-fade-in form-page">
+      <FormHeader crumbs={[{ to: '/subscriptions', label: 'Suscripciones' }, { label: 'Nueva suscripción' }]} title={'Nueva suscripción'} subtitle={'Registra tu servicio recurrente y mira cuánto te cuesta al año.'} onBack={() => navigate('/subscriptions')} />
 
       <div className="wizard-grid">
         {/* Preview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ borderRadius: 16, background: 'linear-gradient(135deg, var(--pos-600) 0%, var(--pos-700) 100%)', padding: '1.5rem', color: 'white', boxShadow: '0 16px 40px rgba(5,150,105,0.28)' }}>
+          <div style={{ borderRadius: 12, background: 'var(--cat-1)', padding: '1.5rem', color: 'white' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
               <Repeat size={18} style={{ color: 'rgba(255,255,255,0.85)' }} />
               <div>

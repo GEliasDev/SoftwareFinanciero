@@ -1047,14 +1047,13 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
 /* ── Selector de día del mes (ciclos de cobro/corte/pago) ── */
 .dom-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(7, minmax(0, 44px));
+  gap: 6px;
   margin-bottom: 8px;
 }
 
 .dom-day {
-  aspect-ratio: 1;
-  min-height: 34px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1062,7 +1061,7 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-2);
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 500;
   font-family: inherit;
   font-variant-numeric: tabular-nums;

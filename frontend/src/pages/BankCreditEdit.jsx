@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGoBack } from '../hooks/useGoBack';
 import {
-  ArrowLeft, Info, Landmark, ChevronRight, ChevronLeft, Check, AlertCircle, Wallet, Lock,
+  Info, Landmark, ChevronRight, ChevronLeft, Check, AlertCircle, Wallet, Lock,
 } from 'lucide-react';
 import { BankCreditService } from '../services/bankCreditService';
 import { Stepper } from '../components/ui/Stepper';
+import { FormHeader } from '../components/ui/FormLayout';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt, fmtDateLong } from '../utils/format';
@@ -137,23 +138,15 @@ export const BankCreditEdit = () => {
   const totalIntereses = parseFloat(credit?.totalIntereses ?? 0) || 0;
 
   return (
-    <div className="animate-fade-in">
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={goBack} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>
-          <div>
-            <h1 className="page-title" style={{ margin: 0 }}>Editar crédito</h1>
-            <p className="page-subtitle">{data.nombre} — toca un paso para saltar a él</p>
-          </div>
-        </div>
-      </div>
+    <div className="animate-fade-in form-page">
+      <FormHeader crumbs={[{ to: '/bank-credits', label: 'Créditos' }, { to: `/bank-credits/${id}`, label: data.nombre || 'Crédito' }, { label: 'Editar' }]} title={'Editar crédito'} subtitle={`${data.nombre} — toca un paso para saltar a él`} onBack={goBack} />
 
-      {error && <div className="info-box danger" style={{ marginBottom: '1rem' }}><Info size={14} />{error}</div>}
+      {error && <div className="notice warn" role="alert"><Info size={16} />{error}</div>}
 
       <div className="wizard-grid">
         {/* Preview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ borderRadius: 16, background: 'linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%)', padding: '1.5rem', color: 'white', boxShadow: '0 16px 40px rgba(91,77,241,0.3)' }}>
+          <div style={{ borderRadius: 12, background: 'var(--cat-1)', padding: '1.5rem', color: 'white' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
               <Landmark size={18} style={{ color: 'rgba(255,255,255,0.85)' }} />
               <div>

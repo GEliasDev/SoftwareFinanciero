@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import {
-  CalendarClock, ChevronDown, ChevronRight, DollarSign, Landmark, ArrowDownRight, CheckCircle2,
-} from 'lucide-react';
-import { fmt, fmtShort, daysUntil, urgencyStyle } from '../../utils/format';
+import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { fmt, daysUntil, capFirst } from '../../utils/format';
 import { buildLoanSchedule } from '../../utils/bankCredit';
 
+const whenText = (d) => d < 0 ? 'Vencida' : d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`;
+const shortDate = (d) => d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '').replace(/ de /g, ' ');
+
 export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
-  const [open, setOpen] = useState(false);
+  const [showPaid, setShowPaid] = useState(false);
   const { rows, remaining } = buildLoanSchedule(credit);
 
   if (remaining.length === 0) return null;
@@ -14,176 +15,125 @@ export const AmortizationSchedule = ({ credit, onPay, paying = false }) => {
   const pagadas = Number(credit?.cuotasPagadas) || 0;
   const next = remaining[0];
   const days = daysUntil(next.date);
-  const u = urgencyStyle(days);
-  const capitalPct = next.totalMes > 0 ? (next.capital / (next.capital + next.interes)) * 100 : 0;
+  const capitalPct = next.capital + next.interes > 0 ? (next.capital / (next.capital + next.interes)) * 100 : 0;
+  // Fecha de cualquier cuota: se cuenta en meses desde la próxima (las pagadas hacia atrás).
+  const dateOf = (k) => new Date(next.date.getFullYear(), next.date.getMonth() + (k - next.k), next.date.getDate());
 
-  // Totals across full schedule
   const totalIntereses = rows.reduce((a, r) => a + r.interes, 0);
   const totalCapital   = rows.reduce((a, r) => a + r.capital, 0);
   const totalPagado    = rows.slice(0, pagadas).reduce((a, r) => a + r.totalMes, 0);
   // Admin + seguro van dentro de `totalMes`; se totalizan aparte para que la
-  // fila Total cuadre con la suma real de la columna Cuota (antes sumaba solo
-  // capital + intereses y quedaba corta por los cargos de todos los meses).
-  const cargosMes    = (rows[0]?.admin ?? 0) + (rows[0]?.seguro ?? 0);
-  const hayCargos    = cargosMes > 0;
-  const totalCargos  = cargosMes * rows.length;
-  const totalCuotas  = rows.reduce((a, r) => a + r.totalMes, 0);
+  // fila Total cuadre con la suma real de la columna Cuota.
+  const cargosMes   = (rows[0]?.admin ?? 0) + (rows[0]?.seguro ?? 0);
+  const hayCargos   = cargosMes > 0;
+  const totalCargos = cargosMes * rows.length;
+  const totalCuotas = rows.reduce((a, r) => a + r.totalMes, 0);
+
+  // Se muestran las 4 últimas pagadas; las anteriores quedan plegadas.
+  const VISIBLE_PAID = 4;
+  const hiddenPaid = Math.max(0, pagadas - VISIBLE_PAID);
+  const visibleRows = rows.filter(r => r.k > pagadas || showPaid || r.k > hiddenPaid);
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1rem' }}>
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%)', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <Landmark size={17} style={{ color: 'rgba(255,255,255,0.85)' }} />
-          <div>
-            <div style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>Plan de pagos</div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>{credit?.entidad} · {credit?.nombre}</div>
+    <div className="am">
+      <div className="am-top">
+        <section className="card bc-next" aria-label="Próxima cuota">
+          <div className="row-between">
+            <p className="text-secondary n" style={{ margin: 0, fontSize: 14 }}>Próxima cuota · {next.k} de {rows.length}</p>
+            <span className={`badge badge-${days <= 3 ? 'warning' : 'neutral'}`}>{whenText(days)}</span>
           </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cuotas restantes</div>
-          <div className="tabular" style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>{remaining.length} de {rows.length}</div>
-        </div>
+          <p className="amount-lg" style={{ margin: '10px 0 4px', fontSize: 36 }}>{fmt(next.totalMes)}</p>
+          <p className="text-sm text-secondary" style={{ margin: 0 }}>{capFirst(next.date.toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: 'long' }))}</p>
+          <div className="bc-split" aria-hidden="true">
+            <span style={{ flexGrow: capitalPct, background: 'var(--pos-500)' }} />
+            <span style={{ flexGrow: 100 - capitalPct, background: 'var(--cat-2)' }} />
+          </div>
+          <div className="row-between text-sm text-muted n"><span>Capital {Math.round(capitalPct)} %</span><span>Interés {Math.round(100 - capitalPct)} %</span></div>
+          <div className="row-list" style={{ marginTop: 12, borderTop: '1px solid var(--divider)' }}>
+            <div className="kv"><span>Capital</span><span>{fmt(next.capital)}</span></div>
+            <div className="kv"><span>Interés</span><span>{fmt(next.interes)}</span></div>
+            {hayCargos && <div className="kv"><span>Administración y seguro</span><span>{fmt(cargosMes)}</span></div>}
+          </div>
+          {onPay && (
+            <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 16 }} onClick={onPay} disabled={paying}>
+              {paying ? 'Registrando…' : `Pagar cuota · ${fmt(next.totalMes)}`}
+            </button>
+          )}
+        </section>
+
+        <section className="card am-totals" aria-label="Totales del plan">
+          <p className="text-secondary" style={{ margin: '0 0 4px', fontSize: 14 }}>Totales del plan</p>
+          <div className="row-list">
+            <div className="kv"><span>Cuotas restantes</span><span>{remaining.length} <span className="text-muted" style={{ fontWeight: 400 }}>de {rows.length}</span></span></div>
+            <div className="kv"><span>Total capital</span><span>{fmt(totalCapital)}</span></div>
+            <div className="kv"><span>Total intereses</span><span>{fmt(totalIntereses)}</span></div>
+            {hayCargos && <div className="kv"><span>Total cargos (admin. y seguro)</span><span>{fmt(totalCargos)}</span></div>}
+            <div className="kv"><span>Ya pagado</span><span className={totalPagado > 0 ? 'text-success' : ''}>{fmt(totalPagado)}</span></div>
+          </div>
+          <p className="text-sm text-muted bc-foot">La cuota es fija: cada mes una parte mayor va a capital.</p>
+        </section>
       </div>
 
-      {/* Next payment */}
-      <div style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
-              Próxima cuota ({next.k}/{credit?.numeroCuotas})
-            </div>
-            <div className="tabular" style={{ fontSize: '1.85rem', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-              {fmt(next.totalMes)}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-              Capital <span className="tabular" style={{ color: 'var(--pos-600)', fontWeight: 600 }}>{fmt(next.capital)}</span>
-              {' · '}Interés <span className="tabular" style={{ color: 'var(--neg-600)', fontWeight: 600 }}>{fmt(next.interes)}</span>
-              {next.admin > 0 && <> · Admin <span className="tabular">{fmt(next.admin)}</span></>}
-            </div>
-          </div>
-
-          <div style={{ background: u.bg, border: `1px solid ${u.border}`, borderRadius: 'var(--radius-md)', padding: '0.6rem 0.875rem', minWidth: 150 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-              <CalendarClock size={13} style={{ color: u.color }} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: u.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Vence</span>
-            </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: u.color }}>
-              {days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `En ${days} días`}
-            </div>
-            <div style={{ fontSize: 11, color: u.color, opacity: 0.8 }}>{fmtShort(next.date)}</div>
-          </div>
-        </div>
-
-        {/* Capital vs interest bar */}
-        <div style={{ marginTop: '0.875rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>
-            <span>Capital {capitalPct.toFixed(0)}%</span>
-            <span>Interés {(100 - capitalPct).toFixed(0)}%</span>
-          </div>
-          <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', background: 'var(--neg-600)' }}>
-            <div style={{ width: `${capitalPct}%`, background: 'var(--pos-600)' }} />
-          </div>
-        </div>
-
-        {/* Summary totals */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginTop: '1rem' }}>
-          {[
-            { label: 'Total capital', value: fmt(totalCapital), color: 'var(--text)' },
-            { label: 'Total intereses', value: fmt(totalIntereses), color: 'var(--neg-600)' },
-            { label: 'Ya pagado', value: fmt(totalPagado), color: 'var(--pos-600)' },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 'var(--radius-md)', padding: '0.625rem 0.75rem' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
-              <div className="tabular" style={{ fontSize: 13, fontWeight: 700, color }}>{value}</div>
-            </div>
-          ))}
-        </div>
-
-        {onPay && credit?.status === 'activo' && (
-          <button className="btn btn-success" style={{ width: '100%', marginTop: '0.875rem' }} onClick={onPay} disabled={paying}>
-            <DollarSign size={14} /> {paying ? 'Registrando…' : `Pagar cuota · ${fmt(next.totalMes)}`}
-          </button>
-        )}
-      </div>
-
-      {/* Full amortization table */}
-      <div style={{ borderTop: '1px solid var(--border)', padding: '1rem 1.25rem' }}>
-        <button
-          onClick={() => setOpen(o => !o)}
-          style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 0 }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
-            <ArrowDownRight size={14} style={{ color: 'var(--brand-600)' }} />
-            Tabla de amortización completa
+      <section className="card card-flush" style={{ marginTop: 20 }} aria-labelledby="am-table">
+        <div className="card-header">
+          <h2 className="card-title" id="am-table">Tabla de amortización</h2>
+          <span className="am-legend desktop-flex">
+            <span><CheckCircle2 size={14} className="text-success" /> Pagada</span>
+            <span><i /> Próxima</span>
+            <span className="n">{rows.length} cuotas</span>
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-3)' }}>
-            {open ? 'Ocultar' : `Ver ${rows.length} cuotas`}
-            {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </span>
-        </button>
-
-        {open && (
-          <div className="amortization-table" style={{ marginTop: '0.875rem', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  {['#', 'Fecha', 'Cuota', 'Capital', 'Interés', ...(hayCargos ? ['Cargos'] : []), 'Saldo'].map(h => (
-                    <th key={h} style={{ padding: '6px 10px', textAlign: h === '#' ? 'center' : 'right', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                      {h}
-                    </th>
-                  ))}
+        </div>
+        <div className="table-container">
+          <table className="cc-table am-table">
+            <thead>
+              <tr>
+                <th style={{ width: 56, textAlign: 'center' }}>#</th><th>Fecha</th>
+                <th className="r">Cuota</th><th className="r desktop-cell">Capital</th><th className="r desktop-cell">Interés</th>
+                {hayCargos && <th className="r desktop-cell">Cargos</th>}
+                <th className="r">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hiddenPaid > 0 && (
+                <tr className="am-toggle">
+                  <td colSpan={hayCargos ? 7 : 6}>
+                    <button onClick={() => setShowPaid(v => !v)} aria-expanded={showPaid}>
+                      {showPaid ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      {showPaid ? `Ocultar cuotas 1 a ${hiddenPaid}` : `Mostrar cuotas 1 a ${hiddenPaid}`}
+                      <span className="text-muted" style={{ fontWeight: 400 }}> · pagadas</span>
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const isPaid = r.k <= pagadas;
-                  const rowDate = isPaid
-                    ? null
-                    : remaining[r.k - pagadas - 1]?.date;
-                  const dateStr = rowDate ? fmtShort(rowDate) : '—';
-                  return (
-                    <tr
-                      key={r.k}
-                      style={{
-                        borderBottom: '1px solid var(--border)',
-                        opacity: isPaid ? 0.45 : 1,
-                        background: r.k === next.k ? 'var(--brand-50, rgba(91,77,241,0.04))' : 'transparent',
-                      }}
-                    >
-                      <td style={{ padding: '7px 10px', textAlign: 'center' }}>
-                        {isPaid
-                          ? <CheckCircle2 size={13} style={{ color: 'var(--pos-600)', verticalAlign: 'middle' }} />
-                          : <span className="tabular" style={{ fontWeight: 600, color: r.k === next.k ? 'var(--brand-600)' : 'var(--text-3)' }}>{r.k}</span>}
-                      </td>
-                      <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{dateStr}</td>
-                      <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{fmt(r.totalMes)}</td>
-                      <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--pos-600)' }}>{fmt(r.capital)}</td>
-                      <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--neg-600)' }}>{fmt(r.interes)}</td>
-                      {hayCargos && (
-                        <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-3)' }}>{fmt(r.admin + r.seguro)}</td>
-                      )}
-                      <td className="tabular" style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-2)' }}>{fmt(r.saldo)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr style={{ borderTop: '2px solid var(--border)', background: 'var(--surface-2)' }}>
-                  <td colSpan={2} style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</td>
-                  <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--text)' }}>{fmt(totalCuotas)}</td>
-                  <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--pos-600)' }}>{fmt(totalCapital)}</td>
-                  <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--neg-600)' }}>{fmt(totalIntereses)}</td>
-                  {hayCargos && (
-                    <td className="tabular" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--text-3)' }}>{fmt(totalCargos)}</td>
-                  )}
-                  <td style={{ padding: '8px 10px' }} />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-      </div>
+              )}
+              {visibleRows.map(r => {
+                const paid = r.k <= pagadas;
+                const isNext = r.k === next.k;
+                return (
+                  <tr key={r.k} className={paid ? 'paid' : isNext ? 'next' : ''}>
+                    <td style={{ textAlign: 'center' }} className="n">{paid ? <CheckCircle2 size={16} className="text-success" aria-label={`Cuota ${r.k} pagada`} /> : <b>{r.k}</b>}</td>
+                    <td className="n">{shortDate(dateOf(r.k))} {isNext && <span className="badge badge-primary" style={{ marginLeft: 6 }}>Próxima</span>}</td>
+                    <td className="n r" style={{ fontWeight: 600 }}>{fmt(r.totalMes)}</td>
+                    <td className="n r desktop-cell">{fmt(r.capital)}</td>
+                    <td className="n r desktop-cell">{fmt(r.interes)}</td>
+                    {hayCargos && <td className="n r desktop-cell">{fmt(r.admin + r.seguro)}</td>}
+                    <td className="n r">{fmt(r.saldo)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={2}><b>Total</b></td>
+                <td className="n r"><b>{fmt(totalCuotas)}</b></td>
+                <td className="n r desktop-cell"><b>{fmt(totalCapital)}</b></td>
+                <td className="n r desktop-cell"><b>{fmt(totalIntereses)}</b></td>
+                {hayCargos && <td className="n r desktop-cell"><b>{fmt(totalCargos)}</b></td>}
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };

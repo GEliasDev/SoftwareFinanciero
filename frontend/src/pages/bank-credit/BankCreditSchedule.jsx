@@ -11,7 +11,7 @@ export const BankCreditSchedule = () => {
     <div className="card">
       <div className="empty-state">
         <div className="empty-state-icon"><CheckCircle2 size={22} /></div>
-        <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Crédito saldado</p>
+        <p className="empty-state-title">Crédito saldado</p>
         <p>No quedan cuotas pendientes en este crédito.</p>
       </div>
     </div>
