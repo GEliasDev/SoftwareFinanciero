@@ -224,7 +224,7 @@ export const CreditCardPurchaseForm = () => {
                 {cuotaPreview > 0 && (
                   <div className="notice info" style={{ margin: 0 }}>
                     <Calculator size={16} />
-                    <span>Cuota aprox. <b className="n">{fmt(cuotaPreview)}/mes</b> con {String(card?.tasaInteresMensual).replace('.', ',')} % M.V. · Total <b className="n">{fmt(totalPreview)}</b></span>
+                    <span>Cuota aprox. <b className="n">{fmt(cuotaPreview)}/mes</b> con {Number(card?.tasaInteresMensual).toLocaleString('es-CO', { maximumFractionDigits: 4 })} % M.V. · Total <b className="n">{fmt(totalPreview)}</b></span>
                   </div>
                 )}
               </>

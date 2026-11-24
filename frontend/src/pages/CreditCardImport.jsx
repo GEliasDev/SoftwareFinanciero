@@ -2,9 +2,9 @@ import { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import Swal from '../utils/alerts';
-import { ArrowLeft, Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { CreditCardService } from '../services/creditCardService';
-import { PageHeader } from '../components/ui/PageHeader';
+import { FormHeader } from '../components/ui/FormLayout';
 import { fmt } from '../utils/format';
 import { CATEGORIES } from '../utils/creditCard';
 import { parseCSV, parseFecha, parseMonto } from '../utils/csvImport';
@@ -113,21 +113,22 @@ export const CreditCardImport = () => {
   };
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title="Importar movimientos"
-        subtitle="Sube el extracto de tu banco (CSV o Excel) y mapea las columnas"
-        back={<button onClick={() => navigate(`/credit-cards/${id}/purchases`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}><ArrowLeft size={16} /></button>}
+    <div className="animate-fade-in form-page">
+      <FormHeader
+        crumbs={[{ to: '/credit-cards', label: 'Tarjetas' }, { to: `/credit-cards/${id}`, label: 'Tarjeta' }, { label: 'Importar extracto' }]}
+        title="Importar extracto"
+        subtitle="Sube el extracto de tu banco (CSV o Excel) y elige qué columna es cada dato."
+        onBack={() => navigate(`/credit-cards/${id}/purchases`)}
       />
 
       {result ? (
-        <div className="card" style={{ padding: '1.75rem', textAlign: 'center' }}>
+        <div className="card empty-state">
           {result.fail === 0 ? (
             <CheckCircle2 size={40} style={{ color: 'var(--color-success)', marginBottom: 12 }} />
           ) : (
             <AlertTriangle size={40} style={{ color: 'var(--color-warning)', marginBottom: 12 }} />
           )}
-          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)', margin: '0 0 4px' }}>
+          <p className="empty-state-title">
             {result.ok} compra{result.ok !== 1 ? 's' : ''} importada{result.ok !== 1 ? 's' : ''}
             {result.fail > 0 && `, ${result.fail} con error`}
           </p>
@@ -141,28 +142,30 @@ export const CreditCardImport = () => {
           </button>
         </div>
       ) : !headers.length ? (
-        <div className="card" style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}>
-          <FileSpreadsheet size={32} style={{ color: 'var(--brand-600)', marginBottom: 12 }} />
-          <p style={{ fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>Sube tu extracto</p>
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
-            Acepta .csv, .xlsx y .xls — cualquier formato de columnas, las mapeas en el siguiente paso.
+        <div className="card upload-zone">
+          <span className="empty-state-icon"><FileSpreadsheet size={24} /></span>
+          <p className="empty-state-title">Sube tu extracto</p>
+          <p className="text-secondary" style={{ fontSize: 14, margin: '0 0 16px', maxWidth: 420 }}>
+            Acepta .csv, .xlsx y .xls con cualquier orden de columnas: en el siguiente paso eliges cuál es cada dato.
           </p>
           <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} style={{ display: 'none' }} />
           <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
-            <Upload size={14} /> Elegir archivo
+            <Upload size={16} /> Elegir archivo
           </button>
         </div>
       ) : (
         <>
-          <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '1rem' }}>
-            <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
-              <FileSpreadsheet size={13} style={{ verticalAlign: -2 }} /> {fileName} · {rows.length} fila{rows.length !== 1 ? 's' : ''} detectada{rows.length !== 1 ? 's' : ''}
+          <div className="card" style={{ marginBottom: 20 }}>
+            <h2 className="card-title">Columnas</h2>
+            <p className="form-section-desc" style={{ marginBottom: 16 }}>
+              <FileSpreadsheet size={14} style={{ verticalAlign: -2 }} /> {fileName} · {rows.length} fila{rows.length !== 1 ? 's' : ''} detectada{rows.length !== 1 ? 's' : ''}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
               {FIELDS.map(f => (
                 <div className="form-group" key={f.key} style={{ marginBottom: 0 }}>
-                  <label className="form-label">{f.label}{f.required && ' *'}</label>
+                  <label className="form-label" htmlFor={`map-${f.key}`}>{f.label}</label>
                   <select
+                    id={`map-${f.key}`}
                     className="form-input"
                     value={mapping[f.key]}
                     onChange={e => setMapping(m => ({ ...m, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }))}
@@ -175,47 +178,47 @@ export const CreditCardImport = () => {
             </div>
           </div>
 
-          <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>Vista previa</h3>
-              <span style={{ fontSize: 12, color: validCount === rows.length ? 'var(--color-success)' : 'var(--color-warning)' }}>
+          <div className="card card-flush" style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <h2 className="card-title">Vista previa</h2>
+              <span className={`text-sm ${validCount === rows.length ? 'text-success' : 'text-warning'}`} style={{ fontWeight: 600 }}>
                 {validCount} de {rows.length} filas listas para importar
               </span>
             </div>
             <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
+              <table className="cc-table">
                 <thead>
-                  <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)' }}>
-                    <th style={{ padding: '4px 8px' }}></th>
-                    <th style={{ padding: '4px 8px' }}>Fecha</th>
-                    <th style={{ padding: '4px 8px' }}>Descripción</th>
-                    <th style={{ padding: '4px 8px' }}>Monto</th>
-                    <th style={{ padding: '4px 8px' }}>Categoría</th>
+                  <tr>
+                    <th aria-label="Estado"></th>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th style={{ textAlign: 'right' }}>Monto</th>
+                    <th>Categoría</th>
                   </tr>
                 </thead>
                 <tbody>
                   {mapped.slice(0, 15).map(m => (
-                    <tr key={m.rowIndex} style={{ borderTop: '1px solid var(--color-border)', opacity: m.valid ? 1 : 0.6 }}>
-                      <td style={{ padding: '4px 8px' }}>
-                        {m.valid ? <CheckCircle2 size={13} style={{ color: 'var(--color-success)' }} /> : <XCircle size={13} style={{ color: 'var(--color-danger)' }} />}
+                    <tr key={m.rowIndex} style={{ opacity: m.valid ? 1 : 0.6 }}>
+                      <td style={{ width: 40 }}>
+                        {m.valid ? <CheckCircle2 size={16} className="text-success" aria-label="Lista" /> : <XCircle size={16} className="text-danger" aria-label="Con error" />}
                       </td>
-                      <td style={{ padding: '4px 8px' }}>{m.fecha || '—'}</td>
-                      <td style={{ padding: '4px 8px' }}>{m.descripcion || '—'}</td>
-                      <td className="tabular" style={{ padding: '4px 8px' }}>{isNaN(m.monto) ? '—' : fmt(m.monto)}</td>
-                      <td style={{ padding: '4px 8px' }}>{m.categoria}</td>
+                      <td className="n">{m.fecha || '—'}</td>
+                      <td>{m.descripcion || '—'}</td>
+                      <td className="n" style={{ textAlign: 'right' }}>{isNaN(m.monto) ? '—' : fmt(m.monto)}</td>
+                      <td className="text-secondary">{m.categoria}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {mapped.length > 15 && (
-                <p style={{ fontSize: 11.5, color: 'var(--color-text-muted)', margin: '6px 8px' }}>
+                <p className="text-sm text-muted" style={{ margin: 0, padding: '12px 20px' }}>
                   y {mapped.length - 15} fila{mapped.length - 15 !== 1 ? 's' : ''} más…
                 </p>
               )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div className="form-actions">
             <button className="btn btn-secondary" onClick={() => { setHeaders([]); setRows([]); }}>Elegir otro archivo</button>
             <button className="btn btn-primary" disabled={!canImport || importing} onClick={handleImport}>
               {importing ? `Importando ${progress.done}/${progress.total}…` : `Importar ${validCount} compra${validCount !== 1 ? 's' : ''}`}

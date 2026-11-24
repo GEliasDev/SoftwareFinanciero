@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCardService } from '../services/creditCardService';
 import {
-  ArrowLeft, CreditCard, Info, AlertTriangle, Calendar,
-  DollarSign, Check, Percent, ChevronRight, ChevronLeft, AlertCircle,
+  CreditCard, Info, AlertTriangle, Check, Percent, ChevronRight, ChevronLeft, AlertCircle,
 } from 'lucide-react';
-import { CARD_COLORS, getCardGradient } from '../utils/cardColors';
+import { getCardGradient } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
+import { FormHeader, FormSection } from '../components/ui/FormLayout';
+import { CardColorPicker } from '../components/credit-cards/CardColorPicker';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
@@ -127,225 +128,163 @@ export const CreditCardNew = () => {
     </div>
   );
 
+  const goStep = (i) => { if (i < step) setStep(i); };
+
   return (
-    <div className="animate-fade-in">
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={() => navigate('/credit-cards')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
-            <ArrowLeft size={16} />
-          </button>
-          <div>
-            <h1 className="page-title" style={{ margin: 0 }}>Nueva Tarjeta de Crédito</h1>
-            <p className="page-subtitle">Registra tu tarjeta en 3 pasos para hacer seguimiento de compras en cuotas</p>
+    <div className="animate-fade-in form-page">
+      <FormHeader
+        crumbs={[{ to: '/credit-cards', label: 'Tarjetas' }, { label: 'Nueva tarjeta' }]}
+        title="Nueva tarjeta de crédito"
+        subtitle="Regístrala en 3 pasos para hacer seguimiento de tus compras en cuotas."
+        onBack={() => (step > 0 ? handleBack() : navigate('/credit-cards'))}
+      />
+
+      {error && <div className="notice warn" role="alert"><Info size={16} /> {error}</div>}
+
+      <form onSubmit={handleSubmit} className="form-layout" noValidate>
+        <div className="form-main">
+          <Stepper steps={STEPS} current={step} onStepClick={goStep} />
+
+          {step > 0 && (
+            <div className="card step-summary">
+              <span className="text-secondary">Identidad</span>
+              <div><span>Nombre / alias</span><b>{formData.nombre}</b></div>
+              <div><span>Entidad / banco</span><b>{formData.entidad}</b></div>
+              {formData.ultimos4 && <div><span>Últimos 4 dígitos</span><b className="n">{formData.ultimos4}</b></div>}
+              <button type="button" className="btn-text link-sm" onClick={() => setStep(0)}>Editar</button>
+            </div>
+          )}
+
+          {step === 0 && (
+            <FormSection title="Identidad de la tarjeta" desc="¿Cómo se llama y de qué banco es?">
+              <div className="form-row-2">
+                {field('nombre', 'Nombre / alias', 'Como quieres identificar esta tarjeta', { placeholder: 'Ej: Visa Gold, Principal…' })}
+                {field('entidad', 'Entidad / banco', null, { placeholder: 'Ej: Bancolombia, Davivienda…' })}
+              </div>
+              <div className="form-group" style={{ maxWidth: 240, marginTop: 16 }}>
+                <label className="form-label" htmlFor="ultimos4">Últimos 4 dígitos <span className="text-muted" style={{ fontWeight: 400 }}>(opcional)</span></label>
+                <input id="ultimos4" className={`form-input n ${showErr('ultimos4') ? 'error' : ''}`} style={{ letterSpacing: '0.2em' }} value={formData.ultimos4} inputMode="numeric"
+                  onChange={e => setFormData(prev => ({ ...prev, ultimos4: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                  onBlur={() => markTouched('ultimos4')} placeholder="1234" maxLength={4} />
+                {showErr('ultimos4') ? <p className="form-error"><AlertCircle size={12} /> {errors.ultimos4}</p> : <p className="form-hint">Sirve para reconocer las compras que llegan por Gmail.</p>}
+              </div>
+            </FormSection>
+          )}
+
+          {step === 1 && (
+            <>
+              <FormSection title="Cupo y tasa" desc="Los datos con los que se calculan tus cuotas e intereses.">
+                <div className="form-row-2">
+                  {field('cupoTotal', 'Cupo total', 'Límite de crédito asignado por el banco.', { type: 'money', placeholder: '0' })}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" htmlFor="tasaInteresMensual">Tasa de interés mensual</label>
+                    <span className="suffix-field" data-suffix="% M.V.">
+                      <input id="tasaInteresMensual" className={`form-input n ${showErr('tasaInteresMensual') ? 'error' : ''}`} type="number" name="tasaInteresMensual" value={formData.tasaInteresMensual} onChange={handleChange} onBlur={() => markTouched('tasaInteresMensual')} min="0.0001" step="0.0001" placeholder="Ej: 1,89" inputMode="decimal" />
+                    </span>
+                    {showErr('tasaInteresMensual') ? <p className="form-error"><AlertCircle size={12} /> {errors.tasaInteresMensual}</p>
+                      : tasaEA ? <p className={`form-hint ${isHighRate ? 'text-warning' : 'text-success'}`}>{isHighRate ? '' : '✓ '}Equivale a {String(tasaEA).replace('.', ',')} % E.A. · {isHighRate ? 'tasa alta' : 'tasa normal'}</p>
+                      : <p className="form-hint">Tasa mensual vencida (M.V.) del extracto.</p>}
+                  </div>
+                </div>
+              </FormSection>
+              <FormSection title="Cargos y pago mínimo" desc="Opcionales. Déjalos en 0 si tu tarjeta no los cobra.">
+                <div className="form-row-2">
+                  {field('comisionAvance', 'Comisión por avance', 'Se cobra cada vez que sacas un avance.', { type: 'money', placeholder: '0' })}
+                  {field('cuotaManejo', 'Cuota de manejo', 'Cargo fijo que se agrega en cada corte.', { type: 'money', placeholder: '0' })}
+                </div>
+                <div style={{ maxWidth: 'calc(50% - 8px)', minWidth: 240, marginTop: 16 }}>
+                  {field('pagoMinimo', 'Pago mínimo mensual (opcional)', 'Lo mínimo que exige el banco para no caer en mora.', { type: 'money', placeholder: '0' })}
+                </div>
+              </FormSection>
+            </>
+          )}
+
+          {step === 2 && (
+            <FormSection title="Fechas del ciclo" desc="Días de corte y de pago de tu tarjeta.">
+              <DayOfMonthPicker label="Día de corte" required nombreEvento="corte" value={formData.fechaCorte}
+                onChange={d => { setFormData(p => ({ ...p, fechaCorte: String(d) })); markTouched('fechaCorte'); }}
+                error={showErr('fechaCorte') ? errors.fechaCorte : null} hint="Cierre del periodo de facturación." />
+              <div style={{ marginTop: 20 }}>
+                <DayOfMonthPicker label="Día de pago" required nombreEvento="pago" value={formData.fechaPago}
+                  onChange={d => { setFormData(p => ({ ...p, fechaPago: String(d) })); markTouched('fechaPago'); }}
+                  error={showErr('fechaPago') ? errors.fechaPago : null} hint="Fecha límite de pago de cada mes." />
+              </div>
+              {(formData.fechaCorte || formData.fechaPago) && (
+                <div className="notice info" style={{ margin: '20px 0 0' }}>
+                  <Info size={16} />
+                  <span>
+                    {corte >= 1 && corte <= 31 && <>Próximo corte: <b>{nextDatePreview(formData.fechaCorte)}</b>. </>}
+                    {pago >= 1 && pago <= 31 && <>Próximo pago: <b>{nextDatePreview(formData.fechaPago)}</b>.</>}
+                  </span>
+                </div>
+              )}
+            </FormSection>
+          )}
+
+          <div className="form-actions" style={{ justifyContent: 'space-between' }}>
+            <button type="button" className="btn btn-ghost desktop-flex" onClick={() => navigate('/credit-cards')}>Cancelar</button>
+            <div className="row" style={{ gap: 8, flex: 1, justifyContent: 'flex-end' }}>
+              {step > 0 && <button type="button" className="btn btn-secondary" onClick={handleBack}><ChevronLeft size={16} /> Atrás</button>}
+              {step < STEPS.length - 1
+                ? <button type="button" className="btn btn-primary" onClick={handleNext}>Siguiente: {STEPS[step + 1].toLowerCase()} <ChevronRight size={16} /></button>
+                : <button type="submit" className="btn btn-primary" disabled={loading}><Check size={16} /> {loading ? 'Guardando…' : 'Crear tarjeta'}</button>}
+            </div>
           </div>
         </div>
-      </div>
 
-      {error && <div className="info-box danger" style={{ marginBottom: '1rem' }}><Info size={14} />{error}</div>}
-
-      <div className="wizard-grid">
-
-        {/* ── Vista previa (persistente) ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ borderRadius: 16, background: gradient, padding: '1.5rem', minHeight: 210, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', position: 'relative', overflow: 'hidden', boxShadow: '0 16px 40px rgba(0,0,0,0.22)', transition: 'background 0.4s ease' }}>
-            <div style={{ position: 'absolute', top: '-35%', right: '-15%', width: 250, height: 250, background: 'rgba(255,255,255,0.07)', borderRadius: '50%' }} />
-            <div style={{ position: 'absolute', bottom: '-45%', left: '-10%', width: 200, height: 200, background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <aside className="form-aside">
+          <div className="card-preview" style={{ background: gradient }}>
+            <div className="row-between" style={{ alignItems: 'flex-start' }}>
               <div>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: '0 0 0.2rem', fontWeight: 700, letterSpacing: '0.12em' }}>{formData.entidad?.toUpperCase() || 'ENTIDAD'}</p>
-                <p style={{ color: 'white', fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>{formData.nombre || 'Nombre de la tarjeta'}</p>
+                <span className="card-mini-bank">{formData.entidad?.toUpperCase() || 'ENTIDAD'}</span>
+                <b style={{ display: 'block', fontSize: 17, marginTop: 2 }}>{formData.nombre || 'Nombre de la tarjeta'}</b>
               </div>
-              <CreditCard size={24} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+              <CreditCard size={22} style={{ opacity: 0.6 }} />
             </div>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, margin: '0 0 0.2rem', fontWeight: 600, letterSpacing: '0.1em' }}>CUPO TOTAL</p>
-              <p className="tabular" style={{ color: 'white', fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>{cupoNum ? fmt(cupoNum) : '—'}</p>
+            <div>
+              <span className="card-mini-label" style={{ display: 'block' }}>Cupo total</span>
+              <span className="card-mini-amount n" style={{ fontSize: 28 }}>{cupoNum ? fmt(cupoNum) : '—'}</span>
             </div>
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontFamily: 'monospace', letterSpacing: '0.15em' }}>{formData.ultimos4 ? `•••• •••• •••• ${formData.ultimos4}` : '•••• •••• •••• ••••'}</span>
-              {tasaEA && <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, fontWeight: 500 }}>{formData.tasaInteresMensual}% M.V.</span>}
+            <div className="row-between" style={{ fontSize: 13, opacity: 0.85 }}>
+              <span className="n" style={{ letterSpacing: '0.15em' }}>{formData.ultimos4 ? `•••• •••• •••• ${formData.ultimos4}` : '•••• •••• •••• ••••'}</span>
+              {tasaEA && <span className="n">{Number(formData.tasaInteresMensual).toLocaleString('es-CO', { maximumFractionDigits: 4 })} % M.V.</span>}
             </div>
           </div>
 
-          <div className="card" style={{ padding: '1rem' }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Color de la tarjeta</p>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {CARD_COLORS.map(c => (
-                <button key={c.key} type="button" className="color-swatch" title={c.label} aria-label={`Color ${c.label}`} onClick={() => setFormData(prev => ({ ...prev, color: c.key }))}
-                  style={{ width: 30, height: 30, borderRadius: '50%', background: c.gradient, border: formData.color === c.key ? '2px solid var(--text)' : '2px solid transparent', boxShadow: formData.color === c.key ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.2)', cursor: 'pointer', padding: 0, outline: 'none', transform: formData.color === c.key ? 'scale(1.18)' : 'scale(1)', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }} />
-              ))}
-              <div style={{ width: 1, height: 22, background: 'var(--color-border)', margin: '0 2px' }} />
-              {/* Picker de color libre */}
-              <div title="Color personalizado" style={{ position: 'relative', width: 30, height: 30, flexShrink: 0 }}>
-                <div style={{
-                  width: 30, height: 30, borderRadius: '50%',
-                  background: formData.color.startsWith('#')
-                    ? formData.color
-                    : 'conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)',
-                  border: formData.color.startsWith('#') ? '2px solid var(--text)' : '2px solid var(--color-border)',
-                  boxShadow: formData.color.startsWith('#') ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.15)',
-                  transform: formData.color.startsWith('#') ? 'scale(1.18)' : 'scale(1)',
-                  transition: 'transform 0.15s ease',
-                }} />
-                <input type="color"
-                  style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none' }}
-                  value={formData.color.startsWith('#') ? formData.color : '#5B4DF1'}
-                  onChange={e => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                />
-              </div>
-            </div>
-            {formData.color.startsWith('#') && (
-              <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: formData.color, border: '1px solid var(--color-border)' }} />
-                {formData.color}
-                <button type="button" onClick={() => setFormData(prev => ({ ...prev, color: 'blue' }))}
-                  style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
-                  usar preset
-                </button>
-              </p>
-            )}
-          </div>
+          <section className="card">
+            <p className="form-label" style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Color de la tarjeta</p>
+            <CardColorPicker value={formData.color} onChange={c => setFormData(prev => ({ ...prev, color: c }))} />
+          </section>
 
           {tasaEA && (
-            <div className={`info-box ${isHighRate ? 'warning' : 'primary'}`}>
-              {isHighRate ? <AlertTriangle size={14} /> : <Percent size={14} />}
+            <div className={`notice ${isHighRate ? 'warn' : 'ok'}`} style={{ margin: 0, alignItems: 'flex-start' }}>
+              {isHighRate ? <AlertTriangle size={16} /> : <Percent size={16} />}
               <div>
-                <strong>Tasa E.A.: {tasaEA}%</strong>
-                <p style={{ margin: '2px 0 0', fontSize: 11, lineHeight: 1.5 }}>{isHighRate ? `Supera la tasa de usura referencial (${TASA_USURA_EA}% E.A.). Verifica con tu banco.` : 'Dentro del rango habitual para tarjetas en Colombia.'}</p>
+                <b>Tasa E.A.: {String(tasaEA).replace('.', ',')} %</b>
+                <p style={{ margin: '2px 0 0', fontSize: 13 }}>{isHighRate ? `Supera la tasa de usura de referencia (${TASA_USURA_EA} % E.A.). Verifica con tu banco.` : `Dentro del rango habitual para tarjetas en Colombia (usura de referencia ${TASA_USURA_EA} % E.A.).`}</p>
               </div>
             </div>
           )}
 
           {cupoNum > 0 && tasaMensual > 0 && (
-            <div className="card" style={{ padding: '1rem' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><DollarSign size={12} /> Simulador rápido</p>
-              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 0.625rem' }}>Si usas el cupo completo en:</p>
-              <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem' }}>
+            <section className="card">
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Simulador rápido</p>
+              <p className="text-sm text-secondary" style={{ margin: '2px 0 12px' }}>Si usas el cupo completo en:</p>
+              <div className="segmented" style={{ width: '100%' }} role="group" aria-label="Cuotas a simular">
                 {[3, 6, 12, 24].map(n => (
-                  <button key={n} type="button" onClick={() => setSimCuotas(n)}
-                    style={{ flex: 1, padding: '0.3rem 0', fontSize: 12, fontWeight: 600, border: `1.5px solid ${simCuotas === n ? 'var(--brand-600)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-sm)', background: simCuotas === n ? 'var(--brand-50)' : 'transparent', color: simCuotas === n ? 'var(--brand-700)' : 'var(--color-text-secondary)', cursor: 'pointer', transition: 'all 0.1s ease' }}>{n}c</button>
+                  <button key={n} type="button" style={{ flex: 1 }} aria-pressed={simCuotas === n} onClick={() => setSimCuotas(n)}>{n}</button>
                 ))}
               </div>
               {cuotaSim && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--brand-50)', borderRadius: 'var(--radius-sm)' }}>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Cuota aprox.</span>
-                  <span className="tabular" style={{ fontWeight: 800, fontSize: 16, color: 'var(--brand-700)' }}>{fmt(cuotaSim)}/mes</span>
+                <div className="row-between" style={{ marginTop: 16, alignItems: 'baseline' }}>
+                  <span className="text-secondary text-sm">Cuota aprox.</span>
+                  <span><b className="n" style={{ fontSize: 22 }}>{fmt(cuotaSim)}</b> <span className="text-sm text-secondary">/mes</span></span>
                 </div>
               )}
-            </div>
+            </section>
           )}
-
-          {(formData.fechaCorte || formData.fechaPago) && (
-            <div className="card" style={{ padding: '1rem' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.625rem', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={12} /> Próximas fechas</p>
-              {formData.fechaCorte && corte >= 1 && corte <= 31 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '0.3rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                  <span style={{ color: 'var(--color-text-muted)' }}>Próximo corte</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{nextDatePreview(formData.fechaCorte)}</span>
-                </div>
-              )}
-              {formData.fechaPago && pago >= 1 && pago <= 31 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '0.3rem 0' }}>
-                  <span style={{ color: 'var(--color-text-muted)' }}>Próximo pago</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{nextDatePreview(formData.fechaPago)}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Asistente ── */}
-        <div className="card" style={{ padding: '1.75rem' }}>
-          <Stepper steps={STEPS} current={step} />
-          <form onSubmit={handleSubmit}>
-
-            {step === 0 && (
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Identidad de la tarjeta</h3>
-                <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>¿Cómo se llama y de qué banco es?</p>
-                <div className="form-row-2" style={{ marginBottom: '0.75rem' }}>
-                  {field('nombre', 'Nombre / Alias *', 'Como quieres identificar esta tarjeta', { placeholder: 'Ej: Visa Gold, Principal...' })}
-                  {field('entidad', 'Entidad / Banco *', null, { placeholder: 'Ej: Bancolombia, Davivienda...' })}
-                </div>
-                <div style={{ maxWidth: 220 }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Últimos 4 dígitos <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(opcional)</span></label>
-                    <input className={`form-input ${showErr('ultimos4') ? 'error' : ''}`} style={{ letterSpacing: '0.2em', fontVariantNumeric: 'tabular-nums' }} value={formData.ultimos4}
-                      onChange={e => setFormData(prev => ({ ...prev, ultimos4: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                      onBlur={() => markTouched('ultimos4')} placeholder="1234" maxLength={4} />
-                    {showErr('ultimos4') ? <p className="form-error"><AlertCircle size={11} /> {errors.ultimos4}</p> : <p className="form-hint">Facilita identificarla en pantalla</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {step === 1 && (
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Datos financieros</h3>
-                <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Cupo y tasa de interés de la tarjeta</p>
-                <div className="form-row-2">
-                  {field('cupoTotal', 'Cupo total (COP) *', 'Límite de crédito asignado por el banco', { type: 'money', placeholder: '0' })}
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Tasa mensual (%) *</label>
-                    <input className={`form-input ${showErr('tasaInteresMensual') ? 'error' : ''}`} type="number" name="tasaInteresMensual" value={formData.tasaInteresMensual} onChange={handleChange} onBlur={() => markTouched('tasaInteresMensual')} min="0.0001" step="0.0001" placeholder="Ej: 1.9872" />
-                    {showErr('tasaInteresMensual') ? <p className="form-error"><AlertCircle size={11} /> {errors.tasaInteresMensual}</p>
-                      : tasaEA ? <p className="form-hint" style={{ color: isHighRate ? 'var(--color-warning)' : 'var(--color-success)' }}>≈ {tasaEA}% E.A. {isHighRate ? '⚠ Alta' : '✓ Normal'}</p>
-                      : <p className="form-hint">Tasa de interés mensual (M.V.)</p>}
-                  </div>
-                </div>
-                <div className="form-row-2" style={{ marginTop: '0.75rem' }}>
-                  {field('comisionAvance', 'Comisión por avance (COP)', 'Déjalo en 0 si la tarjeta no cobra avances', { type: 'money', placeholder: 'Ej: 9900' })}
-                  {field('cuotaManejo', 'Cuota de manejo (COP)', 'Cargo fijo que se agrega en cada corte. 0 si no aplica', { type: 'money', placeholder: 'Ej: 30000' })}
-                </div>
-                <div style={{ marginTop: '0.75rem' }}>
-                  {field('pagoMinimo', 'Pago mínimo mensual (COP)', 'Mínimo que exige el banco para no caer en mora. Opcional.', { type: 'money', placeholder: 'Ej: 150000' })}
-                </div>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>Fechas de ciclo</h3>
-                <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: '0 0 1.25rem' }}>Días de corte y de pago de tu tarjeta</p>
-                <DayOfMonthPicker
-                  label="Día de corte"
-                  required
-                  nombreEvento="corte"
-                  value={formData.fechaCorte}
-                  onChange={d => { setFormData(p => ({ ...p, fechaCorte: String(d) })); markTouched('fechaCorte'); }}
-                  error={showErr('fechaCorte') ? errors.fechaCorte : null}
-                  hint="Cierre del periodo de facturación"
-                />
-                <div style={{ marginTop: '1rem' }}>
-                  <DayOfMonthPicker
-                    label="Día de pago"
-                    required
-                    nombreEvento="pago"
-                    value={formData.fechaPago}
-                    onChange={d => { setFormData(p => ({ ...p, fechaPago: String(d) })); markTouched('fechaPago'); }}
-                    error={showErr('fechaPago') ? errors.fechaPago : null}
-                    hint="Fecha límite de pago mensual"
-                  />
-                </div>
-                <div className="info-box primary" style={{ marginTop: '1.25rem', fontSize: 12 }}>
-                  <Info size={13} style={{ flexShrink: 0 }} />
-                  <span>El cupo disponible se calculará automáticamente conforme registres compras en cuotas.</span>
-                </div>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', paddingTop: '1.25rem', marginTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
-              {step > 0
-                ? <button type="button" className="btn btn-secondary" onClick={handleBack}><ChevronLeft size={15} /> Atrás</button>
-                : <button type="button" className="btn btn-secondary" onClick={() => navigate('/credit-cards')}>Cancelar</button>}
-              {step < STEPS.length - 1
-                ? <button type="button" className="btn btn-primary" onClick={handleNext}>Siguiente <ChevronRight size={15} /></button>
-                : <button type="submit" className="btn btn-primary" disabled={loading}><Check size={14} /> {loading ? 'Guardando...' : 'Crear tarjeta'}</button>}
-            </div>
-          </form>
-        </div>
-      </div>
+        </aside>
+      </form>
     </div>
   );
 };
