@@ -144,3 +144,4 @@
   .onb-step { flex-wrap: wrap; padding: 16px; }
   .onb-step .btn { width: 100%; }
 }
+@media (max-width: 767px) { .card-empty { padding: 4px 16px 16px; } }

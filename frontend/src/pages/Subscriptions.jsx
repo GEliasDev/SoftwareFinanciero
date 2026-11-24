@@ -1,28 +1,30 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SubscriptionService } from '../services/subscriptionService';
-import { Plus, Repeat, ChevronRight, Wallet, CalendarRange, CalendarClock, CreditCard } from 'lucide-react';
-import { PageHeader } from '../components/ui/PageHeader';
-import { StatCard } from '../components/ui/StatCard';
-import { SectionCard } from '../components/ui/SectionCard';
+import { Plus, Repeat, ChevronRight, CreditCard } from 'lucide-react';
 import { LoadError } from '../components/ui/LoadError';
-import { CobrosCalendar } from '../components/subscriptions/CobrosCalendar';
-import { fmt, nextOccurrence, daysUntil } from '../utils/format';
+import { fmt, fmtShort, nextOccurrence, daysUntil, parseLocalDate, effectiveDayInMonth } from '../utils/format';
 import { subMonthlyCOP, subAnnualCOP } from '../utils/currency';
 
-const FREQ_BADGE = {
-  mensual: { label: 'Mensual', cls: 'badge badge-primary' },
-  anual: { label: 'Anual', cls: 'badge badge-warning' },
+const STATUS = {
+  activa:    { label: 'Activa',    tone: 'success' },
+  pausada:   { label: 'Pausada',   tone: 'neutral' },
+  cancelada: { label: 'Cancelada', tone: 'neutral' },
 };
+const FREQ = { mensual: 'Mensual', anual: 'Anual' };
+const whenText = (d) => d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`;
+const weekday = (d) => d.toLocaleDateString('es-CO', { weekday: 'short' }).replace('.', '');
 
-const STATUS_BADGE = {
-  activa:    { label: 'Activa',    cls: 'badge badge-success' },
-  pausada:   { label: 'Pausada',   cls: 'badge badge-warning' },
-  cancelada: { label: 'Cancelada', cls: 'badge badge-neutral' },
+// Próxima fecha de cobro: mensual el día de cobro; anual el mismo día y mes de inicio.
+const nextCharge = (s) => {
+  if (s.frecuencia !== 'anual') return nextOccurrence(s.diaCobro);
+  const ini = parseLocalDate(s.fechaInicio);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let y = today.getFullYear();
+  let d = new Date(y, ini.getMonth(), effectiveDayInMonth(s.diaCobro, y, ini.getMonth()));
+  if (d < today) { y += 1; d = new Date(y, ini.getMonth(), effectiveDayInMonth(s.diaCobro, y, ini.getMonth())); }
+  return d;
 };
-
-// En COP: una suscripción en USD/EUR no se puede sumar cruda con las de COP.
-const annualEquiv = (s) => subAnnualCOP(s);
 
 export const Subscriptions = () => {
   const navigate = useNavigate();
@@ -47,138 +49,172 @@ export const Subscriptions = () => {
   const totalMensual = activas.reduce((acc, s) => acc + subMonthlyCOP(s), 0);
   const totalAnual = totalMensual * 12;
 
-  const proximo = useMemo(() => {
-    const act = subscriptions.filter(s => s.status === 'activa');
-    if (act.length === 0) return null;
-    return act
-      .map(s => ({ sub: s, date: nextOccurrence(s.diaCobro), dias: daysUntil(nextOccurrence(s.diaCobro)) }))
-      .sort((a, b) => a.dias - b.dias)[0];
-  }, [subscriptions]);
+  // Cobros de los próximos 30 días, agrupados por semana.
+  const upcoming = useMemo(() => activas
+    .map(s => { const date = nextCharge(s); return { sub: s, date, dias: daysUntil(date) }; })
+    .filter(u => u.dias >= 0 && u.dias < 30)
+    .sort((a, b) => a.dias - b.dias), [subscriptions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const proximo = upcoming[0] ?? null;
+  const weeks = [0, 1, 2, 3].map(w => {
+    const start = new Date(); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() + w * 7);
+    const end = new Date(start); end.setDate(end.getDate() + 6);
+    const items = upcoming.filter(u => Math.floor(u.dias / 7) === w);
+    return { w, start, end, items, total: items.reduce((a, u) => a + subMonthlyCOP(u.sub) * (u.sub.frecuencia === 'anual' ? 12 : 1), 0) };
+  });
+  const WEEK_LABEL = ['Esta semana', 'Próxima semana', 'En 2 semanas', 'En 3 semanas'];
+  const pausadas = subscriptions.filter(s => s.status === 'pausada');
+
+  const header = (
+    <div className="page-header">
+      <div>
+        <h1 className="page-title">Suscripciones</h1>
+        <p className="page-subtitle">Servicios recurrentes, próximos cobros y costo anualizado</p>
+      </div>
+      <button className="btn btn-primary desktop-flex" onClick={() => navigate('/subscriptions/new')}><Plus size={18} /> Nueva suscripción</button>
+      <button className="icon-btn mobile-only" onClick={() => navigate('/subscriptions/new')} aria-label="Nueva suscripción"><Plus size={20} /></button>
+    </div>
+  );
+
+  if (loading) return (
+    <div aria-busy="true">{header}
+      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)', marginBottom: 20 }} />
+      <div className="skeleton" style={{ height: 360, borderRadius: 'var(--radius-lg)' }} />
+    </div>
+  );
+  if (error) return <div>{header}<LoadError onRetry={load} title="No se pudieron cargar tus suscripciones" /></div>;
+  if (subscriptions.length === 0) return (
+    <div className="animate-fade-in">{header}
+      <div className="card empty-state">
+        <div className="empty-state-icon"><Repeat size={24} /></div>
+        <p className="empty-state-title">Agrega tu primera suscripción</p>
+        <p>Netflix, Spotify, el gimnasio… Debti suma lo que pagas al mes y al año y te avisa antes de cada cobro.</p>
+        <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => navigate('/subscriptions/new')}><Plus size={16} /> Agregar suscripción</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="Suscripciones"
-        subtitle="Servicios recurrentes, calendario de cobros y costo anualizado"
-        actions={
-          <button className="btn btn-primary" onClick={() => navigate('/subscriptions/new')}>
-            <Plus size={15} /> Nueva Suscripción
-          </button>
-        }
-      />
+      {header}
 
-      {error && !loading && <LoadError onRetry={load} title="No se pudieron cargar tus suscripciones" />}
+      <section className="card stat-strip" aria-label="Resumen de suscripciones">
+        <div><p>Costo mensual</p><b className="n">{fmt(totalMensual)}</b><span>Solo suscripciones activas</span></div>
+        <div><p>Costo anual</p><b className="n">{fmt(totalAnual)}</b><span>Lo que gastas al año</span></div>
+        <div className="desktop-only"><p>Suscripciones</p><b className="n">{activas.length}</b><span>activas de {subscriptions.length} en total</span></div>
+        <div className="desktop-only">
+          <p>Próximo cobro</p>
+          {proximo ? (
+            <>
+              <b className="row" style={{ gap: 10 }}>{whenText(proximo.dias)} <span className={`badge badge-${proximo.dias <= 1 ? 'danger' : proximo.dias <= 3 ? 'warning' : 'neutral'}`} style={{ marginTop: 0, fontSize: 12 }}>{fmtShort(proximo.date)}</span></b>
+              <span>{proximo.sub.nombre} · {fmt(proximo.sub.monto, proximo.sub.moneda)}</span>
+            </>
+          ) : <b>—</b>}
+        </div>
+      </section>
 
-      {!loading && !error && subscriptions.length > 0 && (
-        <>
-          <div className="kpi-grid" style={{ marginBottom: 16 }}>
-            <StatCard label="Costo mensual" value={fmt(totalMensual)} delta="Solo suscripciones activas" icon={Wallet} tone="brand" />
-            <StatCard label="Costo anual" value={fmt(totalAnual)} delta="Lo que gastas al año" icon={CalendarRange} tone="neutral" />
-            <StatCard label="Suscripciones" value={`${activas.length}`} delta={`activas de ${subscriptions.length} en total`} icon={Repeat} tone="neutral" />
-            <StatCard
-              label="Próximo cobro"
-              value={proximo ? (proximo.dias === 0 ? 'Hoy' : proximo.dias === 1 ? 'Mañana' : `En ${proximo.dias} días`) : '—'}
-              delta={proximo ? `${proximo.sub.nombre} · ${fmt(proximo.sub.monto, proximo.sub.moneda)}` : ''}
-              icon={CalendarClock}
-              tone={proximo && proximo.dias <= 3 ? 'neg' : 'neutral'}
-            />
-          </div>
+      <section className="card card-flush" aria-labelledby="subs-all">
+        <div className="card-header">
+          <h2 className="card-title" id="subs-all">Todas las suscripciones</h2>
+          <span className="text-sm text-muted n">{subscriptions.length} servicio{subscriptions.length !== 1 ? 's' : ''}</span>
+        </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 16 }}>
-            <SectionCard title="Calendario de cobros" subtitle="Días de cobro de este mes" icon={CalendarRange}>
-              <CobrosCalendar subscriptions={subscriptions} />
-            </SectionCard>
-          </div>
-        </>
-      )}
-
-      {!error && <SectionCard>
-        {loading ? (
-          <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 20, borderRadius: 'var(--radius-sm)' }} />)}
-          </div>
-        ) : subscriptions.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon"><Repeat size={24} /></div>
-            <p className="empty-state-title">Sin suscripciones</p>
-            <p>Registra tus servicios recurrentes para hacer seguimiento de tu gasto.</p>
-            <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => navigate('/subscriptions/new')}>
-              <Plus size={14} /> Agregar suscripción
-            </button>
-          </div>
-        ) : (
-          <div className="table-container responsive-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Estado</th>
-                  <th>Monto</th>
-                  <th>Frecuencia</th>
-                  <th>Costo anual</th>
-                  <th>Día de cobro</th>
-                  <th>Cobro</th>
-                  <th />
+        <table className="cc-table desktop-table">
+          <thead>
+            <tr><th>Nombre</th><th>Estado</th><th style={{ textAlign: 'right' }}>Monto</th><th>Frecuencia</th><th style={{ textAlign: 'right' }}>Costo anual</th><th>Día de cobro</th><th>Cobro</th><th aria-label="Abrir" /></tr>
+          </thead>
+          <tbody>
+            {subscriptions.map(sub => {
+              const st = STATUS[sub.status] || STATUS.activa;
+              const active = sub.status === 'activa';
+              const dias = daysUntil(nextCharge(sub));
+              const foreign = sub.moneda && sub.moneda !== 'COP';
+              return (
+                <tr key={sub.id} className={`clickable ${active ? '' : 'muted-row'}`} onClick={() => navigate(`/subscriptions/${sub.id}`)}>
+                  <td>
+                    <div className="row" style={{ gap: 12 }}>
+                      <span className="list-icon letter">{sub.nombre.charAt(0).toUpperCase()}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <span className="cell-title">{sub.nombre}</span>
+                        {(!active || sub.descripcion) && <span className="cell-sub">{active ? sub.descripcion : 'No cuenta en el costo mensual'}</span>}
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className={`badge badge-${st.tone}`}>{st.label}</span></td>
+                  <td className="n" style={{ textAlign: 'right' }}>
+                    <b>{fmt(sub.monto, sub.moneda)}</b> <span className="text-muted text-sm">{sub.moneda}</span>
+                    {foreign && <span className="cell-sub">≈ {fmt(subMonthlyCOP(sub))}</span>}
+                  </td>
+                  <td className="text-secondary">{FREQ[sub.frecuencia] || sub.frecuencia}</td>
+                  <td className="n text-secondary" style={{ textAlign: 'right' }}>{foreign ? '≈ ' : ''}{fmt(subAnnualCOP(sub))}</td>
+                  <td>
+                    <span className="row" style={{ gap: 8 }}>
+                      <span className="text-secondary">Día {sub.diaCobro}</span>
+                      {active && dias <= 3 && <span className={`badge badge-${dias <= 1 ? 'danger' : 'warning'}`}>{whenText(dias)}</span>}
+                    </span>
+                  </td>
+                  <td>
+                    {sub.CreditCard
+                      ? <span className="row text-secondary" style={{ gap: 6 }} title={`Se cobra automáticamente en ${sub.CreditCard.nombre}`}><CreditCard size={16} /> {sub.CreditCard.nombre}</span>
+                      : <span className="badge badge-neutral">Manual</span>}
+                  </td>
+                  <td style={{ width: 40 }}><ChevronRight size={18} className="text-muted" /></td>
                 </tr>
-              </thead>
-              <tbody>
-                {subscriptions.map(sub => {
-                  const dias = daysUntil(nextOccurrence(sub.diaCobro));
-                  const urgente = dias <= 3;
-                  return (
-                    <tr key={sub.id} className="clickable" onClick={() => navigate(`/subscriptions/${sub.id}`)}>
-                      <td data-label="Nombre">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                          <div style={{ width: 30, height: 30, borderRadius: 'var(--radius-sm)', background: 'var(--brand-50)', color: 'var(--brand-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
-                            {sub.nombre.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>{sub.nombre}</div>
-                            {sub.descripcion && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{sub.descripcion}</div>}
-                          </div>
-                        </div>
-                      </td>
-                      <td data-label="Estado">
-                        <span className={STATUS_BADGE[sub.status]?.cls || 'badge badge-neutral'}>
-                          {STATUS_BADGE[sub.status]?.label || sub.status}
-                        </span>
-                      </td>
-                      <td data-label="Monto">
-                        <span className="tabular" style={{ fontWeight: 700, color: 'var(--text)' }}>{fmt(sub.monto, sub.moneda)}</span>
-                        <span style={{ marginLeft: 4, fontSize: 12, color: 'var(--text-3)' }}>{sub.moneda}</span>
-                      </td>
-                      <td data-label="Frecuencia"><span className={FREQ_BADGE[sub.frecuencia]?.cls || 'badge badge-neutral'}>{FREQ_BADGE[sub.frecuencia]?.label || sub.frecuencia}</span></td>
-                      {/* annualEquiv ya devuelve COP: formatear con la moneda
-                          original mostraría "US$" sobre un valor en pesos. */}
-                      <td data-label="Costo anual"><span className="tabular" style={{ color: 'var(--text-2)', fontWeight: 600 }}>{fmt(annualEquiv(sub))}</span></td>
-                      <td data-label="Día de cobro">
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ color: 'var(--text-2)' }}>Día {sub.diaCobro}</span>
-                          {urgente && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--neg-600)', background: 'var(--neg-50)', padding: '1px 6px', borderRadius: 99 }}>
-                              {dias === 0 ? 'hoy' : dias === 1 ? 'mañana' : `${dias}d`}
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td data-label="Cobro">
-                        {sub.CreditCard ? (
-                          <span className="badge badge-success" title={`Se cobra automáticamente en ${sub.CreditCard.nombre}`}>
-                            <CreditCard size={11} /> {sub.CreditCard.nombre}
-                          </span>
-                        ) : (
-                          <span className="badge badge-neutral">Manual</span>
-                        )}
-                      </td>
-                      <td data-label="" style={{ width: 32 }}><ChevronRight size={14} style={{ color: 'var(--text-3)' }} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div className="mobile-list row-list">
+          {subscriptions.map(sub => {
+            const st = STATUS[sub.status] || STATUS.activa;
+            const active = sub.status === 'activa';
+            const dias = daysUntil(nextCharge(sub));
+            return (
+              <button key={sub.id} className={`cc-mrow row ${active ? '' : 'muted-row'}`} style={{ gap: 12 }} onClick={() => navigate(`/subscriptions/${sub.id}`)}>
+                <span className="list-icon letter">{sub.nombre.charAt(0).toUpperCase()}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span className="cell-title">{sub.nombre}</span>
+                  <span className={`cell-sub ${active && dias <= 1 ? 'tone-danger' : ''}`}>{active ? `${whenText(dias)} · ${sub.CreditCard ? sub.CreditCard.nombre : 'manual'}` : st.label}</span>
+                </span>
+                <b className="n">{fmt(sub.monto, sub.moneda)}</b>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="card" style={{ marginTop: 20 }} aria-labelledby="subs-next">
+        <div className="row-between" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div>
+            <h2 className="card-title" id="subs-next">Próximos cobros · 30 días</h2>
+            <p className="card-subtitle n" style={{ fontSize: 14 }}>
+              {fmtShort(weeks[0].start)} – {fmtShort(weeks[3].end)} · {upcoming.length} cobro{upcoming.length !== 1 ? 's' : ''}
+            </p>
           </div>
-        )}
-      </SectionCard>}
+          {pausadas.length > 0 && <span className="text-sm text-muted"><span className="badge badge-neutral">Pausada</span> {pausadas.map(p => p.nombre).join(', ')} no aparece{pausadas.length > 1 ? 'n' : ''}</span>}
+        </div>
+        <div className="weeks">
+          {weeks.map(wk => (
+            <div key={wk.w} className="week">
+              <div className="week-head">
+                <span><b>{WEEK_LABEL[wk.w]}</b> <span className="text-muted n">{wk.start.getDate()}–{wk.end.getDate()} {wk.end.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '')}</span></span>
+                {wk.total > 0 && <b className="n">{fmt(wk.total)}</b>}
+              </div>
+              {wk.items.length === 0 && <p className="text-sm text-muted" style={{ margin: '10px 0 0' }}>Sin cobros</p>}
+              {wk.items.map(u => (
+                <button key={u.sub.id} className={`week-item ${u.dias <= 1 ? 'soon' : ''}`} onClick={() => navigate(`/subscriptions/${u.sub.id}`)}>
+                  <span className="pay-date"><b className="n">{u.date.getDate()}</b><span>{weekday(u.date)}</span></span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span className="cell-title">{u.sub.nombre}</span>
+                    <span className={`cell-sub ${u.dias <= 1 ? 'tone-danger' : ''}`}>{u.dias <= 1 ? `${whenText(u.dias)} · ` : ''}{u.sub.CreditCard ? u.sub.CreditCard.nombre : 'Manual'}</span>
+                  </span>
+                  <b className="n">{fmt(u.sub.monto, u.sub.moneda)}</b>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };
