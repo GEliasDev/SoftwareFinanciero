@@ -9,8 +9,8 @@ export const CardStatementPage = () => {
     <div className="card">
       <div className="empty-state">
         <div className="empty-state-icon"><FileText size={22} /></div>
-        <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Sin extracto</p>
-        <p>Esta tarjeta no tiene compras registradas.</p>
+        <p className="empty-state-title">Sin extracto</p>
+        <p>Cuando registres compras en esta tarjeta verás aquí lo que se factura en cada corte.</p>
       </div>
     </div>
   );

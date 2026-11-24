@@ -1,3 +1,4 @@
+import { fmt as _fmt } from './format';
 import {
   Utensils, Car, Heart, Tv2, Home, Laptop, Tag, BookOpen, Plane, Package,
   Banknote, Receipt, Wallet,
@@ -15,8 +16,7 @@ import {
 export const TASA_USURA_EA = 28.5;
 
 /* ── Formato ──────────────────────────────────────────────────────────── */
-export const fmt = (n) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n ?? 0);
+export const fmt = (n) => _fmt(n);
 
 export const fmtDate = (str) => {
   if (!str) return '—';

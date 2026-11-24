@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, Outlet } from 'react-router-dom';
+import { useNavigate, useParams, Outlet, Link, useSearchParams } from 'react-router-dom';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import Swal from '../../utils/alerts';
-import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, Inbox } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Plus, MoreHorizontal, Banknote, Upload } from 'lucide-react';
+import { getCardColor } from '../../utils/cardColors';
+import { rememberCard } from '../../utils/lastCard';
 import { CreditCardService } from '../../services/creditCardService';
 import { CardInboxService } from '../../services/cardInboxService';
 import { TabNav } from '../../components/ui/TabNav';
@@ -41,6 +44,7 @@ export const CreditCardLayout = () => {
   };
 
   useEffect(() => { load(); }, [id]);
+  const [params, setParams] = useSearchParams();
 
   const activePurchases = useMemo(() => normalizedPurchases.filter(p => p.status === 'activa'), [normalizedPurchases]);
 
@@ -130,8 +134,7 @@ export const CreditCardLayout = () => {
       title: 'Pagar este corte',
       html: `Se registrará <b>1 cuota</b> de las <b>${payItems.length} compra${payItems.length !== 1 ? 's' : ''}</b> de este corte.<br/><span style="color:#64748b;font-size:0.85rem">Total a pagar: <b>${fmt(payableTotal)}</b></span>`,
       icon: 'question', showCancelButton: true,
-      confirmButtonColor: '#5B4DF1', cancelButtonColor: '#64748B',
-      confirmButtonText: 'Pagar corte', cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Registrar pago', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
     let errors = 0;
@@ -144,23 +147,29 @@ export const CreditCardLayout = () => {
     }
   };
 
+  useEffect(() => {
+    if (loading || params.get('accion') !== 'pagar') return;
+    setParams({}, { replace: true });
+    if (payableLines.length > 0) handlePayAll(); // eslint-disable-line react-hooks/set-state-in-effect
+    else Swal.fire({ icon: 'info', title: 'No hay un corte por pagar', text: nextCorte ? `El corte actual cierra el ${nextCorte.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}; podrás registrar su pago después de esa fecha.` : 'Esta tarjeta no tiene cuotas pendientes de un corte cerrado.' });
+  }, [loading, params]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (loading) return (
-    <div className="animate-fade-in">
-      <div className="skeleton" style={{ height: 44, marginBottom: 16, borderRadius: 'var(--radius-md)' }} />
-      <div className="skeleton" style={{ height: 40, marginBottom: 16, borderRadius: 'var(--radius-md)' }} />
-      <div style={{ display: 'grid', gridTemplateColumns: '6fr 5fr', gap: '1rem' }}>
-        <div className="skeleton" style={{ height: 210, borderRadius: 'var(--radius-md)' }} />
-        <div className="skeleton" style={{ height: 210, borderRadius: 'var(--radius-md)' }} />
+    <div aria-busy="true">
+      <div className="skeleton" style={{ height: 56, width: 360, marginBottom: 20 }} />
+      <div className="skeleton" style={{ height: 40, marginBottom: 20 }} />
+      <div className="cc-ov-grid">
+        {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 320, borderRadius: 'var(--radius-lg)' }} />)}
       </div>
     </div>
   );
 
   const base = `/credit-cards/${id}`;
   const tabs = [
-    { to: '', label: 'Resumen', icon: LayoutGrid, end: true },
-    { to: 'statement', label: 'Extracto', icon: FileText },
-    { to: 'purchases', label: 'Compras', icon: ShoppingBag, badge: activePurchases.length },
-    { to: 'pending', label: 'Por aprobar', icon: Inbox, badge: pending.length },
+    { to: '', label: 'Resumen', end: true },
+    { to: 'statement', label: 'Extracto' },
+    { to: 'purchases', label: 'Compras', badge: activePurchases.length },
+    { to: 'pending', label: 'Por aprobar', badge: pending.length },
   ];
 
   const ctx = {
@@ -173,31 +182,47 @@ export const CreditCardLayout = () => {
     payableLines,
   };
 
+  const goPurchase = () => { rememberCard(id); navigate(`${base}/purchases/new`); };
+  const STATUS_TONE = { activa: 'success', bloqueada: 'danger', cancelada: 'neutral' };
+
+  const menu = (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button className="icon-btn" aria-label="Más acciones"><MoreHorizontal size={18} /></button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className="menu-content" align="end" sideOffset={6}>
+          <DropdownMenu.Item className="menu-item mobile-flex" onSelect={() => navigate(`${base}/edit`)}><Pencil size={16} /> Editar tarjeta</DropdownMenu.Item>
+          <DropdownMenu.Item className="menu-item mobile-flex" onSelect={goPurchase}><Plus size={16} /> Registrar compra</DropdownMenu.Item>
+          <DropdownMenu.Item className="menu-item" onSelect={() => navigate(`${base}/advances/new`)}><Banknote size={16} /> Avance en efectivo</DropdownMenu.Item>
+          <DropdownMenu.Item className="menu-item" onSelect={() => navigate(`${base}/purchases/import`)}><Upload size={16} /> Importar extracto</DropdownMenu.Item>
+          <DropdownMenu.Separator className="menu-sep" />
+          <DropdownMenu.Item className="menu-item danger" onSelect={handleDelete}><Trash2 size={16} /> Eliminar tarjeta</DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+
   return (
     <div className="animate-fade-in detail-layout">
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button onClick={() => navigate('/credit-cards')} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
-            <ArrowLeft size={16} />
-          </button>
-          <div>
-            <h1 className="page-title" style={{ margin: 0 }}>{card?.nombre}</h1>
-            <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              {card?.entidad}
-              {card?.status && (
-                <span style={{
-                  background: card.status === 'activa' ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
-                  color: card.status === 'activa' ? 'var(--color-success)' : 'var(--color-warning)',
-                  fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99, textTransform: 'uppercase',
-                }}>{card.status}</span>
-              )}
-            </p>
+      <nav className="breadcrumb desktop-flex" aria-label="Ruta">
+        <Link to="/credit-cards">Tarjetas</Link><span aria-hidden="true">/</span><span>{card?.nombre}</span>
+      </nav>
+
+      <div className="detail-head">
+        <button className="icon-btn ghost mobile-only" onClick={() => navigate('/credit-cards')} aria-label="Volver a tarjetas"><ArrowLeft size={20} /></button>
+        <span className="cc-brand lg desktop-only" style={{ background: getCardColor(card?.color) }} aria-hidden="true" />
+        <div className="detail-head-text">
+          <div className="row" style={{ gap: 10 }}>
+            <h1 className="page-title">{card?.nombre}</h1>
+            {card?.status && <span className={`badge badge-${STATUS_TONE[card.status] ?? 'neutral'} desktop-only`} style={{ textTransform: 'capitalize' }}>{card.status}</span>}
           </div>
+          <p className="page-subtitle" style={{ margin: 0 }}>{card?.entidad}{card?.ultimos4 ? ` · •••• ${card.ultimos4}` : ''}</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="btn btn-secondary" onClick={() => navigate(`${base}/edit`)}><Edit2 size={14} /> Editar</button>
-          <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={14} /> Eliminar</button>
+        <div className="detail-actions">
+          <button className="btn btn-secondary desktop-flex" onClick={() => navigate(`${base}/edit`)}><Pencil size={16} /> Editar</button>
+          <button className="btn btn-secondary desktop-flex" onClick={goPurchase}><Plus size={16} /> Registrar compra</button>
+          {menu}
         </div>
       </div>
 

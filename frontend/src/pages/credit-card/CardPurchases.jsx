@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  ShoppingBag, CheckSquare, Plus, Search, X, SlidersHorizontal, ChevronUp, ChevronDown, ChevronRight, Banknote, Upload,
+  ShoppingBag, Check, Plus, Search, X, SlidersHorizontal, ChevronDown, ChevronRight, Banknote, Upload,
 } from 'lucide-react';
-import { fmt, fmtDate, monthLabel } from '../../utils/format';
+import { fmt, fmtDate, monthLabel, capFirst } from '../../utils/format';
+import { rememberCard } from '../../utils/lastCard';
 import { getMovimientoVisual, CATEGORIES } from '../../utils/creditCard';
 
 export const CardPurchases = () => {
@@ -14,8 +15,7 @@ export const CardPurchases = () => {
   const [filterCat, setFilterCat]       = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy]             = useState('fecha');
-  // Todos los meses cerrados por defecto; `undefined` = cerrado (si contara como
-  // abierto, el primer toque haría !undefined → true y cerrarlo exigiría dos toques).
+  // Abiertos por defecto los 2 meses más recientes; el resto cerrado.
   const [expandedMonths, setExpandedMonths] = useState({});
 
   const filteredPurchases = useMemo(() => purchases.filter(p => {
@@ -33,144 +33,125 @@ export const CardPurchases = () => {
 
   const sortedMonths = useMemo(() => Object.keys(purchasesByMonth).sort().reverse(), [purchasesByMonth]);
   const hasFilters = searchText || filterCat !== 'all' || filterStatus !== 'all';
-  const toggleMonth = (m) => setExpandedMonths(prev => ({ ...prev, [m]: !prev[m] }));
+  const isMonthOpen = (m, idx) => expandedMonths[m] ?? idx < 2;
+  const toggleMonth = (m, idx) => setExpandedMonths(prev => ({ ...prev, [m]: !(prev[m] ?? idx < 2) }));
+  const pagadas = purchases.length - activePurchases.length;
+  const sortFn = (a, b) => {
+    if (sortBy === 'monto') return parseFloat(b.montoTotal) - parseFloat(a.montoTotal);
+    if (sortBy === 'cuotas-restantes') return (Number(b.numeroCuotas) - Number(b.cuotasPagadas)) - (Number(a.numeroCuotas) - Number(a.cuotasPagadas));
+    if (sortBy === 'categoria') return (a.categoria || '').localeCompare(b.categoria || '');
+    return b.fechaCompra.localeCompare(a.fechaCompra);
+  };
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <ShoppingBag size={16} style={{ color: 'var(--brand-600)' }} />
+    <section className="card card-flush">
+      <div className="card-header pu-header">
+        <h2 className="card-title row" style={{ gap: 8, flexWrap: 'wrap' }}>
           Compras
-          {activePurchases.length > 0 && <span style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 99 }}>{activePurchases.length} activa{activePurchases.length !== 1 ? 's' : ''}</span>}
-          {purchases.length > activePurchases.length && <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 99 }}>{purchases.length - activePurchases.length} pagada{purchases.length - activePurchases.length !== 1 ? 's' : ''}</span>}
+          {activePurchases.length > 0 && <span className="badge badge-neutral n">{activePurchases.length} activa{activePurchases.length !== 1 ? 's' : ''}</span>}
+          {pagadas > 0 && <span className="text-sm text-muted" style={{ fontWeight: 400 }}>· {pagadas} pagada{pagadas !== 1 ? 's' : ''}</span>}
         </h2>
-        <div className="purchases-actions">
-          {payableCount > 0 && <button className="btn btn-success" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={handlePayAll}><CheckSquare size={13} /> Pagar corte</button>}
-          <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/purchases/import`)}><Upload size={13} /> Importar</button>
-          <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/advances/new`)}><Banknote size={13} /> Avance</button>
-          <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: 12 }} onClick={() => navigate(`/credit-cards/${id}/purchases/new`)}><Plus size={13} /> Nueva compra</button>
+        <div className="pu-actions">
+          {payableCount > 0 && <button className="btn btn-secondary" onClick={handlePayAll}><Check size={16} /> Pagar corte</button>}
+          <button className="btn btn-secondary desktop-flex" onClick={() => navigate(`/credit-cards/${id}/purchases/import`)}><Upload size={16} /> Importar</button>
+          <button className="btn btn-secondary desktop-flex" onClick={() => navigate(`/credit-cards/${id}/advances/new`)}><Banknote size={16} /> Avance</button>
+          <button className="btn btn-primary" onClick={() => { rememberCard(id); navigate(`/credit-cards/${id}/purchases/new`); }}><Plus size={16} /> Nueva compra</button>
         </div>
       </div>
 
       {purchases.length > 0 && (
-        <div className="purchases-filter-bar">
-          <div className="purchases-filter-search">
-            <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
-            <input className="form-input" style={{ paddingLeft: 28, fontSize: 12, height: 34, width: '100%' }} placeholder="Buscar compra…" value={searchText} onChange={e => setSearchText(e.target.value)} />
-          </div>
-          <select className="form-input purchases-filter-select" style={{ fontSize: 12, height: 34 }} value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+        <div className="pu-filters">
+          <label className="pu-search">
+            <Search size={16} />
+            <input className="form-input" placeholder="Buscar compra…" value={searchText} onChange={e => setSearchText(e.target.value)} aria-label="Buscar compra" />
+          </label>
+          <select className="form-input" value={filterCat} onChange={e => setFilterCat(e.target.value)} aria-label="Categoría">
             <option value="all">Todas las categorías</option>
             {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
-          <select className="form-input purchases-filter-select" style={{ fontSize: 12, height: 34 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="all">Activas + pagadas</option>
+          <select className="form-input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} aria-label="Estado">
+            <option value="all">Activas y pagadas</option>
             <option value="activa">Solo activas</option>
             <option value="pagada">Solo pagadas</option>
           </select>
-          <select className="form-input purchases-filter-select" style={{ fontSize: 12, height: 34 }} value={sortBy} onChange={e => setSortBy(e.target.value)}>
+          <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Ordenar">
             <option value="fecha">Ordenar: fecha</option>
-            <option value="monto">Ordenar: monto ↓</option>
-            <option value="cuotas-restantes">Ordenar: cuotas ↓</option>
+            <option value="monto">Ordenar: monto</option>
+            <option value="cuotas-restantes">Ordenar: cuotas pendientes</option>
             <option value="categoria">Ordenar: categoría</option>
           </select>
-          {hasFilters && <button className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: 11, height: 34, flexShrink: 0 }} onClick={() => { setSearchText(''); setFilterCat('all'); setFilterStatus('all'); }}><X size={11} /> Limpiar</button>}
+          {hasFilters && <button className="btn btn-ghost" onClick={() => { setSearchText(''); setFilterCat('all'); setFilterStatus('all'); }}><X size={16} /> Limpiar</button>}
         </div>
       )}
 
       {purchases.length === 0 ? (
-        <div className="empty-state" style={{ padding: '2.5rem 0' }}>
+        <div className="empty-state" style={{ borderTop: '1px solid var(--divider)' }}>
           <div className="empty-state-icon"><ShoppingBag size={22} /></div>
-          <p style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Sin compras registradas</p>
-          <p>Registra tu primera compra con el botón "Nueva compra".</p>
+          <p className="empty-state-title">Sin compras registradas</p>
+          <p>Registra tu primera compra con "Nueva compra" o importa el extracto del banco.</p>
         </div>
       ) : filteredPurchases.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>
-          <SlidersHorizontal size={20} style={{ marginBottom: '0.5rem', opacity: 0.4, display: 'block', margin: '0 auto 0.5rem' }} />
-          <p style={{ fontSize: 13 }}>Ninguna compra coincide con el filtro.</p>
+        <div className="empty-state" style={{ borderTop: '1px solid var(--divider)' }}>
+          <div className="empty-state-icon"><SlidersHorizontal size={20} /></div>
+          <p>Ninguna compra coincide con el filtro.</p>
         </div>
       ) : (
-        <div>
-          {sortedMonths.map(month => {
+        <div className="pu-table" role="table" aria-label="Compras por mes">
+          <div className="pu-row pu-thead desktop-only" role="row">
+            <span role="columnheader">Compra</span><span role="columnheader">Categoría</span><span role="columnheader">Cuotas</span>
+            <span role="columnheader" className="r">Cuota</span><span role="columnheader" className="r">Valor</span><span role="columnheader">Estado</span><span />
+          </div>
+          {sortedMonths.map((month, idx) => {
             const monthPurchases = purchasesByMonth[month];
-            // Con búsqueda/filtro activo se muestran todos los resultados;
-            // sin filtro, solo lo que el usuario haya abierto.
-            const isOpen = hasFilters || !!expandedMonths[month];
+            // Con búsqueda/filtro activo se muestran todos los resultados.
+            const isOpen = hasFilters || isMonthOpen(month, idx);
             const mTotal = monthPurchases.reduce((s, p) => s + parseFloat(p.montoTotal ?? 0), 0);
             const mActive = monthPurchases.filter(p => p.status === 'activa').length;
             return (
-              <div key={month} style={{ marginBottom: '0.625rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <button onClick={() => toggleMonth(month)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.625rem 1rem', background: 'var(--color-bg)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>{monthLabel(month)}</span>
-                    {mActive > 0 && <span style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>{mActive} activa{mActive !== 1 ? 's' : ''}</span>}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                    <span className="tabular" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{monthPurchases.length} compra{monthPurchases.length !== 1 ? 's' : ''} · {fmt(mTotal)}</span>
-                    {isOpen ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />}
-                  </div>
+              <div key={month} role="rowgroup">
+                <button className="pu-month" onClick={() => toggleMonth(month, idx)} aria-expanded={isOpen}>
+                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <span className="pu-month-name">{capFirst(monthLabel(month))}</span>
+                  {mActive > 0 && <span className="badge badge-neutral desktop-only">{mActive} activa{mActive !== 1 ? 's' : ''}</span>}
+                  <span className="pu-month-sum n">{monthPurchases.length} compra{monthPurchases.length !== 1 ? 's' : ''} · {fmt(mTotal)}</span>
                 </button>
-                {isOpen && (
-                  <div style={{ padding: '0.625rem 0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {[...monthPurchases].sort((a, b) => {
-                      if (sortBy === 'monto') return parseFloat(b.montoTotal) - parseFloat(a.montoTotal);
-                      if (sortBy === 'cuotas-restantes') return (Number(b.numeroCuotas) - Number(b.cuotasPagadas)) - (Number(a.numeroCuotas) - Number(a.cuotasPagadas));
-                      if (sortBy === 'categoria') return (a.categoria || '').localeCompare(b.categoria || '');
-                      return 0;
-                    }).map(p => {
-                      const cat = getMovimientoVisual(p.tipo, p.categoria || 'otros');
-                      const isPaid = p.status === 'pagada';
-                      const cuotasPagadas = Number(p.cuotasPagadas);
-                      const numeroCuotas = Number(p.numeroCuotas);
-                      const progress = isPaid ? 100 : numeroCuotas > 0 ? (cuotasPagadas / numeroCuotas) * 100 : 0;
-                      const pgColor = isPaid ? 'var(--pos-600)' : cuotasPagadas > 0 ? 'var(--brand-600)' : 'var(--text-3)';
-                      const commission = p.commission;
-                      return (
-                        <div key={p.id} onClick={() => navigate(`/credit-cards/${id}/purchases/${p.id}`)}
-                          className={`purchase-row ${isPaid ? 'paid' : ''}`}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: `${cat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <cat.Icon size={16} style={{ color: cat.color }} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                              <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {p.tipo && p.tipo !== 'compra' && (
-                                  <span style={{ background: `${cat.color}1a`, color: cat.color, fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 99, textTransform: 'uppercase', flexShrink: 0 }}>{cat.label}</span>
-                                )}
-                                {p.descripcion}
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                                <span className="tabular" style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-primary)' }}>{fmt(p.montoTotal)}</span>
-                                {isPaid ? <span className="purchase-status-badge" style={{ background: '#dcfce7', color: '#15803d', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>PAGADA</span> : <span className="purchase-status-badge" style={{ background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99 }}>ACTIVA</span>}
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.75rem', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: '0.3rem' }}>
-                              <span>{fmtDate(p.fechaCompra)}</span>
-                              <span className="tabular">{fmt(p.valorCuotaMensual)}/cuota</span>
-                              <span>{isPaid ? 'Completada' : `${cuotasPagadas}/${numeroCuotas} cuotas`}</span>
-                            </div>
-                            {commission && (
-                              <div style={{ marginTop: '0.35rem', padding: '0.45rem 0.6rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.25)', background: 'rgba(245, 158, 11, 0.06)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', fontSize: 11 }}>
-                                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Comisión del avance</span>
-                                  <span className="tabular" style={{ color: 'var(--color-warning)', fontWeight: 700 }}>{fmt(commission.montoTotal)}</span>
-                                </div>
-                              </div>
-                            )}
-                            <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden', marginTop: '0.4rem' }}>
-                              <div style={{ height: 4, width: '100%', background: pgColor, borderRadius: 99, transition: 'transform 0.4s ease', transformOrigin: 'left', transform: `scaleX(${progress / 100})` }} />
-                            </div>
-                          </div>
-                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                {isOpen && [...monthPurchases].sort(sortFn).map(p => {
+                  const vis = getMovimientoVisual(p.tipo, p.categoria || 'otros');
+                  const isPaid = p.status === 'pagada';
+                  const pag = Number(p.cuotasPagadas), tot = Number(p.numeroCuotas);
+                  const progress = isPaid ? 1 : tot > 0 ? pag / tot : 0;
+                  const isOther = p.tipo && p.tipo !== 'compra';
+                  return (
+                    <div key={p.id} role="row" tabIndex={0} className={`pu-row pu-item ${isPaid ? 'paid' : ''}`}
+                      onClick={() => navigate(`/credit-cards/${id}/purchases/${p.id}`)}
+                      onKeyDown={e => e.key === 'Enter' && navigate(`/credit-cards/${id}/purchases/${p.id}`)}>
+                      <span role="cell" className="pu-name">
+                        <span className="cell-title">{isOther && <span className="pu-type">{vis.label}</span>}{p.descripcion}</span>
+                        <span className="cell-sub">
+                          {fmtDate(p.fechaCompra)}
+                          {p.commission && <> · comisión del avance <b className="text-warning n">{fmt(p.commission.montoTotal)}</b></>}
+                          <span className="m-inline"> · {isPaid ? 'pagada' : `${pag} de ${tot} cuotas`}</span>
+                        </span>
+                      </span>
+                      <span role="cell" className="text-secondary desktop-only">{vis.label}</span>
+                      <span role="cell" className="desktop-only">
+                        <span className="n text-sm">{isPaid ? 'Completa' : `${pag} de ${tot}`}</span>
+                        <span className="progress-track" style={{ display: 'block', height: 4, width: 72, marginTop: 6 }}>
+                          <span className="progress-fill" style={{ display: 'block', transform: `scaleX(${progress})` }} />
+                        </span>
+                      </span>
+                      <span role="cell" className="n r desktop-only">{fmt(p.valorCuotaMensual)}</span>
+                      <span role="cell" className="n r pu-val">{fmt(p.montoTotal)}</span>
+                      <span role="cell" className="desktop-only">{isPaid ? <span className="badge badge-success">Pagada</span> : <span className="badge badge-neutral">Activa</span>}</span>
+                      <ChevronRight size={16} className="text-muted desktop-only" />
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
         </div>
       )}
-    </div>
+    </section>
   );
 };

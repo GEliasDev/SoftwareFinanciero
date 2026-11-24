@@ -7,23 +7,24 @@ export const CardPending = () => {
   const { pending, reload } = useOutletContext();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 12.5, color: 'var(--text-3)', margin: 0 }}>Alertas de esta tarjeta detectadas en Gmail</p>
+    <section className="card card-flush">
+      <div className="card-header" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <h2 className="card-title">Movimientos por aprobar</h2>
+          <p className="card-subtitle">Alertas de esta tarjeta detectadas en Gmail</p>
+        </div>
         <SyncButton onDone={reload} />
       </div>
 
       {pending.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon"><Inbox size={24} /></div>
-            <p className="empty-state-title">No hay movimientos pendientes</p>
-            <p>Conecta Gmail en tu <Link to="/profile">perfil</Link> y las compras de esta tarjeta aparecerán aquí para aprobarlas.</p>
-          </div>
+        <div className="empty-state" style={{ borderTop: '1px solid var(--divider)' }}>
+          <div className="empty-state-icon"><Inbox size={24} /></div>
+          <p className="empty-state-title">No hay movimientos pendientes</p>
+          <p>Conecta Gmail en tu <Link to="/profile#gmail">perfil</Link> y las compras de esta tarjeta aparecerán aquí para aprobarlas.</p>
         </div>
       ) : (
         <PendingList items={pending} onDone={reload} />
       )}
-    </div>
+    </section>
   );
 };

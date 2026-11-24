@@ -1,170 +1,213 @@
-import { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import {
-  CreditCard, RotateCcw, Percent, TrendingDown, Calendar, DollarSign, AlertTriangle,
-} from 'lucide-react';
-import { getCardGradient } from '../../utils/cardColors';
-import { fmt, fmtShort, urgencyStyle } from '../../utils/format';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
+import { getCardColor } from '../../utils/cardColors';
+import { fmt, fmtShort, parseLocalDate } from '../../utils/format';
+import { getMovimientoVisual } from '../../utils/creditCard';
 import { TASA_USURA_EA } from './CreditCardLayout';
 
+const dueText = (d) => d < 0 ? `Venció hace ${-d} día${d === -1 ? '' : 's'}` : d === 0 ? 'Vence hoy' : d === 1 ? 'Vence mañana' : `Vence en ${d} días`;
+const dueTone = (d) => d <= 1 ? 'danger' : d <= 3 ? 'warning' : 'neutral';
+const fmtPct = (n) => `${Number(n).toLocaleString('es-CO', { maximumFractionDigits: 2 })} %`;
+
 export const CardOverview = () => {
+  const navigate = useNavigate();
   const {
-    card, activePurchases, monthlyObligation, cupoUsado, usagePct, barColor, tasaEA, isHighRate,
+    card, id, activePurchases, monthlyObligation, cupoUsado, usagePct, tasaEA, isHighRate,
     nextCorte, nextPago, daysCorte, daysPago,
     totalCapital, totalConIntereses, totalYaPagado, totalRestante, maxMesesRestantes,
-    payableTotal, payableLines,
+    payableTotal, payableLines, handlePayAll,
   } = useOutletContext();
-  const [flipped, setFlipped] = useState(false);
+
+  // Lo que se paga ahora: el corte cerrado pendiente o, si no hay, lo que va facturado del corte vigente.
+  const hasPayable = payableTotal > 0;
+  const corteAmount = hasPayable ? payableTotal : monthlyObligation;
+  const corteCount = hasPayable ? payableLines.filter(l => !l.isCommission).length : activePurchases.length;
+  const finDeuda = maxMesesRestantes > 0
+    ? new Date(new Date().getFullYear(), new Date().getMonth() + maxMesesRestantes, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+    : null;
+
+  const pendientes = [...activePurchases]
+    .filter(p => Number(p.numeroCuotas) > Number(p.cuotasPagadas))
+    .sort((a, b) => b.fechaCompra.localeCompare(a.fechaCompra));
 
   return (
-    <div>
-      {/* Alerts */}
+    <div className="cc-ov">
+      {hasPayable && daysPago !== null && daysPago <= 5 && (
+        <div className={`notice ${daysPago <= 3 ? 'warn' : 'info'}`}>
+          <AlertTriangle size={18} />
+          <span style={{ flex: 1 }}><b>El pago {daysPago < 0 ? 'está vencido' : daysPago === 0 ? 'vence hoy' : `vence en ${daysPago} día${daysPago !== 1 ? 's' : ''}`}.</b> Si pagas el total del corte evitas intereses de mora.</span>
+          <Link to={`/credit-cards/${id}/statement`} className="link-sm desktop-only" style={{ color: 'inherit' }}>Ver extracto</Link>
+        </div>
+      )}
       {usagePct >= 75 && (
-        <div className="info-box warning" style={{ marginBottom: '0.875rem' }}>
-          <AlertTriangle size={15} />
-          <span><strong>Cupo al {usagePct.toFixed(0)}%.</strong> Evita nuevas compras para no afectar tu salud financiera.</span>
+        <div className="notice warn">
+          <AlertTriangle size={18} />
+          <span><b>Cupo al {usagePct.toFixed(0)} %.</b> Evita nuevas compras para no afectar tu salud financiera.</span>
         </div>
       )}
       {isHighRate && (
-        <div className="info-box warning" style={{ marginBottom: '0.875rem' }}>
-          <AlertTriangle size={15} />
-          <span><strong>Tasa alta:</strong> esta tarjeta tiene {tasaEA}% E.A., por encima de la tasa de usura referencial ({TASA_USURA_EA}% E.A.). Verifica con tu banco.</span>
+        <div className="notice warn">
+          <AlertTriangle size={18} />
+          <span><b>Tasa alta:</b> {tasaEA} % E.A., por encima de la tasa de usura de referencia ({TASA_USURA_EA} % E.A.). Verifica con tu banco.</span>
         </div>
       )}
 
-      {/* HERO: flip card + countdown + KPIs */}
-      <div className="hero-split" style={{ marginBottom: '1rem' }}>
-        <div className={`cc-flip-wrapper ${flipped ? 'flipped' : ''}`} onClick={() => setFlipped(f => !f)} style={{ marginBottom: 0 }}>
-          <div className="cc-flip-inner">
-            <div className="cc-flip-front" style={{ background: getCardGradient(card?.color) }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-                <div>
-                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, margin: '0 0 0.15rem', fontWeight: 600, letterSpacing: '0.08em' }}>{card?.entidad?.toUpperCase()}</p>
-                  <p style={{ color: 'white', fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>{card?.nombre}</p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: 3 }}><RotateCcw size={10} /> voltear</span>
-                  <CreditCard size={22} style={{ color: 'rgba(255,255,255,0.4)' }} />
-                </div>
-              </div>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: '0 0 0.15rem', fontWeight: 600, letterSpacing: '0.08em' }}>CUPO DISPONIBLE</p>
-                <p className="tabular" style={{ color: 'white', fontSize: '1.9rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>{fmt(card?.cupoDisponible ?? card?.cupoTotal)}</p>
-              </div>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: '0.3rem' }}>
-                  <span>Usado: {fmt(cupoUsado)} ({usagePct.toFixed(0)}%)</span>
-                  <span>Cupo total: {fmt(card?.cupoTotal)}</span>
-                </div>
-                <div style={{ height: 5, background: 'rgba(255,255,255,0.2)', borderRadius: 99 }}>
-                  <div style={{ height: 5, width: '100%', background: barColor, borderRadius: 99, boxShadow: `0 0 6px ${barColor}88`, transition: 'transform 0.5s ease', transformOrigin: 'left', transform: `scaleX(${Math.min(usagePct, 100) / 100})` }} />
-                </div>
-              </div>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, margin: 0, fontFamily: 'monospace', letterSpacing: '0.15em' }}>{card?.ultimos4 ? `•••• •••• •••• ${card.ultimos4}` : ''}</p>
-              </div>
+      <div className="cc-ov-grid">
+        {/* Tarjeta + cupo */}
+        <section className="card cc-ov-card" aria-label="Cupo">
+          <div className="cc-visual" style={{ background: getCardColor(card?.color) }}>
+            <div className="row-between"><span className="cc-visual-bank">{card?.entidad?.toUpperCase()}</span></div>
+            <div>
+              <span className="cc-visual-label">Cupo disponible</span>
+              <span className="cc-visual-amount n">{fmt(card?.cupoDisponible ?? card?.cupoTotal)}</span>
             </div>
-
-            <div className="cc-flip-back" style={{ background: getCardGradient(card?.color) }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, position: 'relative', zIndex: 1 }}>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: 3 }}><RotateCcw size={10} /> voltear</span>
-                <CreditCard size={22} style={{ color: 'rgba(255,255,255,0.4)' }} />
-              </div>
-              <div className="cc-magnetic-strip" style={{ position: 'relative', zIndex: 1 }} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', position: 'relative', zIndex: 1 }}>
-                {[
-                  { label: 'Tasa mensual', value: `${card?.tasaInteresMensual}% M.V.`, Icon: Percent },
-                  { label: 'Tasa E.A.',   value: `${tasaEA}% E.A.`,                   Icon: TrendingDown },
-                  { label: 'Día corte',   value: `Día ${card?.fechaCorte}`,            Icon: Calendar },
-                  { label: 'Día pago',    value: `Día ${card?.fechaPago}`,             Icon: Calendar },
-                ].map(item => (
-                  <div key={item.label} style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
-                    <item.Icon size={13} style={{ color: 'rgba(255,255,255,0.5)', marginTop: 2, flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 1 }}>{item.label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>{item.value}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', position: 'relative', zIndex: 1 }}>
-                <span>{activePurchases.length} compra{activePurchases.length !== 1 ? 's' : ''} activa{activePurchases.length !== 1 ? 's' : ''}</span>
-              </div>
+            <div className="cc-visual-mobile-bar mobile-only">
+              <div className="cc-visual-track"><div style={{ width: `${Math.min(usagePct, 100)}%` }} /></div>
+              <div className="row-between"><span>Usado {fmt(cupoUsado)} · {Math.round(usagePct)} %</span><span>de {fmt(card?.cupoTotal)}</span></div>
             </div>
+            <span className="cc-visual-num n desktop-only">{card?.ultimos4 ? `•••• •••• •••• ${card.ultimos4}` : ''}</span>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {card && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
-              {[
-                { label: 'Próximo corte', days: daysCorte, date: nextCorte, Icon: Calendar },
-                { label: 'Próximo pago',  days: daysPago,  date: nextPago,  Icon: DollarSign },
-              ].map(({ label, days, date, Icon }) => {
-                const s = urgencyStyle(days);
-                return (
-                  <div key={label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 'var(--radius-md)', padding: '0.75rem 1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
-                      <Icon size={13} style={{ color: s.color }} />
-                      <span style={{ fontSize: 10, color: s.color, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</span>
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: s.color }}>{days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `${days} días`}</div>
-                    <div style={{ fontSize: 11, color: s.color, opacity: 0.75, marginTop: 1 }}>{date ? fmtShort(date) : '—'}</div>
-                  </div>
-                );
-              })}
+          <div className="desktop-only" style={{ marginTop: 16 }}>
+            <div className="row-between text-sm">
+              <span className="text-secondary">Cupo usado</span>
+              <span className="n"><b>{fmt(cupoUsado)}</b> <span className="text-secondary">de {fmt(card?.cupoTotal)}</span></span>
             </div>
+            <div className="progress-track" style={{ margin: '8px 0 6px' }}>
+              <div className="progress-fill" style={{ transform: `scaleX(${Math.min(usagePct, 100) / 100})`, background: 'var(--cat-1)' }} />
+            </div>
+            <span className="text-sm text-muted n">{Math.round(usagePct)} % del cupo</span>
+          </div>
+        </section>
+
+        {/* Pago de este corte */}
+        <section className="card cc-ov-pay" aria-label="Pago de este corte">
+          <div className="row-between">
+            <p className="text-secondary" style={{ margin: 0, fontSize: 14 }}>Pago de este corte</p>
+            {corteAmount > 0 && hasPayable && daysPago !== null && (
+              <span className={`badge badge-${dueTone(daysPago)} mobile-only`}>{dueText(daysPago)}</span>
+            )}
+          </div>
+          {corteAmount > 0 ? (
+            <>
+              <p className="amount-lg cc-ov-amount">{fmt(corteAmount)}</p>
+              <p className="row text-sm text-secondary desktop-flex" style={{ gap: 8, margin: 0 }}>
+                {hasPayable && daysPago !== null && <span className={`badge badge-${dueTone(daysPago)}`}>{dueText(daysPago)}</span>}
+                {!hasPayable && <span>Se factura en el corte del {nextCorte ? fmtShort(nextCorte) : '—'} ·</span>}
+                {nextPago && <span>paga el {nextPago.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}</span>}
+              </p>
+              <div className="cc-ov-kv desktop-only">
+                <div className="kv"><span>Cuotas incluidas</span><span>{corteCount} compra{corteCount !== 1 ? 's' : ''}</span></div>
+                {card?.pagoMinimo ? <div className="kv"><span>Pago mínimo</span><span>{fmt(card.pagoMinimo)}</span></div> : null}
+              </div>
+              {card?.pagoMinimo ? <span className="text-sm text-secondary mobile-only n" style={{ textAlign: 'right', marginTop: -28 }}>Mínimo {fmt(card.pagoMinimo)}</span> : null}
+              <button className="btn btn-primary btn-lg btn-block cc-ov-btn" onClick={handlePayAll} disabled={!hasPayable}>
+                Registrar pago del corte
+              </button>
+              {!hasPayable && <p className="form-hint" style={{ textAlign: 'center', margin: '8px 0 0' }}>Se habilita cuando cierre el corte del {nextCorte ? fmtShort(nextCorte) : '—'}.</p>}
+            </>
+          ) : (
+            <>
+              <p className="amount-lg cc-ov-amount" style={{ color: 'var(--pos-600)' }}>Al día</p>
+              <p className="text-sm text-secondary" style={{ margin: 0 }}>No tienes cuotas pendientes en esta tarjeta.</p>
+            </>
           )}
+        </section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', flex: 1 }}>
-            {[
-              {
-                label: 'Pago este ciclo',
-                value: payableTotal > 0 ? fmt(payableTotal) : (monthlyObligation > 0 && payableTotal === 0 ? 'Pagado (Al día)' : '—'),
-                sub: payableTotal > 0
-                  ? `${payableLines.length} por pagar`
-                  : (monthlyObligation > 0 ? 'Todo pagado ✓' : 'sin cuotas activas'),
-                bg: payableTotal === 0 && monthlyObligation > 0 ? 'var(--color-success-bg)' : 'var(--brand-50)',
-                color: payableTotal === 0 && monthlyObligation > 0 ? 'var(--color-success)' : 'var(--brand-600)',
-                border: payableTotal === 0 && monthlyObligation > 0 ? 'rgba(5,150,105,0.15)' : 'rgba(91,77,241,0.15)'
-              },
-              { label: 'Saldo pendiente', value: activePurchases.length > 0 ? fmt(totalRestante) : '—', sub: activePurchases.length > 0 ? `${maxMesesRestantes} mes${maxMesesRestantes !== 1 ? 'es' : ''} restante${maxMesesRestantes !== 1 ? 's' : ''}` : '0 deuda activa', bg: '#fffbeb', color: 'var(--color-warning)', border: 'rgba(217,119,6,0.15)' },
-              ...(card?.pagoMinimo ? [{ label: 'Pago mínimo', value: fmt(parseFloat(card.pagoMinimo)), sub: 'Mínimo para no caer en mora', bg: 'var(--surface-2)', color: 'var(--text-2)', border: 'var(--border)' }] : []),
-            ].map(kpi => (
-              <div key={kpi.label} style={{ background: kpi.bg, border: `1px solid ${kpi.border}`, borderRadius: 'var(--radius-md)', padding: '0.875rem 1rem', boxShadow: 'var(--shadow-sm)' }}>
-                <p style={{ fontSize: 10, fontWeight: 600, color: kpi.color, margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.8 }}>{kpi.label}</p>
-                <p className="tabular" style={{ fontSize: '1.05rem', fontWeight: 800, color: kpi.color, margin: '0 0 0.2rem', letterSpacing: '-0.01em' }}>{kpi.value}</p>
-                <p style={{ fontSize: 10, color: kpi.color, margin: 0, opacity: 0.65 }}>{kpi.sub}</p>
-              </div>
-            ))}
+        {/* Fechas y tasa */}
+        <section className="card cc-ov-dates desktop-only" aria-label="Fechas y tasa">
+          <p className="text-secondary" style={{ margin: '0 0 4px', fontSize: 14 }}>Fechas y tasa</p>
+          <div className="row-list">
+            <div className="cc-date-row">
+              <div><span>Próximo pago</span><b>{nextPago ? fmtShort(nextPago) : '—'}</b></div>
+              {daysPago !== null && <span className={daysPago <= 3 ? 'text-warning' : ''} style={{ fontWeight: daysPago <= 3 ? 600 : 400 }}>{daysPago === 0 ? 'hoy' : `${daysPago} días`}</span>}
+            </div>
+            <div className="cc-date-row">
+              <div><span>Próximo corte</span><b>{nextCorte ? fmtShort(nextCorte) : '—'}</b></div>
+              {daysCorte !== null && <span>{daysCorte === 0 ? 'hoy' : `${daysCorte} días`}</span>}
+            </div>
+            <div className="cc-date-row">
+              <div><span>Tasa de interés</span><b className="n">{fmtPct(card?.tasaInteresMensual)} M.V.</b></div>
+              <span className="n">{String(tasaEA).replace('.', ',')} % E.A.</span>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* Debt summary */}
-      {activePurchases.length > 0 && (
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1rem' }}>
-            <TrendingDown size={15} style={{ color: 'var(--brand-600)' }} />
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: 0 }}>Resumen de deuda activa</h3>
+      <div className="cc-ov-bottom">
+        {/* Compras con cuotas pendientes */}
+        <section className="card card-flush" aria-labelledby="cc-pend">
+          <div className="card-header">
+            <h2 className="card-title" id="cc-pend">Compras con cuotas pendientes</h2>
+            <Link to={`/credit-cards/${id}/purchases`} className="link-sm">Ver las {activePurchases.length}</Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0 1.5rem' }}>
-            {/* Solo el desglose; el saldo restante y los meses ya están en el
-                KPI "Saldo pendiente" de arriba (evitar datos duplicados). */}
-            {[
-              { label: 'Capital total',      value: fmt(totalCapital),      color: 'var(--color-text-secondary)' },
-              { label: 'Total c/ intereses', value: fmt(totalConIntereses), color: '#dc2626' },
-              { label: 'Ya pagado',          value: fmt(totalYaPagado),     color: 'var(--color-success)' },
-              { label: 'Intereses totales',  value: fmt(totalConIntereses - totalCapital), color: 'var(--color-warning)' },
-            ].map(row => (
-              <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.325rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{row.label}</span>
-                <span className="tabular" style={{ fontSize: 13, fontWeight: row.bold ? 700 : 600, color: row.color }}>{row.value}</span>
+          {pendientes.length === 0 ? (
+            <p className="card-empty">No hay compras con cuotas pendientes.</p>
+          ) : (
+            <>
+              <table className="cc-table desktop-table">
+                <thead><tr><th>Compra</th><th>Categoría</th><th>Cuotas</th><th style={{ textAlign: 'right' }}>Cuota</th><th style={{ textAlign: 'right' }}>Saldo</th></tr></thead>
+                <tbody>
+                  {pendientes.slice(0, 8).map(p => {
+                    const pag = Number(p.cuotasPagadas), tot = Number(p.numeroCuotas);
+                    const saldo = (tot - pag) * parseFloat(p.valorCuotaMensual ?? 0);
+                    const vis = getMovimientoVisual(p.tipo, p.categoria || 'otros');
+                    return (
+                      <tr key={p.id} className="clickable" onClick={() => navigate(`/credit-cards/${id}/purchases/${p.id}`)}>
+                        <td>
+                          <span className="cell-title">{p.descripcion}</span>
+                          <span className="cell-sub">{fmtShort(parseLocalDate(p.fechaCompra))}{p.commission ? ' · incluye comisión' : ''}</span>
+                        </td>
+                        <td className="text-secondary">{vis.label}</td>
+                        <td style={{ width: 120 }}>
+                          <span className="n text-sm">{pag} de {tot}</span>
+                          <div className="progress-track" style={{ height: 4, marginTop: 6, width: 72 }}>
+                            <div className="progress-fill" style={{ transform: `scaleX(${tot ? pag / tot : 0})` }} />
+                          </div>
+                        </td>
+                        <td className="n" style={{ textAlign: 'right' }}>{fmt(p.valorCuotaMensual)}</td>
+                        <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(saldo)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="mobile-list row-list">
+                {pendientes.slice(0, 6).map(p => (
+                  <Link key={p.id} to={`/credit-cards/${id}/purchases/${p.id}`} className="pay-row" style={{ padding: '12px 16px' }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className="cell-title">{p.descripcion}</span>
+                      <span className="cell-sub">{getMovimientoVisual(p.tipo, p.categoria || 'otros').label} · {p.cuotasPagadas} de {p.numeroCuotas} cuotas</span>
+                    </span>
+                    <span style={{ textAlign: 'right' }}>
+                      <b className="n" style={{ display: 'block' }}>{fmt(p.valorCuotaMensual)}</b>
+                      <span className="cell-sub">por mes</span>
+                    </span>
+                  </Link>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </section>
+
+        {/* Resumen de deuda */}
+        {activePurchases.length > 0 && (
+          <section className="card cc-debt" aria-labelledby="cc-debt">
+            <h2 className="card-title" id="cc-debt" style={{ marginBottom: 8 }}>Resumen de deuda</h2>
+            <div className="row-list">
+              <div className="kv"><span>Capital</span><span>{fmt(totalCapital)}</span></div>
+              <div className="kv"><span>Intereses</span><span>{fmt(totalConIntereses - totalCapital)}</span></div>
+              <div className="kv"><span>Total con intereses</span><span>{fmt(totalConIntereses)}</span></div>
+              <div className="kv"><span>Ya pagado</span><span className={totalYaPagado > 0 ? "text-success" : ""}>{totalYaPagado > 0 ? "−" : ""}{fmt(totalYaPagado)}</span></div>
+            </div>
+            <div className="row-between cc-debt-total">
+              <b>Saldo pendiente</b>
+              <span className="amount-lg" style={{ fontSize: 24 }}>{fmt(totalRestante)}</span>
+            </div>
+            {finDeuda && <p className="text-sm text-secondary" style={{ margin: '8px 0 0' }}>Terminas de pagar en {finDeuda} si no haces compras nuevas.</p>}
+            <Link to={`/credit-cards/${id}/statement`} className="link-sm row" style={{ marginTop: 16, gap: 4 }}>Ver extracto por meses <ChevronRight size={16} /></Link>
+          </section>
+        )}
+      </div>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import Swal from '../../utils/alerts';
 import { CardInboxService } from '../../services/cardInboxService';
 import { fmt, parseLocalDate } from '../../utils/format';
 import { CATEGORIES } from '../../utils/creditCard';
+import { getCardColor } from '../../utils/cardColors';
 
 const TIPO_LABEL = { compra: 'Compra', avance: 'Avance', pago: 'Pago de tarjeta' };
 
@@ -29,67 +30,61 @@ const ajustesDe = (item, v) => ({
 const PendingRow = ({ item, cards, valores, onChange, selected, onToggle, busy, onApprove, onDiscard }) => {
   const esCompra = item.tipo === 'compra';
   const esPago = item.tipo === 'pago';
+  const card = cards?.find(c => String(c.id) === String(valores.cardId));
 
   return (
-    <div className="card" style={{ padding: '14px 20px', outline: selected ? '2px solid var(--brand-600)' : 'none' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <input type="checkbox" checked={selected} onChange={onToggle} disabled={busy}
-            aria-label={`Seleccionar ${item.comercio || TIPO_LABEL[item.tipo]}`} style={{ marginTop: 4 }} />
-          <div>
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', margin: 0 }}>
-              {item.comercio || TIPO_LABEL[item.tipo]}
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '2px 0 0' }}>
-              {TIPO_LABEL[item.tipo]} · {fechaCorta(item.fechaMovimiento)}
-              {item.tipo === 'avance' && item.numeroCuotas ? ` · ${item.numeroCuotas} cuotas` : ''}
+    <div className={`pend-row ${selected ? 'selected' : ''} ${esPago ? 'info' : ''}`}>
+      <input type="checkbox" className="check" checked={selected} onChange={onToggle} disabled={busy}
+        aria-label={`Seleccionar ${item.comercio || TIPO_LABEL[item.tipo]}`} />
+      <div className="pend-main">
+        <div className="row-between" style={{ alignItems: 'flex-start' }}>
+          <div style={{ minWidth: 0 }}>
+            <p className="cell-title">{item.comercio || TIPO_LABEL[item.tipo]}</p>
+            <p className="cell-sub">
+              {TIPO_LABEL[item.tipo]} · {fechaCorta(item.fechaMovimiento)}{item.horaMovimiento ? `, ${item.horaMovimiento.slice(0, 5)}` : null}
+              {item.tipo === 'avance' && item.numeroCuotas ? ` · ${item.numeroCuotas} cuotas` : null}
+              {esPago ? ' · solo informativo' : null}
             </p>
           </div>
+          <span className={`n pend-amount ${esPago ? 'muted' : ''}`}>{fmt(item.monto)}</span>
         </div>
-        <span className="tabular" style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{fmt(item.monto)}</span>
-      </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-        {!esPago && cards && (
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" htmlFor={`card-${item.id}`}>Tarjeta</label>
-            <select id={`card-${item.id}`} className="form-input" value={valores.cardId} onChange={e => onChange({ cardId: e.target.value })}>
-              <option value="">Elegir tarjeta…</option>
-              {cards.map(c => <option key={c.id} value={c.id}>{c.nombre}{c.ultimos4 ? ` ····${c.ultimos4}` : ''}</option>)}
-            </select>
-          </div>
-        )}
-        {esCompra && (
-          <>
-            <div className="form-group" style={{ margin: 0, width: 110 }}>
-              <label className="form-label" htmlFor={`cuotas-${item.id}`}>Cuotas{item.numeroCuotas ? ' (del correo)' : ''}</label>
-              <input id={`cuotas-${item.id}`} className="form-input" type="number" min={1} max={36} value={valores.cuotas}
-                onChange={e => onChange({ cuotas: e.target.value })} />
-            </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" htmlFor={`cat-${item.id}`}>Categoría</label>
-              <select id={`cat-${item.id}`} className="form-input" value={valores.categoria} onChange={e => onChange({ categoria: e.target.value })}>
-                {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+        <div className="pend-controls">
+          {!esPago && cards && (
+            <label className="pend-field">
+              {card && <span className="card-chip sm" style={{ background: getCardColor(card.color) }} />}
+              <select id={`card-${item.id}`} aria-label="Tarjeta" className="chip-select" value={valores.cardId} onChange={e => onChange({ cardId: e.target.value })}>
+                <option value="">Elegir tarjeta…</option>
+                {cards.map(c => <option key={c.id} value={c.id}>{c.nombre}{c.ultimos4 ? ` ••${c.ultimos4}` : null}</option>)}
               </select>
-            </div>
-          </>
-        )}
-        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-          {esPago ? (
-            <button className="btn btn-secondary" disabled={busy} onClick={onDiscard}>
-              <Check size={14} /> Marcar como visto
-            </button>
-          ) : (
+            </label>
+          )}
+          {esCompra && (
             <>
-              <button className="btn btn-secondary" disabled={busy} onClick={onDiscard}>
-                <X size={14} /> Descartar
-              </button>
-              <button className="btn btn-primary" disabled={busy || !valores.cardId} onClick={onApprove}>
-                <Check size={14} /> Aprobar
-              </button>
+              <label className="pend-field">
+                <select id={`cat-${item.id}`} aria-label="Categoría" className="chip-select" value={valores.categoria} onChange={e => onChange({ categoria: e.target.value })}>
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </label>
+              <label className="pend-field">
+                <span className="pend-field-label" id={`cuotas-l-${item.id}`}>Cuotas{item.numeroCuotas ? ' (del correo)' : null}</span>
+                <input id={`cuotas-${item.id}`} aria-labelledby={`cuotas-l-${item.id}`} className="chip-select num" type="number" min={1} max={36} value={valores.cuotas}
+                  onChange={e => onChange({ cuotas: e.target.value })} />
+              </label>
             </>
           )}
+          <div className="pend-actions">
+            {esPago ? (
+              <button className="btn-text" disabled={busy} onClick={onDiscard}>Marcar como visto</button>
+            ) : (
+              <>
+                <button className="btn btn-ghost btn-sm" disabled={busy} onClick={onDiscard}><X size={14} /> Descartar</button>
+                <button className="btn btn-secondary btn-sm" disabled={busy || !valores.cardId} onClick={onApprove}><Check size={14} /> Aprobar</button>
+              </>
+            )}
+          </div>
         </div>
+        {!esPago && cards && !valores.cardId && <p className="form-hint" style={{ margin: '6px 0 0' }}>Elige una tarjeta para poder aprobarlo.</p>}
       </div>
     </div>
   );
@@ -185,18 +180,19 @@ export const PendingList = ({ items, cards, onDone }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={todos} disabled={busy}
-            onChange={() => setSelected(todos ? new Set() : new Set(items.map(i => i.id)))} />
-          Seleccionar todos ({items.length})
+    <div className="pend-list">
+      <div className="pend-bar">
+        <label className="row" style={{ gap: 10, fontSize: 14, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>
+          <input type="checkbox" className="check" checked={todos} disabled={busy}
+            onChange={() => setSelected(todos ? new Set() : new Set(items.map(i => i.id)))}
+            aria-label={`Seleccionar todos (${items.length})`} />
+          {elegidos.length ? plural(elegidos.length, 'seleccionado', 'seleccionados') : `Seleccionar todos (${items.length})`}
         </label>
-        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-          <button className="btn btn-secondary" disabled={busy || elegidos.length === 0} onClick={descartarSeleccionados}>
+        <div className="pend-bar-actions">
+          <button className="btn btn-secondary btn-sm" disabled={busy || elegidos.length === 0} onClick={descartarSeleccionados}>
             <X size={14} /> Descartar seleccionados ({elegidos.length})
           </button>
-          <button className="btn btn-primary" disabled={busy || elegidos.length === 0} onClick={aprobarSeleccionados}>
+          <button className="btn btn-primary btn-sm" disabled={busy || elegidos.length === 0} onClick={aprobarSeleccionados}>
             <Check size={14} /> Aprobar seleccionados ({elegidos.length})
           </button>
         </div>
@@ -234,7 +230,7 @@ export const SyncButton = ({ onDone }) => {
 
   return (
     <button className="btn btn-secondary" onClick={sync} disabled={syncing}>
-      <RefreshCw size={14} /> {syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+      <RefreshCw size={16} /> {syncing ? 'Sincronizando…' : 'Sincronizar ahora'}
     </button>
   );
 };
