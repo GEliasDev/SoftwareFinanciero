@@ -239,3 +239,50 @@
   .pu-filters select:last-of-type { display: none; }
   .pu-month-sum { font-size: 12px; }
 }
+
+/* ── Detalle de compra ── */
+.pd-kpis { display: grid; grid-template-columns: repeat(4, 1fr); padding: 0; margin-bottom: 20px; overflow: hidden; }
+.pd-kpis > div { padding: 18px 20px; }
+.pd-kpis > div + div { border-left: 1px solid var(--divider); }
+.pd-kpis p { margin: 0 0 4px; font-size: 13px; color: var(--text-2); }
+.pd-kpis b { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.pd-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pd-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.pd-counters { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: var(--radius-md); margin-top: 16px; }
+.pd-counters > div { display: flex; flex-direction: column; align-items: center; padding: 14px 8px; }
+.pd-counters > div + div { border-left: 1px solid var(--divider); }
+.pd-counters b { font-size: 20px; font-weight: 600; }
+.pd-counters span { font-size: 12px; color: var(--text-2); }
+.pd-timeline { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider); }
+.pd-dots { display: flex; flex-wrap: wrap; gap: 8px; }
+.pd-dot { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--text-3); }
+.pd-dot.paid { background: var(--pos-500); color: #fff; }
+.pd-dot.next { background: var(--surface); border: 2px solid var(--brand-600); color: var(--brand-600); }
+.pd-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--text-2); }
+.pd-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pd-legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border-strong); }
+.pd-legend i.paid { background: var(--pos-500); border-color: var(--pos-500); }
+.pd-legend i.next { background: var(--surface); border: 2px solid var(--brand-600); }
+.pd-info { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+.pd-info > div { padding: 10px 0; border-bottom: 1px solid var(--divider); }
+.pd-info > div:nth-last-child(-n+2) { border-bottom: none; }
+.pd-info span { display: block; font-size: 13px; color: var(--text-3); }
+.pd-info b, .pd-info a { font-size: 15px; font-weight: 500; }
+.pd-amort .r { text-align: right; }
+.pd-amort tr.paid td { color: var(--text-3); }
+.pd-amort tr.next td { background: var(--brand-50); }
+.pd-amort tfoot td { border-top: 1px solid var(--divider); padding: 12px 16px; }
+
+@media (max-width: 1100px) {
+  .pd-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) {
+  .pd-kpis { grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
+  .pd-kpis > div { padding: 14px 16px; }
+  .pd-kpis > div:nth-child(3) { border-left: none; }
+  .pd-kpis > div:nth-child(n+3) { border-top: 1px solid var(--divider); }
+  .pd-kpis b { font-size: 18px; }
+  .pd-grid, .pd-col { gap: 12px; }
+  .pd-info { grid-template-columns: 1fr; }
+  .pd-info > div:nth-last-child(2) { border-bottom: 1px solid var(--divider); }
+}

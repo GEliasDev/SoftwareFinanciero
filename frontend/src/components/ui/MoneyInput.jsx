@@ -38,6 +38,7 @@ export const MoneyInput = ({ id, value, onChange, placeholder, disabled, classNa
   };
 
   return (
+    <span className="money-field">
     <input
       id={id}
       className={`form-input tabular ${error ? 'error' : ''} ${className}`.trim()}
@@ -50,5 +51,6 @@ export const MoneyInput = ({ id, value, onChange, placeholder, disabled, classNa
       disabled={disabled}
       {...props}
     />
+    </span>
   );
 };

@@ -1,15 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import Swal from '../utils/alerts';
 import { CreditCardService } from '../services/creditCardService';
-import {
-  ArrowLeft, Edit2, Trash2, Check, DollarSign, Table2,
-  ShoppingBag, Calendar, TrendingDown, CreditCard, ChevronRight, RotateCcw, Zap,
-} from 'lucide-react';
-import { getCardGradient } from '../utils/cardColors';
+import { ArrowLeft, Pencil, Trash2, Check, RotateCcw, MoreHorizontal } from 'lucide-react';
+import { getCardColor } from '../utils/cardColors';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt, fmtDateLong } from '../utils/format';
-import { getCat } from '../utils/creditCard';
+import { getMovimientoVisual } from '../utils/creditCard';
 
 function buildAmortization(montoTotal, numeroCuotas, tasaMensualPct) {
   const n = Number(numeroCuotas);
@@ -57,7 +55,7 @@ export const CreditCardPurchaseDetail = () => {
 
   useEffect(() => { load(); }, [cardId, purchaseId]);
 
-  const cat           = purchase ? getCat(purchase.categoria || 'otros') : null;
+  const vis           = purchase ? getMovimientoVisual(purchase.tipo, purchase.categoria || 'otros') : null;
   const isPaid        = purchase?.status === 'pagada';
   const cuotasPagadas = purchase ? Number(purchase.cuotasPagadas) : 0;
   const numeroCuotas  = purchase ? Number(purchase.numeroCuotas) : 1;
@@ -78,7 +76,6 @@ export const CreditCardPurchaseDetail = () => {
       title: 'Registrar pago de cuota',
       html: `<b>${purchase.descripcion}</b><br/>Cuota ${cuotasPagadas + 1} de ${numeroCuotas} — <b>${fmt(purchase.valorCuotaMensual)}</b><br/><span style="color:#64748b;font-size:0.85rem">${cuotasRestantes - 1} cuota${cuotasRestantes - 1 !== 1 ? 's' : ''} quedarán pendientes</span>`,
       icon: 'question', showCancelButton: true,
-      confirmButtonColor: '#047857', cancelButtonColor: '#64748B',
       confirmButtonText: 'Registrar pago', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
@@ -105,7 +102,7 @@ export const CreditCardPurchaseDetail = () => {
       html: `Se revertirá la cuota ${cuotasPagadas} de "<b>${purchase.descripcion}</b>".<br/>
              <span style="color:#64748b;font-size:0.85rem">El cupo de la tarjeta se descontará.</span>`,
       icon: 'warning', showCancelButton: true,
-      confirmButtonColor: '#dc2626', cancelButtonColor: '#64748B',
+      confirmButtonColor: '#DC2626',
       confirmButtonText: 'Deshacer pago', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
@@ -130,7 +127,6 @@ export const CreditCardPurchaseDetail = () => {
       html: `Abono de <b>${fmt(monto)}</b> a "<b>${purchase.descripcion}</b>".<br/>
              <span style="color:#64748b;font-size:0.85rem">${monto >= capitalRestante ? 'Este abono liquidará la deuda.' : 'Se reducirán las cuotas restantes.'}</span>`,
       icon: 'question', showCancelButton: true,
-      confirmButtonColor: '#047857', cancelButtonColor: '#64748B',
       confirmButtonText: 'Aplicar abono', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
@@ -152,7 +148,7 @@ export const CreditCardPurchaseDetail = () => {
       title: `¿Eliminar "${purchase.descripcion}"?`,
       text: 'El cupo utilizado será restaurado. Esta acción no se puede deshacer.',
       icon: 'warning', showCancelButton: true,
-      confirmButtonColor: '#DC2626', cancelButtonColor: '#64748B',
+      confirmButtonColor: '#DC2626',
       confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
@@ -165,416 +161,207 @@ export const CreditCardPurchaseDetail = () => {
   };
 
   if (loading) return (
-    <div>
-      <div className="kpi-grid" style={{ marginBottom: '1rem' }}>
-        {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 88, borderRadius: 'var(--radius-md)' }} />)}
+    <div aria-busy="true">
+      <div className="skeleton" style={{ height: 56, width: 360, marginBottom: 20 }} />
+      <div className="skeleton" style={{ height: 96, marginBottom: 20, borderRadius: 'var(--radius-lg)' }} />
+      <div className="pd-grid">
+        <div className="skeleton" style={{ height: 320, borderRadius: 'var(--radius-lg)' }} />
+        <div className="skeleton" style={{ height: 320, borderRadius: 'var(--radius-lg)' }} />
       </div>
-      {[240, 200].map((h, i) => (
-        <div key={i} className="skeleton" style={{ height: h, borderRadius: 'var(--radius-md)', marginBottom: '1rem' }} />
-      ))}
     </div>
   );
 
   if (!purchase) return (
-    <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-      <p style={{ color: 'var(--color-text-muted)' }}>Compra no encontrada.</p>
-      <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={() => navigate(`/credit-cards/${cardId}/purchases`)}>
-        <ArrowLeft size={14} /> Volver
+    <div className="card empty-state">
+      <p className="empty-state-title">Compra no encontrada</p>
+      <p>Puede que se haya eliminado.</p>
+      <button className="btn btn-secondary" style={{ marginTop: 12 }} onClick={() => navigate(`/credit-cards/${cardId}/purchases`)}>
+        <ArrowLeft size={16} /> Volver a compras
       </button>
     </div>
   );
 
-  const cardGradient = card ? getCardGradient(card.color) : 'var(--color-primary)';
+  const esAvance = purchase.tipo === 'avance';
+  const kpis = [
+    { label: 'Monto original', value: fmt(purchase.montoTotal) },
+    { label: 'Cuota mensual', value: fmt(purchase.valorCuotaMensual) },
+    { label: 'Total con intereses', value: fmt(purchase.totalAPagar) },
+    { label: esAvance && avanceComision > 0 ? 'Comisión del avance' : 'Intereses', value: fmt(esAvance && avanceComision > 0 ? avanceComision : totalIntereses) },
+  ];
+  const amortTotals = amortRows ? amortRows.reduce((t, r) => ({ cuota: t.cuota + r.cuota, capital: t.capital + r.capital, interes: t.interes + r.interes }), { cuota: 0, capital: 0, interes: 0 }) : null;
+  const abonoNum = parseFloat(abonoMonto) || 0;
+  const liquida = abonoNum >= cuotasRestantes * (parseFloat(purchase.montoTotal) / numeroCuotas);
 
   return (
     <div className="animate-fade-in">
+      <nav className="breadcrumb desktop-flex" aria-label="Ruta">
+        <Link to="/credit-cards">Tarjetas</Link><span aria-hidden="true">/</span>
+        <Link to={`/credit-cards/${cardId}`}>{card?.nombre ?? '—'}</Link><span aria-hidden="true">/</span>
+        <span>{purchase.descripcion}</span>
+      </nav>
 
-      {/* ── Header / Breadcrumb ─────────────────────────────────────── */}
-      <div style={{ marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: '0.625rem' }}>
-          <button onClick={() => navigate('/credit-cards')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 12, padding: 0 }}>
-            Tarjetas
-          </button>
-          <ChevronRight size={12} />
-          <button onClick={() => navigate(`/credit-cards/${cardId}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 12, padding: 0 }}>
-            {card?.nombre ?? '—'}
-          </button>
-          <ChevronRight size={12} />
-          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{purchase.descripcion}</span>
+      <div className="detail-head">
+        <button className="icon-btn ghost mobile-only" onClick={() => navigate(`/credit-cards/${cardId}/purchases`)} aria-label="Volver a compras"><ArrowLeft size={20} /></button>
+        <div className="detail-head-text">
+          <div className="row" style={{ gap: 10 }}>
+            <h1 className="page-title">{purchase.descripcion}</h1>
+            <span className={`badge ${isPaid ? 'badge-success' : 'badge-neutral'}`}>{isPaid ? 'Pagada' : 'Activa'}</span>
+          </div>
+          {card && (
+            <p className="page-subtitle row" style={{ margin: 0, gap: 6 }}>
+              {vis?.label} · <span className="card-chip sm" style={{ background: getCardColor(card.color) }} /> {card.nombre} · {card.entidad}{card.ultimos4 ? ` •••• ${card.ultimos4}` : ''}
+            </p>
+          )}
+        </div>
+        <div className="detail-actions">
+          <button className="btn btn-secondary desktop-flex" onClick={() => navigate(`/credit-cards/${cardId}/purchases/${purchaseId}/edit`)}><Pencil size={16} /> Editar</button>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button className="icon-btn" aria-label="Más acciones"><MoreHorizontal size={18} /></button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content className="menu-content" align="end" sideOffset={6}>
+                <DropdownMenu.Item className="menu-item mobile-flex" onSelect={() => navigate(`/credit-cards/${cardId}/purchases/${purchaseId}/edit`)}><Pencil size={16} /> Editar compra</DropdownMenu.Item>
+                {cuotasPagadas > 0 && (
+                  <DropdownMenu.Item className="menu-item" disabled={undoLoading} onSelect={handleUndoPay}>
+                    <RotateCcw size={16} />
+                    <span><span style={{ display: 'block' }}>Deshacer último pago</span><span className="text-sm text-muted">Revierte la cuota {cuotasPagadas} · {fmt(purchase.valorCuotaMensual)}</span></span>
+                  </DropdownMenu.Item>
+                )}
+                <DropdownMenu.Separator className="menu-sep" />
+                <DropdownMenu.Item className="menu-item danger" onSelect={handleDelete}><Trash2 size={16} /> Eliminar compra</DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </div>
+      </div>
+
+      <section className="card pd-kpis" aria-label="Montos">
+        {kpis.map(k => (
+          <div key={k.label}><p>{k.label}</p><b className="n">{k.value}</b></div>
+        ))}
+      </section>
+
+      <div className="pd-grid">
+        <div className="pd-col">
+          <section className="card" aria-labelledby="pd-progress">
+            <h2 className="card-title" id="pd-progress" style={{ marginBottom: 16 }}>Progreso de pago</h2>
+            <div className="row-between text-sm"><span>{isPaid ? 'Pagada por completo' : `${cuotasPagadas} de ${numeroCuotas} cuotas`}</span><b className="n">{Math.round(progress)} %</b></div>
+            <div className="progress-track" style={{ margin: '8px 0 6px' }}><div className="progress-fill" style={{ transform: `scaleX(${progress / 100})` }} /></div>
+            <div className="row-between text-sm text-muted n"><span>{cuotasRestantes} cuota{cuotasRestantes !== 1 ? 's' : ''} restante{cuotasRestantes !== 1 ? 's' : ''}</span><span>{fmt(pendienteTotal)} pendiente</span></div>
+            <div className="pd-counters">
+              <div><b className="n">{cuotasPagadas}</b><span>Pagadas</span></div>
+              <div><b className="n">{cuotasRestantes}</b><span>Restantes</span></div>
+              <div><b className="n">{numeroCuotas}</b><span>Total</span></div>
+            </div>
+            {numeroCuotas > 1 && numeroCuotas <= 36 && (
+              <div className="pd-timeline">
+                <p className="text-sm" style={{ fontWeight: 600, margin: '0 0 10px' }}>Historial de cuotas</p>
+                <div className="pd-dots">
+                  {Array.from({ length: numeroCuotas }, (_, i) => {
+                    const st = i < cuotasPagadas ? 'paid' : i === cuotasPagadas ? 'next' : '';
+                    return <span key={i} className={`pd-dot ${st}`} aria-label={`Cuota ${i + 1}${st === 'paid' ? ' pagada' : st === 'next' ? ' próxima' : ''}`}>{st === 'paid' ? <Check size={14} /> : i + 1}</span>;
+                  })}
+                </div>
+                <div className="pd-legend"><span><i className="paid" /> Pagada</span><span><i className="next" /> Próxima</span><span><i /> Pendiente</span></div>
+              </div>
+            )}
+          </section>
+
+          <section className="card" aria-labelledby="pd-info">
+            <h2 className="card-title" id="pd-info" style={{ marginBottom: 12 }}>Información de la compra</h2>
+            <div className="pd-info">
+              <div><span>Fecha de compra</span><b>{fmtDateLong(purchase.fechaCompra)}</b></div>
+              <div><span>Categoría</span><b>{vis?.label}</b></div>
+              <div><span>Tasa mensual</span><b className="n">{tasaMensual.toLocaleString('es-CO', { maximumFractionDigits: 2 })} % M.V.</b></div>
+              <div><span>Tarjeta</span><Link to={`/credit-cards/${cardId}`}>{card?.nombre} · {card?.entidad}</Link></div>
+            </div>
+          </section>
         </div>
 
-        <div className="page-header" style={{ margin: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button onClick={() => navigate(`/credit-cards/${cardId}/purchases`)} className="btn btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
-              <ArrowLeft size={16} />
-            </button>
-            <div>
-              <h1 className="page-title" style={{ margin: 0 }}>{purchase.descripcion}</h1>
-              {card && (
-                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <CreditCard size={11} /> {card.nombre} · {card.entidad}
+        <div className="pd-col">
+          {!isPaid && (
+            <section className="card" aria-labelledby="pd-next">
+              <div className="row-between">
+                <p className="text-secondary" id="pd-next" style={{ margin: 0, fontSize: 14 }}>Próxima cuota</p>
+              </div>
+              <div className="row-between" style={{ alignItems: 'baseline', margin: '8px 0 16px' }}>
+                <span className="amount-lg">{fmt(purchase.valorCuotaMensual)}</span>
+                <span className="text-sm text-secondary n">cuota {cuotasPagadas + 1} de {numeroCuotas}</span>
+              </div>
+              <button className="btn btn-primary btn-lg btn-block" onClick={handlePay}>Registrar cuota</button>
+            </section>
+          )}
+
+          <section className="card" aria-labelledby="pd-fin">
+            <h2 className="card-title" id="pd-fin" style={{ marginBottom: 4 }}>Resumen financiero</h2>
+            <div className="row-list">
+              <div className="kv"><span>Capital financiado</span><span>{fmt(purchase.montoTotal)}</span></div>
+              <div className="kv"><span>Total con intereses</span><span>{fmt(purchase.totalAPagar)}</span></div>
+              {esAvance && avanceComision > 0 && <div className="kv"><span>Comisión del avance</span><span>{fmt(avanceComision)}</span></div>}
+              <div className="kv"><span>Ya pagado</span><span className={cuotasPagadas > 0 ? 'text-success' : ''}>{cuotasPagadas > 0 ? '−' : ''}{fmt(cuotasPagadas * parseFloat(purchase.valorCuotaMensual ?? 0))}</span></div>
+            </div>
+            <div className="row-between cc-debt-total">
+              <b>Saldo pendiente</b>
+              <span className="amount-lg" style={{ fontSize: 22 }}>{fmt(pendienteTotal)}</span>
+            </div>
+          </section>
+
+          {!isPaid && (
+            <section className="card" aria-labelledby="pd-abono">
+              <h2 className="card-title" id="pd-abono" style={{ marginBottom: 12 }}>Abono extraordinario</h2>
+              <div className="form-group" style={{ marginBottom: 8 }}>
+                <label className="form-label" htmlFor="purchase-abono">Monto del abono</label>
+                <MoneyInput id="purchase-abono" placeholder="0" value={abonoMonto} onChange={setAbonoMonto} />
+              </div>
+              {abonoNum > 0 && (
+                <p className="text-sm text-success" style={{ margin: '0 0 12px' }}>
+                  {liquida ? 'Este abono liquidará la deuda completamente.' : `Reducirá las ${cuotasRestantes} cuotas restantes.`}
                 </p>
               )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {isPaid
-              ? <span style={{ background: 'var(--color-success-bg)', color: 'var(--pos-700)', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 99, letterSpacing: '0.04em' }}>PAGADA</span>
-              : <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 99, letterSpacing: '0.04em' }}>ACTIVA</span>
-            }
-          </div>
-        </div>
-      </div>
-
-      {/* ── Card gradient accent strip ──────────────────────────────── */}
-      <div style={{ height: 5, borderRadius: 99, marginBottom: '1.25rem', background: cardGradient }} />
-
-      {/* ── 4 KPI cards ─────────────────────────────────────────────── */}
-      <div className="kpi-grid" style={{ marginBottom: '1.25rem' }}>
-        {[
-          { label: 'Monto original',      value: fmt(purchase.montoTotal),        accent: 'var(--color-text-secondary)', bg: 'var(--color-bg)',          border: 'var(--color-border)' },
-          { label: 'Cuota mensual',        value: fmt(purchase.valorCuotaMensual), accent: 'var(--color-primary)',        bg: 'var(--color-primary-light)', border: 'rgba(4,120,87,0.15)' },
-          { label: 'Total con intereses',  value: fmt(purchase.totalAPagar),       accent: 'var(--neg-600)',              bg: 'var(--color-danger-bg)',     border: 'rgba(220,38,38,0.15)' },
-          { label: purchase?.tipo === 'avance' && avanceComision > 0 ? 'Comisión del avance' : 'Intereses generados', value: purchase?.tipo === 'avance' && avanceComision > 0 ? fmt(avanceComision) : fmt(totalIntereses), accent: 'var(--color-warning)', bg: 'var(--color-warning-bg)', border: 'rgba(217,119,6,0.15)' },
-        ].map(kpi => (
-          <div key={kpi.label} style={{ background: kpi.bg, border: `1px solid ${kpi.border}`, borderRadius: 'var(--radius-md)', padding: '1rem 1.125rem', boxShadow: 'var(--shadow-sm)' }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', margin: '0 0 0.35rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{kpi.label}</p>
-            <p style={{ fontSize: '1.1rem', fontWeight: 800, color: kpi.accent, margin: 0, letterSpacing: '-0.01em' }}>{kpi.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── 2-column body ───────────────────────────────────────────── */}
-      <div className="split-grid" style={{ marginBottom: '1rem' }}>
-
-        {/* Left: Progress + Timeline + Info */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-          {/* Progress card */}
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <DollarSign size={14} style={{ color: 'var(--color-primary)' }} /> Progreso de pago
-            </h3>
-
-            {/* Progress bar */}
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: '0.5rem', fontWeight: 500 }}>
-                <span>{isPaid ? '✓ Completada' : `${cuotasPagadas} de ${numeroCuotas} cuotas`}</span>
-                <span style={{ fontWeight: 700, color: isPaid ? 'var(--pos-700)' : 'var(--color-primary)' }}>
-                  {progress.toFixed(0)}%
-                </span>
-              </div>
-              <div style={{ height: 10, background: 'var(--color-border)', borderRadius: 99, overflow: 'hidden' }}>
-                <div style={{
-                  height: 10,
-                  width: '100%',
-                  background: isPaid ? 'linear-gradient(90deg, var(--pos-600), var(--brand-500))' : 'linear-gradient(90deg, var(--brand-700), var(--color-primary))',
-                  borderRadius: 99,
-                  transition: 'transform 0.5s ease',
-                  transformOrigin: 'left',
-                  transform: `scaleX(${progress / 100})`,
-                }} />
-              </div>
-              {!isPaid && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                  <span>{cuotasRestantes} cuota{cuotasRestantes !== 1 ? 's' : ''} restante{cuotasRestantes !== 1 ? 's' : ''}</span>
-                  <span style={{ fontWeight: 600 }}>{fmt(pendienteTotal)} pendiente</span>
-                </div>
-              )}
-            </div>
-
-            {/* Cuotas summary grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-              {[
-                { label: 'Pagadas',   value: cuotasPagadas,   color: 'var(--pos-700)', bg: 'var(--color-success-bg)' },
-                { label: 'Restantes', value: cuotasRestantes, color: 'var(--color-primary)', bg: 'var(--color-primary-light)' },
-                { label: 'Total',     value: numeroCuotas,    color: 'var(--color-text-secondary)', bg: 'var(--color-bg)' },
-              ].map(s => (
-                <div key={s.label} style={{ background: s.bg, borderRadius: 'var(--radius-sm)', padding: '0.625rem', textAlign: 'center' }}>
-                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: s.color, margin: 0, lineHeight: 1.1 }}>{s.value}</p>
-                  <p style={{ fontSize: 10, color: 'var(--color-text-muted)', margin: '0.15rem 0 0', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Payment timeline */}
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> Historial de cuotas
-            </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-              {Array.from({ length: numeroCuotas }, (_, i) => {
-                const cuotaNum = i + 1;
-                const paid = cuotaNum <= cuotasPagadas;
-                const isCurrent = cuotaNum === cuotasPagadas + 1 && !isPaid;
-                return (
-                  <div
-                    key={i}
-                    title={paid ? `Cuota ${cuotaNum} — pagada` : isCurrent ? `Cuota ${cuotaNum} — próxima` : `Cuota ${cuotaNum} — pendiente`}
-                    style={{
-                      width: 28, height: 28, borderRadius: '50%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 10, fontWeight: 700,
-                      background: isPaid || paid ? 'linear-gradient(135deg, var(--pos-600), var(--brand-500))' : isCurrent ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                      color: isPaid || paid ? 'white' : isCurrent ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                      border: isCurrent ? '2px solid var(--color-primary)' : '1px solid transparent',
-                      boxShadow: isCurrent ? '0 0 0 3px rgba(21,101,192,0.15)' : paid ? '0 1px 3px rgba(5,150,105,0.2)' : 'none',
-                      transition: 'all 0.15s ease',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {isPaid || paid ? <Check size={12} /> : cuotaNum}
-                  </div>
-                );
-              })}
-            </div>
-            {numeroCuotas > 1 && (
-              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0.625rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'linear-gradient(135deg, var(--pos-600), var(--brand-500))', flexShrink: 0 }} />
-                Pagada ·
-                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--color-primary-light)', border: '2px solid var(--color-primary)', flexShrink: 0 }} />
-                Próxima ·
-                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: 'var(--color-bg)', border: '1px solid var(--color-border)', flexShrink: 0 }} />
-                Pendiente
-              </p>
-            )}
-          </div>
-
-          {/* Purchase info */}
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <ShoppingBag size={14} style={{ color: 'var(--color-primary)' }} /> Información de la compra
-            </h3>
-            <div className="info-grid">
-              {[
-                { label: 'Fecha de compra', value: fmtDateLong(purchase.fechaCompra), Icon: Calendar },
-                { label: 'Categoría',        value: cat.label,                    Icon: cat.Icon, color: cat.color },
-                { label: 'Tasa mensual',     value: `${card?.tasaInteresMensual ?? '—'}% M.V.`, Icon: TrendingDown },
-                { label: 'Tarjeta',          value: card ? `${card.nombre} · ${card.entidad}` : '—', Icon: CreditCard },
-              ].map(item => (
-                <div key={item.label} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 'var(--radius-xs)', background: item.color ? `${item.color}18` : 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                    <item.Icon size={13} style={{ color: item.color ?? 'var(--color-text-muted)' }} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 10, color: 'var(--color-text-muted)', margin: '0 0 1px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{item.label}</p>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>{item.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Actions panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-          {/* Action buttons */}
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 1rem' }}>Acciones</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <button
-                className="btn btn-secondary"
-                style={{ justifyContent: 'flex-start', padding: '0.625rem 0.875rem' }}
-                onClick={() => navigate(`/credit-cards/${cardId}/purchases/${purchaseId}/edit`)}
-              >
-                <Edit2 size={15} />
-                <div style={{ textAlign: 'left', marginLeft: '0.25rem' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>Editar compra</div>
-                  <div style={{ fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 400 }}>Descripción, categoría, monto y cuotas</div>
-                </div>
+              <button className="btn btn-secondary btn-block" onClick={handleApplyAbono} disabled={abonoLoading || abonoNum <= 0}>
+                {abonoLoading ? 'Aplicando…' : 'Aplicar abono'}
               </button>
-
-              {!isPaid && (
-                  <button
-                    className="btn btn-success"
-                    style={{ justifyContent: 'flex-start', padding: '0.625rem 0.875rem' }}
-                    onClick={handlePay}
-                  >
-                    <DollarSign size={15} />
-                    <div style={{ textAlign: 'left', marginLeft: '0.25rem' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>Registrar cuota</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 400 }}>
-                        {fmt(purchase.valorCuotaMensual)} · cuota {cuotasPagadas + 1}/{numeroCuotas}
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-                {cuotasPagadas > 0 && (
-                  <button
-                    className="btn btn-secondary"
-                    style={{ justifyContent: 'flex-start', padding: '0.625rem 0.875rem' }}
-                    onClick={handleUndoPay}
-                    disabled={undoLoading}
-                  >
-                    <RotateCcw size={15} />
-                    <div style={{ textAlign: 'left', marginLeft: '0.25rem' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>
-                        {undoLoading ? 'Revirtiendo…' : 'Deshacer último pago'}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 400 }}>Revierte la cuota {cuotasPagadas}</div>
-                    </div>
-                  </button>
-                )}
-
-                <button
-                  className="btn btn-secondary"
-                  style={{ justifyContent: 'flex-start', padding: '0.625rem 0.875rem' }}
-                  onClick={() => setShowAmort(s => !s)}
-                >
-                  <Table2 size={15} />
-                  <div style={{ textAlign: 'left', marginLeft: '0.25rem' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{showAmort ? 'Ocultar tabla' : 'Ver amortización'}</div>
-                    <div style={{ fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 400 }}>Tabla cuota por cuota</div>
-                  </div>
-                </button>
-
-                <div style={{ height: 1, background: 'var(--color-border)', margin: '0.25rem 0' }} />
-
-                <button
-                  className="btn btn-danger"
-                  style={{ justifyContent: 'flex-start', padding: '0.625rem 0.875rem' }}
-                  onClick={handleDelete}
-                >
-                  <Trash2 size={15} />
-                  <div style={{ textAlign: 'left', marginLeft: '0.25rem' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>Eliminar compra</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 400 }}>Restaura el cupo utilizado</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-          {/* Mini summary card */}
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <TrendingDown size={14} style={{ color: 'var(--color-primary)' }} /> Resumen financiero
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {[
-                { label: 'Capital financiado', value: fmt(purchase.montoTotal), color: 'var(--color-text-primary)', bold: true },
-                { label: 'Total con intereses', value: fmt(purchase.totalAPagar), color: 'var(--neg-600)' },
-                { label: purchase?.tipo === 'avance' && avanceComision > 0 ? 'Comisión del avance' : 'Costo total intereses', value: purchase?.tipo === 'avance' && avanceComision > 0 ? fmt(avanceComision) : fmt(totalIntereses), color: 'var(--color-warning)' },
-                { label: 'Ya pagado (cuotas)', value: fmt(isPaid ? parseFloat(purchase.totalAPagar ?? 0) : cuotasPagadas * parseFloat(purchase.valorCuotaMensual ?? 0)), color: 'var(--pos-700)' },
-                { label: 'Saldo pendiente', value: fmt(pendienteTotal), color: 'var(--color-primary)', bold: true },
-              ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.3rem 0', borderBottom: '1px solid var(--color-border)' }}>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{row.label}</span>
-                  <span style={{ fontSize: 13, fontWeight: row.bold ? 700 : 600, color: row.color }}>{row.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Abono extraordinario */}
-          {!isPaid && (
-            <div className="card" style={{ padding: '1.25rem' }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Zap size={14} style={{ color: 'var(--warn-600)' }} /> Abono extraordinario
-              </h3>
-              <div className="form-group" style={{ marginBottom: '0.625rem' }}>
-                <label className="form-label" htmlFor="purchase-abono">Monto del abono</label>
-                <MoneyInput id="purchase-abono" placeholder="Ej: 200000" value={abonoMonto} onChange={setAbonoMonto} />
-              </div>
-              {abonoMonto && parseFloat(abonoMonto) > 0 && (
-                <div className="info-box success" style={{ fontSize: 12, marginBottom: '0.625rem' }}>
-                  <Zap size={12} />
-                  {parseFloat(abonoMonto) >= cuotasRestantes * (parseFloat(purchase.montoTotal) / numeroCuotas)
-                    ? 'Este abono liquidará la deuda completamente.'
-                    : `Reducirá las cuotas restantes de ${cuotasRestantes}.`
-                  }
-                </div>
-              )}
-              <button
-                className="btn btn-success"
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={handleApplyAbono}
-                disabled={abonoLoading || !abonoMonto || parseFloat(abonoMonto) <= 0}
-              >
-                <Zap size={13} /> {abonoLoading ? 'Aplicando…' : 'Aplicar abono'}
-              </button>
-            </div>
-          )}
-
-          {/* Card context */}
-          {card && (
-            <div
-              style={{
-                borderRadius: 'var(--radius-md)', background: cardGradient,
-                padding: '1rem 1.25rem', position: 'relative', overflow: 'hidden',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-              }}
-            >
-              <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: 140, height: 140, background: 'rgba(255,255,255,0.06)', borderRadius: '50%' }} />
-              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: '0 0 0.2rem', fontWeight: 600, letterSpacing: '0.1em' }}>{card.entidad.toUpperCase()}</p>
-              <p style={{ color: 'white', fontWeight: 700, margin: '0 0 0.625rem', fontSize: 13 }}>{card.nombre}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>
-                <span>Cupo total: {fmt(card.cupoTotal)}</span>
-                <span>{card.tasaInteresMensual}% M.V.</span>
-              </div>
-            </div>
+            </section>
           )}
         </div>
       </div>
 
-      {/* ── Amortization table ──────────────────────────────────────── */}
-      {showAmort && amortRows && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Table2 size={15} style={{ color: 'var(--color-primary)' }} />
-              <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-secondary)' }}>Tabla de amortización — Sistema Francés</span>
-            </div>
-            <div style={{ display: 'flex', gap: '1.25rem', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              <span>{cuotasPagadas} cuotas pagadas</span>
-              <span style={{ color: 'var(--neg-600)' }}>Interés total: {fmt(amortRows.reduce((s, r) => s + r.interes, 0))}</span>
-            </div>
+      <section className="card card-flush" style={{ marginTop: 20 }} aria-labelledby="pd-amort">
+        <div className="card-header">
+          <div>
+            <h2 className="card-title" id="pd-amort">Tabla de amortización</h2>
+            <p className="card-subtitle">Sistema francés · {cuotasPagadas} cuota{cuotasPagadas !== 1 ? 's' : ''} pagada{cuotasPagadas !== 1 ? 's' : ''}{amortTotals ? ` · interés total ${fmt(amortTotals.interes)}` : ''}</p>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: 'var(--color-bg)' }}>
-                  {['#', 'Cuota total', 'Capital', 'Interés', 'Saldo'].map(h => (
-                    <th key={h} style={{ padding: '0.6rem 1rem', textAlign: h === '#' ? 'center' : 'right', fontWeight: 700, color: 'var(--color-text-secondary)', borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
+          <button className="btn-text link-sm" style={{ fontFamily: 'inherit', cursor: 'pointer' }} onClick={() => setShowAmort(v => !v)}>
+            {showAmort ? 'Ocultar tabla' : 'Ver tabla'}
+          </button>
+        </div>
+        {showAmort && amortRows && (
+          <div className="table-container">
+            <table className="cc-table pd-amort">
+              <thead><tr><th>Cuota</th><th className="r">Valor cuota</th><th className="r">Capital</th><th className="r">Interés</th><th className="r">Saldo</th></tr></thead>
               <tbody>
-                {amortRows.map(row => {
-                  const rowPaid = row.periodo <= cuotasPagadas;
-                  const isCurrent = row.periodo === cuotasPagadas + 1 && !isPaid;
+                {amortRows.map(r => {
+                  const st = r.periodo <= cuotasPagadas ? 'paid' : r.periodo === cuotasPagadas + 1 ? 'next' : '';
                   return (
-                    <tr key={row.periodo} style={{ background: rowPaid ? 'var(--color-success-bg)' : isCurrent ? 'var(--color-primary-light)' : row.periodo % 2 === 0 ? 'var(--color-bg)' : 'var(--color-surface)' }}>
-                      <td style={{ padding: '0.45rem 1rem', textAlign: 'center', fontWeight: 600, color: rowPaid ? 'var(--pos-700)' : isCurrent ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-                        {rowPaid ? <Check size={12} style={{ color: 'var(--pos-700)' }} /> : row.periodo}
-                      </td>
-                      <td style={{ padding: '0.45rem 1rem', textAlign: 'right', color: 'var(--color-text-secondary)', fontWeight: rowPaid ? 500 : 400 }}>{fmt(row.cuota)}</td>
-                      <td style={{ padding: '0.45rem 1rem', textAlign: 'right', color: 'var(--color-primary)', fontWeight: 500 }}>{fmt(row.capital)}</td>
-                      <td style={{ padding: '0.45rem 1rem', textAlign: 'right', color: 'var(--neg-600)' }}>{fmt(row.interes)}</td>
-                      <td style={{ padding: '0.45rem 1rem', textAlign: 'right', fontWeight: row.saldo === 0 ? 700 : 400, color: row.saldo === 0 ? 'var(--pos-700)' : 'var(--color-text-secondary)' }}>
-                        {fmt(row.saldo)}
-                      </td>
+                    <tr key={r.periodo} className={st}>
+                      <td>{st === 'paid' ? <span className="text-success row" style={{ gap: 4 }}><Check size={14} /> {r.periodo} · pagada</span> : st === 'next' ? <b>{r.periodo} · próxima</b> : r.periodo}</td>
+                      <td className="n r">{fmt(r.cuota)}</td>
+                      <td className="n r">{fmt(r.capital)}</td>
+                      <td className="n r">{fmt(r.interes)}</td>
+                      <td className="n r">{fmt(r.saldo)}</td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ background: 'var(--color-bg)', borderTop: '2px solid var(--color-border)' }}>
-                  <td style={{ padding: '0.625rem 1rem', textAlign: 'center', fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: 11, textTransform: 'uppercase' }}>Total</td>
-                  <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--color-text-primary)' }}>{fmt(amortRows.reduce((s, r) => s + r.cuota, 0))}</td>
-                  <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(amortRows.reduce((s, r) => s + r.capital, 0))}</td>
-                  <td style={{ padding: '0.625rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--neg-600)' }}>{fmt(amortRows.reduce((s, r) => s + r.interes, 0))}</td>
-                  <td />
-                </tr>
+                <tr><td><b>Total</b></td><td className="n r"><b>{fmt(amortTotals.cuota)}</b></td><td className="n r"><b>{fmt(amortTotals.capital)}</b></td><td className="n r"><b>{fmt(amortTotals.interes)}</b></td><td /></tr>
               </tfoot>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 };
