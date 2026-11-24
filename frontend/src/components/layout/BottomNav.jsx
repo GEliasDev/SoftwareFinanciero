@@ -1,9 +1,9 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, CreditCard, Landmark, Menu, Plus, X } from 'lucide-react';
+import { Home, CreditCard, Scale, Menu, Plus, X } from 'lucide-react';
 import { useShell } from './ShellContext';
 
 // Secciones que viven dentro de "Más" en el teléfono.
-const MORE_PATHS = ['/more', '/income', '/balance', '/subscriptions', '/reports', '/profile'];
+const MORE_PATHS = ['/more', '/income', '/bank-credits', '/subscriptions', '/reports', '/profile'];
 
 const Tab = ({ to, icon: Icon, label, end, forceActive }) => (
   <NavLink to={to} end={end} className={({ isActive }) => `bn-item ${(isActive || forceActive) ? 'active' : ''}`}>
@@ -26,7 +26,7 @@ export const BottomNav = ({ registrarOpen }) => {
           {registrarOpen ? <X size={24} /> : <Plus size={26} />}
         </button>
       </div>
-      <Tab to="/bank-credits" icon={Landmark} label="Créditos" />
+      <Tab to="/balance" icon={Scale} label="Balance" />
       <Tab to="/more" icon={Menu} label="Más" forceActive={inMore} />
     </nav>
   );

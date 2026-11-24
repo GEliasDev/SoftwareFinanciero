@@ -92,6 +92,16 @@ export const montoFila = (item, fuentes) => {
   return f ? CALC[item.origen](f, item.anio, item.mes) : 0;
 };
 
+/** Filas del balance con su monto del mes (`valor`). */
+export const filasConValor = (items, fuentes) => items.map(it => ({ ...it, valor: montoFila(it, fuentes) }));
+
+/** Gastos del mes agrupados por origen, para la barra de Inicio. */
+export const gastosPorOrigen = (filas) => {
+  const g = { tarjeta: 0, credito: 0, suscripcion: 0, manual: 0 };
+  for (const f of filas) if (f.tipo === 'gasto') g[f.origen] = (g[f.origen] || 0) + f.valor;
+  return g;
+};
+
 /** Resumen del mes, como el panel del Excel. `filas` = [{ ...item, valor }]. */
 export const resumenBalance = (filas) => {
   const ing = filas.filter(f => f.tipo === 'ingreso');

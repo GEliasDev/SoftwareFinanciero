@@ -7,6 +7,7 @@ import { AnalyticsService } from '../services/analyticsService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { CreditCardService } from '../services/creditCardService';
 import { BankCreditService } from '../services/bankCreditService';
+import { BalanceService } from '../services/balanceService';
 import { IncomeService } from '../services/incomeService';
 import { StatCard } from '../components/ui/StatCard';
 import { buildSchedule } from '../utils/creditCard';
@@ -84,6 +85,7 @@ export const Reports = () => {
   const [subs, setSubs]       = useState([]);
   const [cards, setCards]     = useState([]);
   const [credits, setCredits] = useState([]);
+  const [bal, setBal]         = useState(null); // Balance del mes actual (si existe)
 
   useEffect(() => {
     Promise.allSettled([
@@ -92,20 +94,28 @@ export const Reports = () => {
       SubscriptionService.getAll(),
       CreditCardService.getAll(),
       BankCreditService.getAll(),
-    ]).then(([s, t, subRes, cardRes, credRes]) => {
+      BalanceService.mesActual(),
+    ]).then(([s, t, subRes, cardRes, credRes, balRes]) => {
       if (s.status       === 'fulfilled') setSummary(s.value);
       if (t.status       === 'fulfilled') setTrend(t.value);
       if (subRes.status  === 'fulfilled') setSubs(subRes.value);
       if (cardRes.status === 'fulfilled') setCards(cardRes.value);
       if (credRes.status === 'fulfilled') setCredits(credRes.value);
+      if (balRes.status  === 'fulfilled') setBal(balRes.value);
     }).finally(() => setLoading(false));
   }, []);
 
   const health = summary?.health;
   const hc     = health ? HEALTH_COLOR(health.score) : null;
 
-  // 3 categorías de compromisos desde summary.obligations
-  const distribution = summary ? [
+  // Compromisos del mes: del Balance si el mes lo tiene; si no, de summary.obligations.
+  const mesNombre = new Date().toLocaleDateString('es-CO', { month: 'long' });
+  const distribution = bal ? [
+    { name: 'Suscripciones',       value: bal.g.suscripcion, color: DIST_COLORS[0] },
+    { name: 'Créditos bancarios',  value: bal.g.credito,     color: DIST_COLORS[1] },
+    { name: 'Tarjetas de crédito', value: bal.g.tarjeta,     color: DIST_COLORS[2] },
+    { name: 'Otros pagos',         value: bal.g.manual,      color: 'var(--cat-4)' },
+  ].filter(d => d.value > 0) : summary ? [
     { name: 'Suscripciones',       value: summary.obligations.subscriptions, color: DIST_COLORS[0] },
     { name: 'Créditos bancarios',  value: summary.obligations.bankCredits,   color: DIST_COLORS[1] },
     { name: 'Tarjetas de crédito', value: summary.obligations.creditCards,   color: DIST_COLORS[2] },
@@ -311,7 +321,7 @@ export const Reports = () => {
 
                 <div className="health-kpis">
                   {[
-                    { label: 'Obligación mensual',   value: fmt(summary.obligations.total) },
+                    bal ? { label: `Pagos de ${mesNombre}`, value: fmt(bal.r.gastos) } : { label: 'Obligación mensual', value: fmt(summary.obligations.total) },
                     { label: 'Deuda total',           value: fmt(summary.debt.total) },
                     { label: 'Suscripciones activas', value: summary.counts.activeSubscriptions },
                     { label: 'Pagos próximos 30 días', value: summary.upcoming.length },
@@ -326,8 +336,20 @@ export const Reports = () => {
             </div>
           )}
 
-          {/* Ingresos: fijo vs extra */}
-          {summary && (summary.income.total > 0 || (summary.income.extra ?? 0) > 0) && (
+          {/* Ingresos y dinero libre del mes según el Balance */}
+          {bal && (
+            <div>
+              <SectionLabel>{`Tu Balance de ${mesNombre}`}</SectionLabel>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <StatCard label="Ingresos del mes" value={fmt(bal.r.ingresos)} delta={`${fmt(bal.r.recibido)} ya recibido`} icon={Wallet} tone="pos" />
+                <StatCard label="Pagos del mes" value={fmt(bal.r.gastos)} delta={`${fmt(bal.r.pagado)} pagado · ${fmt(bal.r.pendiente + bal.r.comprometido)} por pagar`} icon={Calendar} tone="warn" />
+                <StatCard label="Dinero libre" value={fmt(bal.r.queda)} delta="Ingresos − pagos del Balance" icon={TrendingDown} tone={bal.r.queda >= 0 ? 'pos' : 'neg'} />
+              </div>
+            </div>
+          )}
+
+          {/* Ingresos: fijo vs extra (sin Balance del mes) */}
+          {!bal && summary && (summary.income.total > 0 || (summary.income.extra ?? 0) > 0) && (
             <div>
               <SectionLabel>Ingresos mensuales</SectionLabel>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>

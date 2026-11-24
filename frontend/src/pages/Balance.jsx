@@ -5,10 +5,6 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Drawer } from 'vaul';
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2, MoreHorizontal, Copy, Wallet, X, Check } from 'lucide-react';
 import { BalanceService } from '../services/balanceService';
-import { CreditCardService } from '../services/creditCardService';
-import { BankCreditService } from '../services/bankCreditService';
-import { SubscriptionService } from '../services/subscriptionService';
-import { IncomeService } from '../services/incomeService';
 import { LoadError } from '../components/ui/LoadError';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { useIsMobile } from '../hooks/useMediaQuery';
@@ -24,12 +20,6 @@ const ESTADO_BADGE = { pendiente: 'neutral', comprometido: 'warning', pagado: 's
 const ORIGEN_LABEL = { tarjeta: 'Tarjeta', credito: 'Crédito', suscripcion: 'Suscripción', ingreso: 'Ingreso de Debti' };
 const errMsg = (e, fallback) => e?.response?.data?.message || fallback;
 const pct = (n) => `${Math.round(n * 100)} %`;
-
-// Tarjetas con TODAS sus compras (también las pagadas), como la pestaña
-// Extracto: `getAll` solo trae las activas y un extracto pagado salía en $0.
-const cardsConCompras = () => CreditCardService.getAll().then(cards => Promise.all(cards.map(c =>
-  CreditCardService.getPurchases(c.id).then(CreditCardPurchases => ({ ...c, CreditCardPurchases }))
-)));
 
 // ── Piezas ────────────────────────────────────────────────────────────────────
 
@@ -336,15 +326,7 @@ export const Balance = () => {
   const [saving, setSaving] = useState(false);
   const [dialogo, setDialogo] = useState(null); // { modo: 'debti' | 'manual' | 'editar', fila? }
 
-  useEffect(() => {
-    Promise.allSettled([cardsConCompras(), BankCreditService.getAll(), SubscriptionService.getAll(), IncomeService.getAll()])
-      .then(([c, b, s, i]) => setFuentes({
-        cards:   c.status === 'fulfilled' ? c.value : [],
-        credits: b.status === 'fulfilled' ? b.value : [],
-        subs:    s.status === 'fulfilled' ? s.value : [],
-        incomes: i.status === 'fulfilled' ? i.value : [],
-      }));
-  }, []);
+  useEffect(() => { BalanceService.fuentes().then(setFuentes); }, []);
 
   // `loaded` guarda qué mes terminó de cargar: al cambiar de mes se ve el
   // esqueleto; al recargar el mismo mes (tras guardar) no parpadea.

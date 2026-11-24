@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cardDueForMonth, cardPayMonth, creditDueForMonth, subDueForMonth, incomeDueForMonth, montoFila, resumenBalance } from '../balance';
+import { cardDueForMonth, cardPayMonth, creditDueForMonth, subDueForMonth, incomeDueForMonth, montoFila, resumenBalance, gastosPorOrigen } from '../balance';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -81,6 +81,17 @@ describe('montoFila', () => {
     expect(montoFila({ origen: 'ingreso', origenId: 5, monto: '1500.00', anio: 2026, mes: 11 }, fuentes)).toBe(1500);
     expect(montoFila({ origen: 'ingreso', origenId: 5, monto: null, anio: 2026, mes: 11 }, fuentes)).toBe(1000);
     expect(montoFila({ origen: 'ingreso', origenId: 99, monto: null, anio: 2026, mes: 11 }, fuentes)).toBe(0);
+  });
+});
+
+describe('gastosPorOrigen', () => {
+  it('suma solo gastos, por origen', () => {
+    expect(gastosPorOrigen([
+      { tipo: 'gasto', origen: 'tarjeta', valor: 100 },
+      { tipo: 'gasto', origen: 'tarjeta', valor: 50 },
+      { tipo: 'gasto', origen: 'manual', valor: 30 },
+      { tipo: 'ingreso', origen: 'ingreso', valor: 999 },
+    ])).toEqual({ tarjeta: 150, credito: 0, suscripcion: 0, manual: 30 });
   });
 });
 

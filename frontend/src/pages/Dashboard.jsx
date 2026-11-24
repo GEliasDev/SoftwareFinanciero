@@ -7,6 +7,7 @@ import { CardInboxService } from '../services/cardInboxService';
 import { GmailService } from '../services/gmailService';
 import { AuthService } from '../services/authService';
 import { AnalyticsService } from '../services/analyticsService';
+import { BalanceService } from '../services/balanceService';
 import { AlertsBell } from '../components/layout/AlertsBell';
 import { useShell } from '../components/layout/ShellContext';
 import { userInitials, userFirstName } from '../components/layout/userDisplay';
@@ -116,6 +117,7 @@ export const Dashboard = () => {
   const [trend,   setTrend]   = useState([]);
   const [inbox,   setInbox]   = useState([]);
   const [gmail,   setGmail]   = useState(null);
+  const [bal,     setBal]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -127,13 +129,15 @@ export const Dashboard = () => {
       AnalyticsService.getMonthlyTrend(6),
       CardInboxService.list('pendiente'),
       GmailService.getStatus(),
-    ]).then(([sRes, cRes, kRes, tRes, iRes, gRes]) => {
+      BalanceService.mesActual(),
+    ]).then(([sRes, cRes, kRes, tRes, iRes, gRes, bRes]) => {
       if (sRes.status === 'fulfilled') setSummary(sRes.value);
       if (cRes.status === 'fulfilled') setCredits(cRes.value);
       if (kRes.status === 'fulfilled') setCards(kRes.value);
       if (tRes.status === 'fulfilled') setTrend(tRes.value);
       if (iRes.status === 'fulfilled') setInbox(iRes.value);
       if (gRes.status === 'fulfilled') setGmail(gRes.value);
+      if (bRes.status === 'fulfilled') setBal(bRes.value);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -149,20 +153,32 @@ export const Dashboard = () => {
 
   // El total del backend trae su propio cálculo de tarjetas; lo sustituimos por
   // el de buildCardStats y recalculamos dinero libre en consecuencia.
-  const totalObl    = (obl.total ?? 0) - (obl.creditCards ?? 0) + cardsObl;
-  const dineroLibre = summary ? totalIncome - totalObl : null;
+  const oblGeneral  = (obl.total ?? 0) - (obl.creditCards ?? 0) + cardsObl;
   const health      = summary?.health;
 
-  const parts = [
+  // Si el mes tiene Balance, el hero y el resumen usan SUS cifras (lo que el
+  // usuario eligió pagar y sus ingresos reales); si no, el cálculo general.
+  const ingresosMes = bal ? bal.r.ingresos : totalIncome;
+  const totalObl    = bal ? bal.r.gastos : oblGeneral;
+  const dineroLibre = bal ? bal.r.queda : (summary ? totalIncome - oblGeneral : null);
+
+  const parts = bal ? [
+    { key: 'cards', name: 'Tarjetas',      value: bal.g.tarjeta,     color: 'var(--cat-1)' },
+    { key: 'banks', name: 'Créditos',      value: bal.g.credito,     color: 'var(--cat-2)' },
+    { key: 'subs',  name: 'Suscripciones', value: bal.g.suscripcion, color: 'var(--cat-3)' },
+    { key: 'other', name: 'Otros pagos',   value: bal.g.manual,      color: 'var(--cat-4)' },
+    { key: 'free',  name: 'Libre',         value: Math.max(dineroLibre ?? 0, 0), color: 'var(--pos-500)' },
+  ].filter(p => p.key === 'free' || p.value > 0) : [
     { key: 'cards', name: 'Tarjetas',      value: cardsObl,                 color: 'var(--cat-1)' },
     { key: 'banks', name: 'Créditos',      value: obl.bankCredits ?? 0,     color: 'var(--cat-2)' },
     { key: 'subs',  name: 'Suscripciones', value: obl.subscriptions ?? 0,   color: 'var(--cat-3)' },
     { key: 'free',  name: 'Libre',         value: Math.max(dineroLibre ?? 0, 0), color: 'var(--pos-500)' },
   ];
 
-  // Comparación con el mes anterior: ingresos actuales menos compromisos de cada mes.
-  const freeSeries = trend.map(t => totalIncome - t.total);
-  const prevFree   = freeSeries.length >= 2 ? freeSeries[freeSeries.length - 2] : null;
+  // Comparación con el mes anterior. Con Balance: contra el Balance del mes
+  // anterior (si existe); sin Balance: ingresos actuales menos compromisos de cada mes.
+  const freeSeries = bal ? [] : trend.map(t => totalIncome - t.total);
+  const prevFree   = bal ? (bal.prev?.queda ?? null) : (freeSeries.length >= 2 ? freeSeries[freeSeries.length - 2] : null);
   const deltaFree  = prevFree !== null && dineroLibre !== null ? dineroLibre - prevFree : null;
   const prevMonth  = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
 
@@ -268,7 +284,7 @@ export const Dashboard = () => {
         {dineroLibre !== null && (
           <section className="card dash-hero" aria-label="Dinero libre">
             <div className="row-between">
-              <p className="dash-hero-label">Dinero libre en {mes}</p>
+              <p className="dash-hero-label">Dinero libre en {mes}{bal && <> · <Link to="/balance" className="link-sm">según tu Balance</Link></>}</p>
               {health && (
                 <span className={`badge badge-${HEALTH_TONE[health.label] ?? 'warning'}`}>
                   <span className="desktop-only">{`Salud financiera: ${health.label} · ${health.score}/100`}</span>
@@ -278,10 +294,10 @@ export const Dashboard = () => {
             </div>
             <div className="dash-hero-amount">
               <span className={`amount-xl ${dineroLibre < 0 ? 'neg' : ''}`}>{fmt(dineroLibre)}</span>
-              {totalIncome > 0 && (
+              {ingresosMes > 0 && (
                 <span className="dash-hero-note desktop-only">
                   {dineroLibre >= 0
-                    ? `el ${pct((dineroLibre / totalIncome) * 100)} de tus ingresos queda libre`
+                    ? `el ${pct((dineroLibre / ingresosMes) * 100)} de tus ingresos queda libre`
                     : 'tus compromisos superan tus ingresos'}
                 </span>
               )}
@@ -297,11 +313,11 @@ export const Dashboard = () => {
             </button>
             {showBreakdown && (
               <div className="dash-breakdown desktop-only">
-                {[
+                {(bal ? bal.filas.filter(f => f.tipo === 'gasto' && f.valor > 0).map(f => ({ k: `f${f.id}`, name: f.descripcion, sub: f.categoria, v: f.valor })) : [
                   ...cardStats.filter(cs => cs.cardOblMes > 0).map(cs => ({ k: `c${cs.cardId}`, name: cs.nombre, sub: 'Tarjeta', v: cs.cardOblMes })),
                   ...(summary?.breakdown?.bankCredits ?? []).map((b, i) => ({ k: `b${i}`, name: b.nombre ?? b.name, sub: 'Crédito', v: b.monto ?? b.amount })),
                   ...(summary?.breakdown?.subscriptions ?? []).map((b, i) => ({ k: `s${i}`, name: b.nombre ?? b.name, sub: 'Suscripción', v: b.monto ?? b.amount })),
-                ].map(r => (
+                ]).map(r => (
                   <div key={r.k} className="kv"><span>{r.name} <span className="text-muted">· {r.sub}</span></span><span>{fmt(r.v)}</span></div>
                 ))}
               </div>
@@ -309,9 +325,20 @@ export const Dashboard = () => {
 
             {/* Teléfono: ingresos y compromisos bajo la barra */}
             <div className="dash-hero-mini mobile-only">
-              <div><span>Ingresos</span><b className="n">{fmt(totalIncome)}</b></div>
-              <div><span>Compromisos</span><b className="n">{fmt(totalObl)}</b></div>
+              <div><span>Ingresos</span><b className="n">{fmt(ingresosMes)}</b></div>
+              <div><span>{bal ? 'Pagos' : 'Compromisos'}</span><b className="n">{fmt(totalObl)}</b></div>
             </div>
+
+            {/* Con Balance y sin mes anterior para comparar: avance de pagos del mes */}
+            {bal && deltaFree === null && (
+              <div className="dash-hero-foot desktop-flex">
+                <div className="row" style={{ gap: 32 }}>
+                  <div><p className="text-secondary" style={{ margin: 0, fontSize: 13 }}>Ya pagado</p><p className="n dash-delta">{fmt(bal.r.pagado)}</p></div>
+                  <div><p className="text-secondary" style={{ margin: 0, fontSize: 13 }}>Por pagar</p><p className="n dash-delta">{fmt(bal.r.pendiente + bal.r.comprometido)}</p></div>
+                </div>
+                <Link to="/balance" className="link-sm">Ver Balance</Link>
+              </div>
+            )}
 
             {deltaFree !== null && (
               <div className="dash-hero-foot desktop-flex">
@@ -322,23 +349,27 @@ export const Dashboard = () => {
                     {prevFree > 0 && ` (${deltaFree >= 0 ? '+' : '−'}${Math.round(Math.abs(deltaFree / prevFree) * 100)} %)`}
                   </p>
                 </div>
-                <div className="row" style={{ gap: 12 }}>
-                  <span className="text-muted text-sm">Últimos {freeSeries.length} meses</span>
-                  <Sparkline values={freeSeries} />
-                </div>
+                {freeSeries.length >= 2 && (
+                  <div className="row" style={{ gap: 12 }}>
+                    <span className="text-muted text-sm">Últimos {freeSeries.length} meses</span>
+                    <Sparkline values={freeSeries} />
+                  </div>
+                )}
               </div>
             )}
           </section>
         )}
 
         <section className="card card-flush dash-side desktop-only row-list" aria-label="Resumen del mes">
-          <Link to="/income" className="dash-side-row">
-            <div><p>Ingresos del mes</p><b className="n">{fmt(totalIncome)}</b></div>
-            {summary?.income?.extra > 0 && <span className="n">incluye {fmt(summary.income.extra)} extra</span>}
+          <Link to={bal ? '/balance' : '/income'} className="dash-side-row">
+            <div><p>Ingresos del mes</p><b className="n">{fmt(ingresosMes)}</b></div>
+            {bal ? <span className="n">{fmt(bal.r.recibido)} recibido</span>
+              : summary?.income?.extra > 0 && <span className="n">incluye {fmt(summary.income.extra)} extra</span>}
           </Link>
-          <Link to="/reports" className="dash-side-row">
-            <div><p>Compromisos del mes</p><b className="n">{fmt(totalObl)}</b></div>
-            {totalIncome > 0 && <span className="n">{pct((totalObl / totalIncome) * 100)} del ingreso</span>}
+          <Link to={bal ? '/balance' : '/reports'} className="dash-side-row">
+            <div><p>{bal ? 'Pagos del mes' : 'Compromisos del mes'}</p><b className="n">{fmt(totalObl)}</b></div>
+            {bal ? <span className="n">{fmt(bal.r.pagado)} pagado</span>
+              : totalIncome > 0 && <span className="n">{pct((totalObl / totalIncome) * 100)} del ingreso</span>}
           </Link>
           <Link to="/bank-credits" className="dash-side-row">
             <div><p>Deuda total</p><b className="n">{fmt(totalDebt)}</b></div>

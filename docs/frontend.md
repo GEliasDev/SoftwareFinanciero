@@ -19,6 +19,8 @@ React 19 + Vite 8, react-router-dom 7, recharts, xlsx, Radix, vaul, sonner. CSS 
 /bank-credits/:id/edit
 /income                    lista | /new | /:id/edit
 /balance?anio=&mes=        Balance mensual tipo Excel (ingresos, pagos, estado, resumen); montos automáticos en utils/balance.js
+                           Si el mes actual tiene Balance, Inicio y Reportes toman de ahí ingresos, pagos y dinero libre
+                           (`BalanceService.mesActual()`); si no, el cálculo general del backend (`analytics/summary`).
 /reports  /profile  /onboarding
 /login /register /forgot-password /reset-password   (públicas)
 /privacy                   política de privacidad (pública; la exige Google para publicar la app OAuth de Gmail)
@@ -66,7 +68,7 @@ En la lista `CreditCards.jsx` cada tarjeta con pendientes muestra el badge "N po
   `pages.css` (utilidades e Inicio), `tarjetas.css`, `forms.css`, `creditos.css` (créditos, suscripciones, ingresos, reportes, perfil).
   Utilidades de visibilidad: `.desktop-only`, `.mobile-only`, `.desktop-flex`, `.desktop-table`, `.mobile-list` (corte en 768 px).
 - Shell (`components/layout/`): `Sidebar` (PC; solo íconos 768–1023), `Navbar` (barra superior PC: búsqueda Ctrl K, `AlertsBell`,
-  "Registrar movimiento"), `BottomNav` (teléfono, con botón +), vista `/more` (`pages/More.jsx`). Estado compartido en `ShellContext`
+  "Registrar movimiento"), `BottomNav` (teléfono: Inicio, Tarjetas, +, Balance, Más), vista `/more` (`pages/More.jsx`: Ingresos, Créditos, Suscripciones, Reportes). Estado compartido en `ShellContext`
   (`openSearch`, `openRegistrar`, `pendingCount`, `payAlert`, `useThemeState`).
 - `RegistrarMovimiento`: panel (PC) o bottom sheet `vaul` (teléfono). "Pago de tarjeta" y "Pago de cuota" navegan con
   `?accion=pagar` y el layout del detalle abre la confirmación de pago. Última tarjeta usada: `utils/lastCard.js`.
