@@ -15,6 +15,7 @@ import incomeRoutes from './modules/income/income.routes.js';
 import searchRoutes from './modules/search/search.routes.js';
 import gmailRoutes from './modules/cardInbox/gmail.routes.js';
 import cardInboxRoutes from './modules/cardInbox/cardInbox.routes.js';
+import balanceRoutes from './modules/balance/balance.routes.js';
 import './modules/cardInbox/cardInboxItem.model.js';
 import './modules/cardInbox/gmailConnection.model.js';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -59,6 +60,7 @@ app.use('/api/income', incomeRoutes);
 app.use('/api/search',       searchRoutes);
 app.use('/api/gmail',       gmailRoutes);
 app.use('/api/card-inbox',  cardInboxRoutes);
+app.use('/api/balance',     balanceRoutes);
 
 app.use(errorHandler);
 
