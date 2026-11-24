@@ -89,3 +89,15 @@
 .cc-table tfoot td { background: var(--surface-3); border-top: 1px solid var(--divider); padding: 12px 16px; }
 .cc-table tfoot td:first-child { padding-left: 20px; }
 @media (max-width: 767px) { .inc-strip { grid-template-columns: 1fr 1fr; } }
+
+/* Reportes */
+.score-ring { width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--surface-2) 0); }
+.score-ring > span { width: 84px; height: 84px; border-radius: 50%; background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.score-ring b { font-size: 28px; font-weight: 600; line-height: 1; }
+.score-ring small { font-size: 11px; color: var(--text-3); }
+.health-kpis { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 280px; overflow: hidden; }
+.health-kpis > div { padding: 12px 16px; }
+.health-kpis > div:nth-child(even) { border-left: 1px solid var(--divider); }
+.health-kpis > div:nth-child(n+3) { border-top: 1px solid var(--divider); }
+.health-kpis p { margin: 0 0 2px; font-size: 12px; color: var(--text-3); }
+.health-kpis b { font-size: 17px; font-weight: 600; }
