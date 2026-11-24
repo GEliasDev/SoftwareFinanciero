@@ -18,6 +18,7 @@ React 19 + Vite 8, react-router-dom 7, recharts, xlsx, Radix, vaul, sonner. CSS 
 /bank-credits/:id          BankCreditLayout: index=BankCreditOverview, /schedule, /analysis
 /bank-credits/:id/edit
 /income                    lista | /new | /:id/edit
+/balance?anio=&mes=        Balance mensual tipo Excel (ingresos, pagos, estado, resumen); montos automáticos en utils/balance.js
 /reports  /profile  /onboarding
 /login /register /forgot-password /reset-password   (públicas)
 /privacy                   política de privacidad (pública; la exige Google para publicar la app OAuth de Gmail)

@@ -53,6 +53,7 @@ const BankCreditEdit = lazyNamed(() => import('./pages/BankCreditEdit'), 'BankCr
 // Ingresos
 const Income = lazyNamed(() => import('./pages/Income'), 'Income');
 const IncomeForm = lazyNamed(() => import('./pages/IncomeForm'), 'IncomeForm');
+const Balance = lazyNamed(() => import('./pages/Balance'), 'Balance');
 
 // Herramientas
 const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
@@ -132,6 +133,7 @@ function App() {
           <Route path="income" element={<Income />} />
           <Route path="income/new" element={<IncomeForm />} />
           <Route path="income/:id/edit" element={<IncomeForm />} />
+          <Route path="balance" element={<Balance />} />
 
           {/* Herramientas */}
           <Route path="reports" element={<Reports />} />

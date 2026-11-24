@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Home, Wallet, CreditCard, Landmark, Repeat, BarChart3, UserCircle, Moon, Sun, LogOut, ChevronsUpDown } from 'lucide-react';
+import { Home, Wallet, CreditCard, Landmark, Repeat, BarChart3, Scale, UserCircle, Moon, Sun, LogOut, ChevronsUpDown } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { useShell, useThemeState } from './ShellContext';
 import { userInitials, userShortName } from './userDisplay';
@@ -35,6 +35,7 @@ export const Sidebar = () => {
       <nav className="sidebar-nav">
         <NavItem to="/" icon={Home} label="Inicio" end />
         <NavItem to="/income" icon={Wallet} label="Ingresos" />
+        <NavItem to="/balance" icon={Scale} label="Balance" />
         <div className="nav-divider" />
         <NavItem
           to="/credit-cards" icon={CreditCard} label="Tarjetas"

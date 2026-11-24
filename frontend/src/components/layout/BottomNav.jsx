@@ -3,7 +3,7 @@ import { Home, CreditCard, Landmark, Menu, Plus, X } from 'lucide-react';
 import { useShell } from './ShellContext';
 
 // Secciones que viven dentro de "Más" en el teléfono.
-const MORE_PATHS = ['/more', '/income', '/subscriptions', '/reports', '/profile'];
+const MORE_PATHS = ['/more', '/income', '/balance', '/subscriptions', '/reports', '/profile'];
 
 const Tab = ({ to, icon: Icon, label, end, forceActive }) => (
   <NavLink to={to} end={end} className={({ isActive }) => `bn-item ${(isActive || forceActive) ? 'active' : ''}`}>

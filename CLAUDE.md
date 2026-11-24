@@ -13,7 +13,7 @@ archivo solo agrega contexto del proyecto y se mantiene corto a propósito (se c
 ## Mapa del backend
 `backend/src/modules/<nombre>/` con `.model.js` · `.schema.js` (Zod) · `.service.js` (lógica; lanza `AppError`) ·
 `.controller.js` · `.routes.js`. Módulos: `user creditCard bankCredit suscription(sin "b") analytics income
-search cardInbox`. Cron en `backend/src/jobs/`. Utils en `backend/src/utils/`.
+search cardInbox balance`. Cron en `backend/src/jobs/`. Utils en `backend/src/utils/`.
 Compromisos fijos, Metas de ahorro, Presupuesto, Patrimonio neto y Notificaciones push se eliminaron el 2026-11-18 (código y tablas).
 
 ## Reglas que no se negocian

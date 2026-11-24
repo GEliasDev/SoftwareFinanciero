@@ -7,7 +7,7 @@ Cada recurso: `backend/src/modules/<nombre>/` con
 El service lanza `throw new AppError('msg', status)`; `errorHandler` (`main.js`) lo vuelve JSON.
 
 Módulos: `user | creditCard | bankCredit | suscription | analytics | income | search |
-cardInbox`.
+cardInbox | balance`.
 Typo histórico: la carpeta es `suscription` (sin "b").
 
 Utils en `backend/src/utils/`: `emailService.js`, `logger.js` (winston), `currency.js`
@@ -154,3 +154,14 @@ Ojo: `createAdvance` usa `CreditCard.comisionAvance` de la tarjeta, no el costo 
 Cuotas en el correo (verificado 2026-11-18): solo **Guama** trae el campo `Cuotas` en la compra (a veces vacío, a veces `1`; se guarda en
 `numeroCuotas` y la UI lo precarga marcado "del correo"). RappiCard y Bancolombia NO incluyen las cuotas en la alerta de compra; ahí la
 UI parte de 1 y el usuario la ajusta.
+
+## balance — balance mensual (2026-11-24)
+Tabla `balance_items` (migración `20261124120000`): filas `ingreso`/`gasto` por `anio`+`mes` con `estado`
+(`pendiente|recibido` para ingresos; `pendiente|comprometido|pagado` para gastos).
+`origen` = `manual | tarjeta | credito | suscripcion | ingreso` + `origenId`: las enlazadas guardan `monto = NULL` (automático)
+y el frontend calcula el monto del mes (`frontend/src/utils/balance.js`: corte que vence ese mes, cuota del crédito,
+suscripción sin tarjeta, ingreso fijo o extra del mes). Al marcar `pagado` una fila automática, el frontend fija el monto
+(el cálculo de tarjetas solo mira cuotas pendientes y bajaría tras pagar).
+Endpoints: `GET /api/balance?anio&mes`, `POST /api/balance {anio, mes, items[]}` (verifica dueño del enlazado y omite
+duplicados), `PATCH|DELETE /api/balance/:id`, `POST /api/balance/copiar-anterior {anio, mes}` (solo a mes vacío; todo vuelve
+a pendiente y a monto automático; no copia ingresos extra de Debti).

@@ -1,0 +1,58 @@
+/* ── Balance mensual ─────────────────────────────────────────────────────── */
+.bal-header { flex-wrap: wrap; gap: 12px 16px; }
+.bal-month { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 3px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.bal-month-label { min-width: 132px; text-align: center; font-weight: 600; font-size: 15px; color: var(--text); }
+
+.bal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+
+.bal-table td { vertical-align: middle; }
+.bal-table .cell-title, .bal-table .cell-sub { display: block; }
+.bal-estado { display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
+.bal-estado:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
+.bal-row { align-items: flex-start; }
+.bal-row > b { margin-top: 2px; }
+
+.bal-resumen { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; }
+.bal-queda p { margin: 0 0 4px; font-size: 14px; color: var(--text-2); }
+.bal-queda .amount-xl { font-size: 34px; }
+.bal-kv { margin: 0; display: flex; flex-direction: column; }
+.bal-kv > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 14px; }
+.bal-kv > div + div { border-top: 1px solid var(--divider); }
+.bal-kv dt { color: var(--text); }
+.bal-kv dd { margin: 0; font-weight: 600; color: var(--text); }
+.bal-kv .sub { padding: 4px 0 4px 12px; border-top: none !important; }
+.bal-kv .sub dt, .bal-kv .sub dd { color: var(--text-2); font-weight: 400; font-size: 13px; }
+.bal-kv .strong dt span { display: block; font-size: 12px; color: var(--text-3); }
+.bal-progress { display: flex; flex-direction: column; gap: 6px; }
+.bal-sub-t { margin: 0; font-size: 14px; font-weight: 600; color: var(--text); }
+.bal-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.bal-cats li { display: flex; flex-direction: column; gap: 4px; }
+.bal-bar { display: block; height: 4px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bal-bar > span { display: block; height: 100%; background: var(--cat-1); border-radius: 99px; }
+
+.bal-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+
+/* Diálogo: elegir de Debti */
+.bal-pick { border: none; margin: 0 0 12px; padding: 0; }
+.bal-pick-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
+.bal-pick-row + .bal-pick-row { margin-top: 6px; }
+.bal-pick-row:hover { border-color: var(--text-4); }
+.bal-pick-row:has(input:checked:not(:disabled)) { border-color: var(--brand-600); background: var(--brand-50); }
+.bal-pick-row.disabled { cursor: default; opacity: 0.6; }
+.bal-pick-row input { width: 18px; height: 18px; accent-color: var(--brand-600); flex-shrink: 0; }
+.bal-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bal-pick-text strong { font-size: 14px; font-weight: 600; color: var(--text); }
+.bal-pick-text span { font-size: 12px; color: var(--text-3); }
+.bal-pick-row > b { font-size: 14px; }
+.bal-check { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: var(--text-2); margin-bottom: 8px; cursor: pointer; }
+.bal-check input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--brand-600); }
+
+@media (max-width: 1023px) {
+  .bal-layout { grid-template-columns: 1fr; }
+  .bal-resumen { position: static; order: -1; }
+}
+@media (max-width: 767px) {
+  .bal-month { margin-left: 0; width: 100%; justify-content: space-between; }
+  .bal-header > .btn { width: 100%; }
+  .bal-queda .amount-xl { font-size: 30px; }
+}
