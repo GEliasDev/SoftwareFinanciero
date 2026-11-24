@@ -1,535 +1,548 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Inbox, ChevronRight, ChevronDown, BarChart3, Wallet, CreditCard, Mail } from 'lucide-react';
 import { BankCreditService } from '../services/bankCreditService';
 import { CreditCardService } from '../services/creditCardService';
+import { CardInboxService } from '../services/cardInboxService';
+import { GmailService } from '../services/gmailService';
 import { AuthService } from '../services/authService';
 import { AnalyticsService } from '../services/analyticsService';
-import {
-  Repeat, CreditCard, Landmark, ArrowRight, Wallet, Bell, Plus,
-  PieChart as PieIcon, TrendingUp, TrendingDown, ChevronRight,
-} from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { PageHeader } from '../components/ui/PageHeader';
-import { StatCard } from '../components/ui/StatCard';
-import { SectionCard } from '../components/ui/SectionCard';
-import { fmt, localISODate } from '../utils/format';
+import { AlertsBell } from '../components/layout/AlertsBell';
+import { useShell } from '../components/layout/ShellContext';
+import { userInitials, userFirstName } from '../components/layout/userDisplay';
+import { fmt, localISODate, parseLocalDate, capFirst } from '../utils/format';
 import { buildCardStats } from '../utils/creditCard';
-
-// ── Constantes de estilo ──────────────────────────────────────────────────────
-
-const DIST_COLORS = {
-  creditCards:   '#3B82F6',
-  bankCredits:   '#DC2626',
-  subscriptions: '#D97706',
-};
-
-const UPCOMING_TYPE = {
-  subscription: { Icon: Repeat,    label: 'Suscripción', accent: '#D97706' },
-  bank_credit:  { Icon: Landmark,  label: 'Crédito',     accent: '#DC2626' },
-  credit_card:  { Icon: CreditCard,label: 'Tarjeta',     accent: '#3B82F6' },
-};
-
-const HEALTH_TONE = {
-  'Excelente': { bg: 'var(--pos-50)',  fg: 'var(--pos-600)'  },
-  'Bueno':     { bg: 'var(--pos-50)',  fg: 'var(--pos-700)'  },
-  'Regular':   { bg: 'var(--warn-50)', fg: 'var(--warn-600)' },
-  'Crítico':   { bg: 'var(--neg-50)',  fg: 'var(--neg-600)'  },
-};
+import { getCardColor } from '../utils/cardColors';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const TYPE_LABEL = { subscription: 'Suscripción', bank_credit: 'Crédito', credit_card: 'Tarjeta' };
+
 const daysUntil = (dateStr) => {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + 'T00:00:00');
-  return Math.round((target - today) / 86_400_000);
+  return Math.round((parseLocalDate(dateStr) - today) / 86_400_000);
 };
 
-const dayLabel = (d) =>
-  d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`;
+const dueLabel = (d) => d < 0 ? 'Vencido' : d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`;
+const dueTone  = (d) => d <= 1 ? 'danger' : d <= 3 ? 'warning' : null;
 
-const urgencyColor = (d) =>
-  d === 0 ? 'var(--neg-600)' : d <= 3 ? 'var(--warn-600)' : 'var(--text-3)';
+const monthName = (date = new Date()) => date.toLocaleDateString('es-CO', { month: 'long' });
+const dayMonth  = (dateStr) => {
+  const d = parseLocalDate(dateStr);
+  return { day: String(d.getDate()).padStart(2, '0'), mon: d.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '') };
+};
+const pct = (n) => `${n.toLocaleString('es-CO', { maximumFractionDigits: 1 })} %`;
+
+const HEALTH_TONE = { 'Excelente': 'success', 'Bueno': 'success', 'Regular': 'warning', 'Crítico': 'danger' };
+
+// Línea de tendencia mínima (sin ejes): últimos meses de dinero libre.
+const Sparkline = ({ values }) => {
+  if (values.length < 2) return null;
+  const w = 120, h = 28, min = Math.min(...values), max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => [(i / (values.length - 1)) * w, h - 3 - ((v - min) / span) * (h - 6)]);
+  const [lx, ly] = pts[pts.length - 1];
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true" style={{ overflow: 'visible' }}>
+      <polyline points={pts.map(p => p.join(',')).join(' ')} fill="none" stroke="var(--text-4)" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx={lx} cy={ly} r="3" fill="var(--brand-600)" />
+    </svg>
+  );
+};
+
+// Barra apilada de compromisos + libre.
+const SplitBar = ({ parts }) => {
+  const total = parts.reduce((a, p) => a + Math.max(p.value, 0), 0) || 1;
+  return (
+    <div className="split-bar" role="img" aria-label={parts.map(p => `${p.name} ${fmt(p.value)}`).join(', ')}>
+      {parts.filter(p => p.value > 0).map(p => (
+        <span key={p.key} style={{ flexGrow: p.value / total, background: p.color }} />
+      ))}
+    </div>
+  );
+};
+
+// ── Estado vacío (cuenta nueva) ────────────────────────────────────────────────
+
+const Onboard = ({ hasIncome, hasDebt, gmailConnected, navigate }) => {
+  const steps = [
+    { done: hasIncome, title: 'Registra tus ingresos', sub: 'Tu salario y otras entradas fijas. Con esto calculamos cuánto te queda libre.', icon: Wallet, label: 'Registrar ingresos', to: '/income/new' },
+    { done: hasDebt, title: 'Agrega tu primera tarjeta o crédito', sub: 'Cupo, fecha de corte y cuotas, para avisarte antes de cada pago.', icon: CreditCard, label: 'Agregar tarjeta o crédito', to: '/credit-cards/new' },
+    { done: gmailConnected, title: 'Conecta Gmail para detectar compras', sub: 'Leemos solo las notificaciones de tu banco y dejamos cada compra por aprobar.', icon: Mail, label: 'Conectar Gmail', to: '/profile#gmail' },
+  ];
+  const doneN = steps.filter(s => s.done).length;
+  const firstPending = steps.findIndex(s => !s.done);
+  return (
+    <div className="card card-flush">
+      <div style={{ padding: '20px 24px' }}>
+        <div className="row-between">
+          <h2 className="card-title">Empieza en 3 pasos</h2>
+          <span className="text-sm text-secondary n">{doneN} de 3 listos</span>
+        </div>
+        <p className="text-secondary" style={{ margin: '8px 0 12px', fontSize: 14 }}>Con esto Debti puede mostrarte tu dinero libre y avisarte antes de cada pago.</p>
+        <div className="progress-track"><div className="progress-fill" style={{ transform: `scaleX(${doneN / 3})` }} /></div>
+      </div>
+      <div className="row-list" style={{ borderTop: '1px solid var(--divider)' }}>
+        {steps.map((s, i) => (
+          <div key={s.title} className="onb-step">
+            <span className={`onb-num ${s.done ? 'done' : ''}`}>{s.done ? '✓' : i + 1}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="onb-title">{s.title}</p>
+              <p className="onb-sub">{s.sub}</p>
+            </div>
+            {!s.done && (
+              <button className={`btn ${i === firstPending ? 'btn-primary' : 'btn-secondary'}`} onClick={() => navigate(s.to)}>
+                <s.icon size={16} /> {s.label}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export const Dashboard = () => {
-  const navigate   = useNavigate();
-  const user       = AuthService.getCurrentUser();
-  const firstName  = user?.primerNombre || user?.name?.split(' ')[0] || 'Usuario';
+  const navigate  = useNavigate();
+  const { openSearch } = useShell();
+  const user      = AuthService.getCurrentUser();
+  const firstName = userFirstName(user) || 'Usuario';
 
-  const [summary,   setSummary]   = useState(null);
-  const [credits,   setCredits]   = useState([]);
-  const [cards,     setCards]     = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [openCat,   setOpenCat]   = useState(null);
-  const [openDebt,  setOpenDebt]  = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [credits, setCredits] = useState([]);
+  const [cards,   setCards]   = useState([]);
+  const [trend,   setTrend]   = useState([]);
+  const [inbox,   setInbox]   = useState([]);
+  const [gmail,   setGmail]   = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   useEffect(() => {
     Promise.allSettled([
       AnalyticsService.getSummary(),
       BankCreditService.getAll(),
       CreditCardService.getAll(),
-    ]).then(([sRes, cRes, kRes]) => {
+      AnalyticsService.getMonthlyTrend(6),
+      CardInboxService.list('pendiente'),
+      GmailService.getStatus(),
+    ]).then(([sRes, cRes, kRes, tRes, iRes, gRes]) => {
       if (sRes.status === 'fulfilled') setSummary(sRes.value);
       if (cRes.status === 'fulfilled') setCredits(cRes.value);
       if (kRes.status === 'fulfilled') setCards(kRes.value);
+      if (tRes.status === 'fulfilled') setTrend(tRes.value);
+      if (iRes.status === 'fulfilled') setInbox(iRes.value);
+      if (gRes.status === 'fulfilled') setGmail(gRes.value);
     }).finally(() => setLoading(false));
   }, []);
 
   // ── Valores derivados ──────────────────────────────────────────────────────
-  const obl          = summary?.obligations ?? {};
-  const totalIncome  = summary?.income?.total ?? 0;
+  const obl         = summary?.obligations ?? {};
+  const totalIncome = summary?.income?.total ?? 0;
 
   // Tarjetas: fuente ÚNICA de verdad. `buildCardStats` (la MISMA que usa la
   // página de Tarjetas) calcula la obligación por ciclo activo, así que un
   // cambio en la lógica de tarjetas se refleja aquí sin tocar nada más.
-  const cardStats   = useMemo(() => buildCardStats(cards), [cards]);
-  const cardsObl    = cardStats.reduce((s, cs) => s + cs.cardOblMes, 0);
-  const cardsBreakdown = cardStats
-    .filter(cs => cs.cardOblMes > 0)
-    .map(cs => ({ id: cs.cardId, nombre: cs.nombre, detalle: cs.entidad, monto: cs.cardOblMes }))
-    .sort((a, b) => b.monto - a.monto);
+  const cardStats = useMemo(() => buildCardStats(cards), [cards]);
+  const cardsObl  = cardStats.reduce((s, cs) => s + cs.cardOblMes, 0);
 
   // El total del backend trae su propio cálculo de tarjetas; lo sustituimos por
   // el de buildCardStats y recalculamos dinero libre en consecuencia.
-  const totalObl     = (obl.total ?? 0) - (obl.creditCards ?? 0) + cardsObl;
-  const dineroLibre  = summary ? totalIncome - totalObl : null;
-  const health       = summary?.health;
-  const healthTone   = health ? (HEALTH_TONE[health.label] ?? HEALTH_TONE['Regular']) : null;
+  const totalObl    = (obl.total ?? 0) - (obl.creditCards ?? 0) + cardsObl;
+  const dineroLibre = summary ? totalIncome - totalObl : null;
+  const health      = summary?.health;
 
-  // Cada categoría lleva su desglose por ítem (`items`): el total va arriba en
-  // la fila y el detalle se despliega debajo. La suma de items === value.
-  const bd = summary?.breakdown ?? {};
-  const dist = [
-    { key: 'creditCards',   name: 'Tarjetas de crédito', value: cardsObl,          color: DIST_COLORS.creditCards,   items: cardsBreakdown },
-    { key: 'bankCredits',   name: 'Créditos bancarios',  value: obl.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: bd.bankCredits   ?? [] },
-    { key: 'subscriptions', name: 'Suscripciones',       value: obl.subscriptions ?? 0, color: DIST_COLORS.subscriptions, items: bd.subscriptions ?? [] },
-  ].filter(d => d.value > 0);
+  const parts = [
+    { key: 'cards', name: 'Tarjetas',      value: cardsObl,                 color: 'var(--cat-1)' },
+    { key: 'banks', name: 'Créditos',      value: obl.bankCredits ?? 0,     color: 'var(--cat-2)' },
+    { key: 'subs',  name: 'Suscripciones', value: obl.subscriptions ?? 0,   color: 'var(--cat-3)' },
+    { key: 'free',  name: 'Libre',         value: Math.max(dineroLibre ?? 0, 0), color: 'var(--pos-500)' },
+  ];
 
-  const totalDist    = dist.reduce((a, d) => a + d.value, 0);
+  // Comparación con el mes anterior: ingresos actuales menos compromisos de cada mes.
+  const freeSeries = trend.map(t => totalIncome - t.total);
+  const prevFree   = freeSeries.length >= 2 ? freeSeries[freeSeries.length - 2] : null;
+  const deltaFree  = prevFree !== null && dineroLibre !== null ? dineroLibre - prevFree : null;
+  const prevMonth  = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
 
   // Próximos pagos: los de tarjeta se derivan de `buildCardStats` (la misma
   // fuente que la página de Tarjetas) en vez del cálculo del backend, para que
   // fecha y monto coincidan exactamente con la lista de tarjetas.
   const cardUpcoming = cardStats
     .filter(cs => cs.cardOblMes > 0 && cs.nextPago && cs.dPago >= 0 && cs.dPago <= 30)
-    .map(cs => ({ date: localISODate(cs.nextPago), name: cs.nombre, type: 'credit_card', amount: cs.cardOblMes, moneda: 'COP' }));
+    .map(cs => ({ date: localISODate(cs.nextPago), name: cs.nombre, sub: cs.entidad, type: 'credit_card', amount: cs.cardOblMes, moneda: 'COP', to: `/credit-cards/${cs.cardId}` }));
+  const creditById = Object.fromEntries(credits.map(c => [c.nombre, c]));
   const upcoming = [
-    ...(summary?.upcoming ?? []).filter(u => u.type !== 'credit_card'),
+    ...(summary?.upcoming ?? []).filter(u => u.type !== 'credit_card').map(u => {
+      const c = u.type === 'bank_credit' ? creditById[u.name] : null;
+      return {
+        ...u,
+        sub: c ? `${c.entidad} · cuota ${c.cuotasPagadas + 1} de ${c.numeroCuotas}` : null,
+        to: u.type === 'bank_credit' ? (c ? `/bank-credits/${c.id}` : '/bank-credits') : '/subscriptions',
+      };
+    }),
     ...cardUpcoming,
-  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
+  ].sort((a, b) => a.date.localeCompare(b.date));
+
   const activeCredits = credits.filter(c => c.status === 'activo');
-  const totalDebt    = summary?.debt?.total ?? 0;
+  const totalDebt     = summary?.debt?.total ?? 0;
+  const cardById      = Object.fromEntries(cards.map(c => [c.id, c]));
 
-  // Desglose de SALDOS adeudados (no cuotas): mismo patrón total + detalle.
-  const dbt  = summary?.debt ?? {};
-  const dbtB = summary?.debtBreakdown ?? {};
-  const debtRows = [
-    { key: 'creditCards',   name: 'Tarjetas de crédito', value: dbt.creditCards   ?? 0, color: DIST_COLORS.creditCards,   items: dbtB.creditCards   ?? [] },
-    { key: 'bankCredits',   name: 'Créditos bancarios',  value: dbt.bankCredits   ?? 0, color: DIST_COLORS.bankCredits,   items: dbtB.bankCredits   ?? [] },
-  ].filter(d => d.value > 0);
+  const hasIncome = totalIncome > 0;
+  const hasDebt   = cards.length > 0 || credits.length > 0;
+  const isEmpty   = !loading && !hasIncome && !hasDebt;
 
-  const hoy = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+  const hoy = capFirst(new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }));
+  const mes = monthName();
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title={`Hola, ${firstName}`}
-        subtitle={`${hoy.charAt(0).toUpperCase()}${hoy.slice(1)} · Resumen financiero`}
-      />
+  const header = (
+    <>
+      {/* Teléfono: saludo con avatar + búsqueda y avisos */}
+      <div className="m-header">
+        <Link to="/more" className="avatar" aria-label="Perfil y ajustes">{userInitials(user)}</Link>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 className="m-title">Hola, {firstName}</h1>
+          <p className="m-sub">{hoy}</p>
+        </div>
+        <button className="icon-btn" onClick={openSearch} aria-label="Buscar"><Search size={18} /></button>
+        <AlertsBell />
+      </div>
+      {/* PC */}
+      <div className="page-header desktop-only">
+        <div>
+          <h1 className="page-title">Hola, {firstName}</h1>
+          <p className="page-subtitle">{hoy} · {isEmpty ? 'Organicemos tu mes' : 'Así va tu mes'}</p>
+        </div>
+      </div>
+    </>
+  );
 
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="skeleton" style={{ height: 152, borderRadius: 'var(--radius-xl)' }} />
-          <div className="kpi-grid">
-            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 88, borderRadius: 'var(--radius-lg)' }} />)}
-          </div>
-          <div className="split-grid">
-            {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 220, borderRadius: 'var(--radius-lg)' }} />)}
+  if (loading) {
+    return (
+      <div className="dash" aria-busy="true">
+        {header}
+        <div className="dash-top">
+          <div className="skeleton" style={{ height: 272, borderRadius: 'var(--radius-lg)' }} />
+          <div className="skeleton desktop-only" style={{ height: 272, borderRadius: 'var(--radius-lg)' }} />
+        </div>
+        <div className="dash-mid">
+          <div className="skeleton" style={{ height: 320, borderRadius: 'var(--radius-lg)' }} />
+          <div className="skeleton desktop-only" style={{ height: 320, borderRadius: 'var(--radius-lg)' }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isEmpty) {
+    return (
+      <div className="dash animate-fade-in">
+        {header}
+        <div className="dash-top">
+          <Onboard hasIncome={hasIncome} hasDebt={hasDebt} gmailConnected={!!gmail?.connected} navigate={navigate} />
+          <div className="card">
+            <p className="text-secondary" style={{ fontSize: 14, margin: '0 0 16px' }}>Dinero libre en {mes}</p>
+            <span className="empty-state-icon" style={{ width: 56, height: 56 }}><BarChart3 size={22} /></span>
+            <h2 className="card-title" style={{ margin: '16px 0 6px' }}>Aquí verás cuánto te queda libre</h2>
+            <p className="text-secondary" style={{ fontSize: 14, margin: 0 }}>Restamos tus cuotas de tarjetas, créditos y suscripciones a tus ingresos del mes, y te mostramos en qué se va cada peso.</p>
+            <div className="split-bar empty" style={{ margin: '20px 0 12px' }} />
+            <p className="text-muted text-sm" style={{ margin: 0 }}>Se activa cuando registres tus ingresos (paso 1).</p>
           </div>
         </div>
-      ) : (
-        <>
+        <div className="card" style={{ marginTop: 20 }}>
+          <h2 className="card-title">Próximos pagos</h2>
+          <p className="text-secondary" style={{ fontSize: 14, margin: '6px 0 0' }}>Aún no hay pagos programados. Aparecerán aquí con su fecha cuando agregues una tarjeta o un crédito.</p>
+        </div>
+      </div>
+    );
+  }
 
-          {/* ═══════════════════════════════════════════════════════════════
-              HERO — Dinero Libre
-          ═══════════════════════════════════════════════════════════════ */}
-          {dineroLibre !== null && (
-            <div
-              className="card"
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate('/income')}
-              onKeyDown={e => e.key === 'Enter' && navigate('/income')}
-              style={{
-                padding: '1.5rem 1.75rem',
-                marginBottom: 16,
-                cursor: 'pointer',
-                borderLeft: `4px solid ${dineroLibre >= 0 ? 'var(--pos-600)' : 'var(--neg-600)'}`,
-                transition: 'box-shadow 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = ''}
-            >
-              {/* Fila superior: label + badge salud financiera */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.625rem' }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
-                  Dinero libre este mes
-                </p>
-                {health && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: '3px 10px',
-                    borderRadius: 20, letterSpacing: '0.02em',
-                    background: healthTone.bg, color: healthTone.fg,
-                  }}>
-                    Salud {health.label} · {health.score}/100
-                  </span>
-                )}
-              </div>
+  return (
+    <div className="dash animate-fade-in">
+      {header}
 
-              {/* Número principal */}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: '1.25rem' }}>
-                <span
-                  className="tabular dashboard-hero-amount"
-                  style={{
-                    fontWeight: 800, lineHeight: 1,
-                    letterSpacing: '-0.025em',
-                    color: dineroLibre >= 0 ? 'var(--pos-600)' : 'var(--neg-600)',
-                  }}
-                >
-                  {fmt(Math.abs(dineroLibre))}
+      {/* ═══ Fila 1: dinero libre + resumen ═══ */}
+      <div className="dash-top">
+        {dineroLibre !== null && (
+          <section className="card dash-hero" aria-label="Dinero libre">
+            <div className="row-between">
+              <p className="dash-hero-label">Dinero libre en {mes}</p>
+              {health && (
+                <span className={`badge badge-${HEALTH_TONE[health.label] ?? 'warning'}`}>
+                  <span className="desktop-only">{`Salud financiera: ${health.label} · ${health.score}/100`}</span>
+                  <span className="mobile-only">{`${health.label} · ${health.score}`}</span>
                 </span>
-                {dineroLibre < 0 && (
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--neg-600)' }}>déficit</span>
-                )}
-              </div>
-
-              {/* Fórmula desglosada */}
-              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem 1.75rem' }}>
-                  {[
-                    { label: 'Ingresos',       value: totalIncome, Icon: TrendingUp,   color: 'var(--pos-600)',  sign: null },
-                    { label: 'Compromisos',    value: totalObl,    Icon: TrendingDown,  color: 'var(--warn-600)', sign: '−' },
-                  ].map(({ label, value, Icon, color, sign }) => (
-                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      {sign && (
-                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)', marginRight: 2 }}>{sign}</span>
-                      )}
-                      <Icon size={12} style={{ color }} />
-                      <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500 }}>{label}</span>
-                      <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                        {fmt(value)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════
-              KPI ROW — Ingresos / Compromisos / Deuda
-          ═══════════════════════════════════════════════════════════════ */}
-          <div className="kpi-grid" style={{ marginBottom: 16 }}>
-            <StatCard
-              label="Ingresos mensuales"
-              value={fmt(totalIncome)}
-              delta="Fuentes activas de ingreso"
-              icon={Wallet}
-              tone="pos"
-              onClick={() => navigate('/income')}
-            />
-            <StatCard
-              label="Compromisos mensuales"
-              value={fmt(totalObl)}
-              delta="Tarjetas + créditos + suscripciones"
-              icon={TrendingDown}
-              tone="warn"
-            />
-            {totalDebt > 0 && (
-              <StatCard
-                label="Deuda total"
-                value={fmt(totalDebt)}
-                delta="Créditos + tarjetas"
-                icon={Landmark}
-                tone="neg"
-                onClick={() => navigate('/bank-credits')}
-              />
-            )}
-          </div>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              DISTRIBUCIÓN + PRÓXIMOS PAGOS
-          ═══════════════════════════════════════════════════════════════ */}
-          <div className="split-grid" style={{ marginBottom: 16 }}>
-
-            {/* Distribución — 3 categorías */}
-            <SectionCard
-              title="¿A dónde va tu dinero?"
-              subtitle="Compromisos este mes"
-              icon={PieIcon}
-            >
-              {dist.length > 0 ? (
-                <div className="dist-layout">
-                  {/* Donut */}
-                  <div
-                    className="dist-donut"
-                    role="img"
-                    aria-label={`Distribución de ${fmt(totalDist)} mensuales: ${dist.map(d => `${d.name} ${fmt(d.value)}`).join(', ')}`}
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dist} cx="50%" cy="50%"
-                          innerRadius={50} outerRadius={72}
-                          paddingAngle={2} dataKey="value" stroke="none"
-                        >
-                          {dist.map((d, i) => <Cell key={i} fill={d.color} />)}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                      <span style={{ fontSize: 9, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</span>
-                      <span className="tabular" style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{fmt(totalDist)}</span>
-                    </div>
-                  </div>
-                  {/* Leyenda — cada fila abre su desglose por ítem */}
-                  <div className="dist-legend">
-                    {dist.map(d => {
-                      const pct  = totalDist > 0 ? (d.value / totalDist) * 100 : 0;
-                      const open = openCat === d.key;
-                      const expandable = d.items.length > 0;
-                      return (
-                        <div key={d.key}>
-                          <button
-                            type="button"
-                            className="dist-legend-row dist-legend-toggle"
-                            onClick={() => expandable && setOpenCat(open ? null : d.key)}
-                            aria-expanded={expandable ? open : undefined}
-                            style={{ cursor: expandable ? 'pointer' : 'default' }}
-                          >
-                            <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                            <span className="dist-legend-name">{d.name}</span>
-                            <span className="dist-legend-pct">{pct.toFixed(0)}%</span>
-                            <span className="tabular dist-legend-amount">{fmt(d.value)}</span>
-                            {expandable
-                              ? <ChevronRight size={13} className={`dist-legend-caret${open ? ' open' : ''}`} />
-                              : <span style={{ width: 13, flexShrink: 0 }} />}
-                          </button>
-                          {open && (
-                            <div className="dist-sublist">
-                              {d.items.map(it => (
-                                <div key={it.id} className="dist-subrow">
-                                  <span className="dist-subrow-name">
-                                    {it.nombre}{it.detalle ? ` · ${it.detalle}` : ''}
-                                  </span>
-                                  <span className="tabular dist-subrow-amount">{fmt(it.monto)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="empty-state" style={{ padding: '24px 0' }}>
-                  <p>Sin compromisos registrados aún.</p>
-                </div>
               )}
-            </SectionCard>
+            </div>
+            <div className="dash-hero-amount">
+              <span className={`amount-xl ${dineroLibre < 0 ? 'neg' : ''}`}>{fmt(dineroLibre)}</span>
+              {totalIncome > 0 && (
+                <span className="dash-hero-note desktop-only">
+                  {dineroLibre >= 0
+                    ? `el ${pct((dineroLibre / totalIncome) * 100)} de tus ingresos queda libre`
+                    : 'tus compromisos superan tus ingresos'}
+                </span>
+              )}
+            </div>
+            <SplitBar parts={parts} />
+            <button className="legend desktop-flex" onClick={() => setShowBreakdown(o => !o)} aria-expanded={showBreakdown}>
+              {parts.map(p => (
+                <span key={p.key} className="legend-item">
+                  <i style={{ background: p.color }} />{p.name} <b className="n">{fmt(p.value)}</b>
+                </span>
+              ))}
+              <ChevronDown size={16} className={`legend-caret ${showBreakdown ? 'open' : ''}`} />
+            </button>
+            {showBreakdown && (
+              <div className="dash-breakdown desktop-only">
+                {[
+                  ...cardStats.filter(cs => cs.cardOblMes > 0).map(cs => ({ k: `c${cs.cardId}`, name: cs.nombre, sub: 'Tarjeta', v: cs.cardOblMes })),
+                  ...(summary?.breakdown?.bankCredits ?? []).map((b, i) => ({ k: `b${i}`, name: b.nombre ?? b.name, sub: 'Crédito', v: b.monto ?? b.amount })),
+                  ...(summary?.breakdown?.subscriptions ?? []).map((b, i) => ({ k: `s${i}`, name: b.nombre ?? b.name, sub: 'Suscripción', v: b.monto ?? b.amount })),
+                ].map(r => (
+                  <div key={r.k} className="kv"><span>{r.name} <span className="text-muted">· {r.sub}</span></span><span>{fmt(r.v)}</span></div>
+                ))}
+              </div>
+            )}
 
-            {/* Próximos pagos — todos los tipos, 30 días */}
-            <SectionCard
-              title="Próximos pagos"
-              subtitle="Vencimientos en los próximos 30 días"
-              icon={Bell}
-            >
-              {upcoming.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {upcoming.map((item, i) => {
-                    const d    = daysUntil(item.date);
-                    const type = UPCOMING_TYPE[item.type] ?? UPCOMING_TYPE.subscription;
-                    const { Icon, accent } = type;
+            {/* Teléfono: ingresos y compromisos bajo la barra */}
+            <div className="dash-hero-mini mobile-only">
+              <div><span>Ingresos</span><b className="n">{fmt(totalIncome)}</b></div>
+              <div><span>Compromisos</span><b className="n">{fmt(totalObl)}</b></div>
+            </div>
+
+            {deltaFree !== null && (
+              <div className="dash-hero-foot desktop-flex">
+                <div>
+                  <p className="text-secondary" style={{ margin: 0, fontSize: 13 }}>vs. {monthName(prevMonth)}</p>
+                  <p className={`n dash-delta ${deltaFree >= 0 ? 'up' : 'down'}`}>
+                    {deltaFree >= 0 ? '+' : '−'}{fmt(Math.abs(deltaFree))}
+                    {prevFree > 0 && ` (${deltaFree >= 0 ? '+' : '−'}${Math.round(Math.abs(deltaFree / prevFree) * 100)} %)`}
+                  </p>
+                </div>
+                <div className="row" style={{ gap: 12 }}>
+                  <span className="text-muted text-sm">Últimos {freeSeries.length} meses</span>
+                  <Sparkline values={freeSeries} />
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section className="card card-flush dash-side desktop-only row-list" aria-label="Resumen del mes">
+          <Link to="/income" className="dash-side-row">
+            <div><p>Ingresos del mes</p><b className="n">{fmt(totalIncome)}</b></div>
+            {summary?.income?.extra > 0 && <span className="n">incluye {fmt(summary.income.extra)} extra</span>}
+          </Link>
+          <Link to="/reports" className="dash-side-row">
+            <div><p>Compromisos del mes</p><b className="n">{fmt(totalObl)}</b></div>
+            {totalIncome > 0 && <span className="n">{pct((totalObl / totalIncome) * 100)} del ingreso</span>}
+          </Link>
+          <Link to="/bank-credits" className="dash-side-row">
+            <div><p>Deuda total</p><b className="n">{fmt(totalDebt)}</b></div>
+            <span>{activeCredits.length} crédito{activeCredits.length !== 1 ? 's' : ''} · {cards.length} tarjeta{cards.length !== 1 ? 's' : ''}</span>
+          </Link>
+        </section>
+      </div>
+
+      {/* Teléfono: aviso de movimientos por aprobar */}
+      {inbox.length > 0 && (
+        <Link to="/credit-cards?tab=por-aprobar" className="card dash-inbox-banner mobile-only">
+          <span className="dash-inbox-icon"><Inbox size={18} /></span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b>{inbox.length} movimiento{inbox.length !== 1 ? 's' : ''} por aprobar</b>
+            <span>Detectados en Gmail</span>
+          </span>
+          <ChevronRight size={18} className="text-muted" />
+        </Link>
+      )}
+
+      {/* ═══ Fila 2: próximos pagos + tarjetas ═══ */}
+      <div className="dash-mid">
+        <section className="card card-flush" aria-labelledby="dash-upcoming">
+          <div className="card-header">
+            <h2 className="card-title" id="dash-upcoming">Próximos pagos</h2>
+            <Link to="/reports" className="link-sm">Ver todo</Link>
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="card-empty">No tienes pagos en los próximos 30 días.</p>
+          ) : (
+            <>
+              <table className="dash-table desktop-table">
+                <thead><tr><th>Fecha</th><th>Concepto</th><th>Vence</th><th style={{ textAlign: 'right' }}>Monto</th></tr></thead>
+                <tbody>
+                  {upcoming.slice(0, 6).map((u, i) => {
+                    const d = daysUntil(u.date); const tone = dueTone(d); const dm = dayMonth(u.date);
                     return (
-                      <div key={i} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '8px 0',
-                        borderBottom: i < upcoming.length - 1 ? '1px solid var(--color-border)' : 'none',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                          <span style={{
-                            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                            background: 'var(--surface-2)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <Icon size={13} style={{ color: accent }} />
-                          </span>
-                          <div style={{ minWidth: 0 }}>
-                            <p className="truncate" style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13, margin: 0 }}>{item.name}</p>
-                            <p style={{ fontSize: 11, margin: 0, fontWeight: d <= 3 ? 600 : 400, color: urgencyColor(d) }}>
-                              {dayLabel(d)}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="tabular" style={{ fontSize: 13, fontWeight: 700, color: item.amount > 0 ? 'var(--text)' : 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: 12 }}>
-                          {item.amount > 0 ? fmt(item.amount) : '—'}
-                        </span>
-                      </div>
+                      <tr key={i} className="clickable" onClick={() => navigate(u.to)}>
+                        <td className="text-secondary n" style={{ whiteSpace: 'nowrap' }}>{dm.day} {dm.mon}</td>
+                        <td>
+                          <span className="cell-title">{u.name}</span>
+                          <span className="cell-sub">{TYPE_LABEL[u.type]}{u.sub ? ` · ${u.sub}` : ''}</span>
+                        </td>
+                        <td>{tone ? <span className={`badge badge-${tone}`}>{dueLabel(d)}</span> : <span className="text-secondary text-sm">{dueLabel(d)}</span>}</td>
+                        <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(u.amount)}</td>
+                      </tr>
                     );
                   })}
-                </div>
-              ) : (
-                <div className="empty-state" style={{ padding: '24px 0' }}>
-                  <p>Sin pagos en los próximos 30 días</p>
-                </div>
-              )}
-            </SectionCard>
-          </div>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              DEUDA TOTAL — total arriba, detalle por ítem al desplegar
-          ═══════════════════════════════════════════════════════════════ */}
-          {debtRows.length > 0 && (
-            <SectionCard
-              title="Deuda total"
-              subtitle="Saldos pendientes por pagar"
-              icon={Landmark}
-              style={{ marginBottom: 16 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--color-border)' }}>
-                <span className="tabular" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--neg-600)', letterSpacing: '-0.02em' }}>
-                  {fmt(totalDebt)}
-                </span>
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                  en {debtRows.length} {debtRows.length === 1 ? 'categoría' : 'categorías'}
-                </span>
-              </div>
-              <div className="dist-legend">
-                {debtRows.map(d => {
-                  const pct  = totalDebt > 0 ? (d.value / totalDebt) * 100 : 0;
-                  const open = openDebt === d.key;
-                  const expandable = d.items.length > 0;
+                </tbody>
+              </table>
+              <div className="mobile-list row-list">
+                {upcoming.slice(0, 4).map((u, i) => {
+                  const d = daysUntil(u.date); const tone = dueTone(d); const dm = dayMonth(u.date);
                   return (
-                    <div key={d.key}>
-                      <button
-                        type="button"
-                        className="dist-legend-row dist-legend-toggle"
-                        onClick={() => expandable && setOpenDebt(open ? null : d.key)}
-                        aria-expanded={expandable ? open : undefined}
-                        style={{ cursor: expandable ? 'pointer' : 'default' }}
-                      >
-                        <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                        <span className="dist-legend-name">{d.name}</span>
-                        <span className="dist-legend-pct">{pct.toFixed(0)}%</span>
-                        <span className="tabular dist-legend-amount">{fmt(d.value)}</span>
-                        {expandable
-                          ? <ChevronRight size={13} className={`dist-legend-caret${open ? ' open' : ''}`} />
-                          : <span style={{ width: 13, flexShrink: 0 }} />}
-                      </button>
-                      {open && (
-                        <div className="dist-sublist">
-                          {d.items.map(it => (
-                            <div key={it.id} className="dist-subrow">
-                              <span className="dist-subrow-name">
-                                {it.nombre}{it.detalle ? ` · ${it.detalle}` : ''}
-                              </span>
-                              <span className="tabular dist-subrow-amount">{fmt(it.monto)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <Link key={i} to={u.to} className="pay-row">
+                      <span className="pay-date"><b className="n">{dm.day}</b><span>{dm.mon}</span></span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span className="cell-title">{u.name}</span>
+                        <span className={`cell-sub ${tone ? `tone-${tone}` : ''}`}>{dueLabel(d)}{u.type !== 'subscription' ? ` · ${TYPE_LABEL[u.type].toLowerCase()}` : ''}</span>
+                      </span>
+                      <b className="n">{fmt(u.amount)}</b>
+                    </Link>
                   );
                 })}
               </div>
-            </SectionCard>
+            </>
           )}
+        </section>
 
-          {/* ═══════════════════════════════════════════════════════════════
-              CRÉDITOS ACTIVOS + ACCESOS RÁPIDOS
-          ═══════════════════════════════════════════════════════════════ */}
-          <div className="split-grid">
+        <section className="card dash-cards" aria-labelledby="dash-cards">
+          <div className="card-header" style={{ marginBottom: 8 }}>
+            <h2 className="card-title" id="dash-cards">Tarjetas</h2>
+            <Link to="/credit-cards" className="link-sm">Ver todas</Link>
+          </div>
+          {cards.length === 0 ? (
+            <p className="text-secondary" style={{ fontSize: 14 }}>Aún no tienes tarjetas. <Link to="/credit-cards/new">Agregar tarjeta</Link></p>
+          ) : (
+            <div className="row-list">
+              {cardStats.slice(0, 4).map(cs => {
+                const c = cardById[cs.cardId];
+                const total = parseFloat(c.cupoTotal) || 0;
+                const used = total ? Math.min(100, Math.max(0, ((total - parseFloat(c.cupoDisponible)) / total) * 100)) : 0;
+                return (
+                  <Link key={cs.cardId} to={`/credit-cards/${cs.cardId}`} className="dash-card-row">
+                    <div className="row-between">
+                      <span className="row" style={{ gap: 10, minWidth: 0 }}>
+                        <span className="card-chip" style={{ background: getCardColor(c.color) }} />
+                        <span className="truncate"><b>{c.nombre}</b> <span className="text-secondary">· {c.entidad}</span></span>
+                      </span>
+                      {cs.cardOblMes > 0 ? <b className="n">{fmt(cs.cardOblMes)}</b> : <span className="text-success text-sm" style={{ fontWeight: 600 }}>Al día</span>}
+                    </div>
+                    <div className="progress-track" style={{ margin: '10px 0 8px' }}>
+                      <div className="progress-fill" style={{ transform: `scaleX(${used / 100})`, background: 'var(--cat-1)' }} />
+                    </div>
+                    <div className="row-between text-sm text-secondary">
+                      <span className="n">Cupo usado {Math.round(used)} % · disponible {fmt(c.cupoDisponible)}</span>
+                      {cs.cardOblMes > 0 && <span>pago del corte</span>}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
 
-            {/* Créditos — barras de progreso */}
-            <SectionCard
-              title="Créditos bancarios"
-              subtitle="Progreso de pago"
-              icon={Landmark}
-              action={
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/bank-credits')}>
-                  Ver todo <ArrowRight size={12} />
-                </button>
-              }
-            >
-              {activeCredits.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {activeCredits.slice(0, 4).map(c => {
-                    const pct = c.numeroCuotas ? (c.cuotasPagadas / c.numeroCuotas) * 100 : 0;
-                    return (
-                      <div
-                        key={c.id} role="button" tabIndex={0}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => navigate(`/bank-credits/${c.id}`)}
-                        onKeyDown={e => e.key === 'Enter' && navigate(`/bank-credits/${c.id}`)}
-                        aria-label={`Ver detalle de ${c.nombre}`}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                          <span className="truncate" style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{c.nombre}</span>
-                          <span className="tabular" style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', marginLeft: 8 }}>
-                            {c.cuotasPagadas}/{c.numeroCuotas}
-                          </span>
-                        </div>
-                        <div
-                          className="progress-track"
-                          role="progressbar"
-                          aria-valuenow={Math.round(pct)}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-label={`${c.cuotasPagadas} de ${c.numeroCuotas} cuotas pagadas`}
-                        >
-                          <div className="progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                          <span className="tabular" style={{ fontSize: 11, color: 'var(--text-3)' }}>{fmt(c.valorCuota)}/mes</span>
-                          <span style={{ fontSize: 11, color: 'var(--pos-600)', fontWeight: 700 }}>{pct.toFixed(0)}%</span>
-                        </div>
+      {/* Teléfono: carrusel de tarjetas */}
+      {cards.length > 0 && (
+        <section className="mobile-only" aria-labelledby="dash-cards-m">
+          <div className="row-between" style={{ margin: '24px 0 12px' }}>
+            <h2 className="card-title" id="dash-cards-m">Tus tarjetas</h2>
+            <Link to="/credit-cards" className="link-sm">Ver todas</Link>
+          </div>
+          <div className="card-carousel">
+            {cardStats.map(cs => {
+              const c = cardById[cs.cardId];
+              return (
+                <Link key={cs.cardId} to={`/credit-cards/${cs.cardId}`} className="mini-cc" style={{ background: getCardColor(c.color) }}>
+                  <div className="row-between"><b>{c.nombre}</b><span>{c.entidad}</span></div>
+                  <div className="mini-cc-foot">
+                    <div><span>Disponible</span><b className="n">{fmt(c.cupoDisponible)}</b></div>
+                    {cs.cardOblMes > 0 && <div><span>Pago del corte</span><b className="n">{fmt(cs.cardOblMes)}</b></div>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ═══ Fila 3: créditos + por aprobar ═══ */}
+      <div className="dash-bottom desktop-grid">
+        <section className="card" aria-labelledby="dash-credits">
+          <div className="card-header" style={{ marginBottom: 12 }}>
+            <h2 className="card-title" id="dash-credits">Créditos</h2>
+            <Link to="/bank-credits" className="link-sm">Ver todos</Link>
+          </div>
+          {activeCredits.length === 0 ? (
+            <p className="text-secondary" style={{ fontSize: 14 }}>No tienes créditos activos. <Link to="/bank-credits/new">Agregar crédito</Link></p>
+          ) : (
+            <>
+              <div className="dash-credit-list">
+                {activeCredits.slice(0, 3).map(c => {
+                  const progress = c.numeroCuotas ? (c.cuotasPagadas / c.numeroCuotas) : 0;
+                  return (
+                    <Link key={c.id} to={`/bank-credits/${c.id}`} className="dash-credit">
+                      <div className="row-between">
+                        <span><b>{c.nombre}</b> <span className="text-secondary">· {c.entidad}</span></span>
+                        <span className="text-secondary n">{c.cuotasPagadas} de {c.numeroCuotas} cuotas</span>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="empty-state" style={{ padding: '24px 0' }}>
-                  <button className="btn btn-primary btn-sm" onClick={() => navigate('/bank-credits/new')}>
-                    <Plus size={13} /> Registrar crédito
-                  </button>
-                </div>
-              )}
-            </SectionCard>
+                      <div className="progress-track" style={{ margin: '10px 0 8px' }}>
+                        <div className="progress-fill" style={{ transform: `scaleX(${progress})` }} />
+                      </div>
+                      <div className="row-between text-sm text-secondary n">
+                        <span>{fmt(parseFloat(c.valorCuota) + parseFloat(c.cuotaAdministracion || 0))} al mes</span>
+                        <span>Saldo {fmt(c.saldoPendiente)}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="dash-credit-foot">
+                <div><p>Cuotas este mes</p><b className="n">{fmt(obl.bankCredits ?? 0)}</b></div>
+                <div><p>Saldo total</p><b className="n">{fmt(activeCredits.reduce((a, c) => a + parseFloat(c.saldoPendiente || 0), 0))}</b></div>
+              </div>
+            </>
+          )}
+        </section>
 
-            {/* Accesos rápidos — 4 acciones */}
-            <SectionCard title="Registrar rápido" subtitle="Nuevo movimiento en un clic" icon={Plus}>
-              <div className="quick-actions-grid">
-                {[
-                  { Icon: Wallet,     label: 'Ingreso',     path: '/income/new' },
-                  { Icon: Repeat,     label: 'Suscripción', path: '/subscriptions/new' },
-                  { Icon: CreditCard, label: 'Tarjeta',     path: '/credit-cards/new' },
-                  { Icon: Landmark,   label: 'Crédito',     path: '/bank-credits/new' },
-                ].map(({ Icon, label, path }) => (
-                  <button key={path} className="quick-action-btn" onClick={() => navigate(path)}>
-                    <Icon size={16} />
-                    {label}
-                  </button>
+        <section className="card" aria-labelledby="dash-inbox">
+          <div className="card-header" style={{ marginBottom: 12 }}>
+            <h2 className="card-title row" id="dash-inbox" style={{ gap: 8 }}>
+              Por aprobar {inbox.length > 0 && <span className="badge badge-primary n">{inbox.length}</span>}
+            </h2>
+            {gmail?.connected && gmail.lastSyncAt && <span className="text-muted text-sm">Detectados en Gmail</span>}
+          </div>
+          {!gmail?.connected ? (
+            <div>
+              <p className="text-secondary" style={{ fontSize: 14, margin: '0 0 12px' }}>Conecta Gmail y Debti detectará las compras de tus notificaciones bancarias para que solo tengas que aprobarlas.</p>
+              <Link to="/profile#gmail" className="btn btn-secondary"><Mail size={16} /> Conectar Gmail</Link>
+            </div>
+          ) : inbox.length === 0 ? (
+            <p className="text-secondary" style={{ fontSize: 14 }}>No hay movimientos nuevos por revisar.</p>
+          ) : (
+            <>
+              <div className="row-list">
+                {inbox.slice(0, 3).map(it => (
+                  <div key={it.id} className="row-between" style={{ padding: '10px 0' }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="cell-title">{it.comercio || (it.tipo === 'avance' ? 'Avance' : 'Movimiento')}{it.numeroCuotas > 1 ? ` · ${it.numeroCuotas} cuotas` : ''}</span>
+                      <span className="cell-sub">{cardById[it.creditCardId]?.nombre ?? 'Sin tarjeta'} · {dayMonth(it.fechaMovimiento).day} {dayMonth(it.fechaMovimiento).mon}</span>
+                    </span>
+                    <b className="n">{fmt(it.monto)}</b>
+                  </div>
                 ))}
               </div>
-            </SectionCard>
-
-          </div>
-        </>
-      )}
+              <div className="row-between" style={{ borderTop: '1px solid var(--divider)', paddingTop: 14, marginTop: 8 }}>
+                <span className="text-secondary text-sm">{inbox.length > 3 ? `y ${inbox.length - 3} más` : ''}</span>
+                <Link to="/credit-cards?tab=por-aprobar" className="link-sm">Revisar y aprobar{inbox.length > 1 ? ` los ${inbox.length}` : ''}</Link>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
     </div>
   );
 };
