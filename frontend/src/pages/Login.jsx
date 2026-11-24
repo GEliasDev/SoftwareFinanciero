@@ -1,15 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Eye, EyeOff, TrendingUp, CreditCard, Landmark, AlertCircle, ArrowRight, ShieldCheck, Mail } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { AuthService } from '../services/authService';
-import logo from '../assets/logo.png';
-
-const FEATURES = [
-  { icon: TrendingUp, text: 'Seguimiento de deudas y saldos en tiempo real' },
-  { icon: CreditCard, text: 'Gestión completa de tarjetas y compras a cuotas' },
-  { icon: Landmark,   text: 'Créditos con tabla de amortización automática' },
-  { icon: Mail,       text: 'Resumen semanal de tus finanzas por email' },
-];
+import { AuthShowcase, AuthBrand } from '../components/ui/AuthShowcase';
 
 export const Login = () => {
   const [email, setEmail]         = useState('');
@@ -75,30 +68,7 @@ export const Login = () => {
 
         {/* Panel izquierdo */}
         <div className="auth-panel-brand">
-          <div className="auth-panel-brand-inner">
-            <div className="auth-brand-logo">
-              <img src={logo} alt="Debti" style={{ height: 68, width: 'auto' }} />
-            </div>
-            <div>
-              <h2 className="auth-panel-headline">Tus finanzas, bajo control total</h2>
-              <p className="auth-panel-sub">Un panel unificado para gestionar deudas, tarjetas y créditos con claridad.</p>
-            </div>
-            <ul className="auth-feature-list">
-              {FEATURES.map(({ icon: Icon, text }) => (
-                <li key={text} className="auth-feature-item">
-                  <span className="auth-feature-dot"><Icon size={13} /></span>
-                  {text}
-                </li>
-              ))}
-            </ul>
-            <div className="auth-panel-stat-row">
-              <div className="auth-panel-stat"><span>COP</span><strong>Moneda nativa</strong></div>
-              <div className="auth-panel-stat-sep" />
-              <div className="auth-panel-stat"><span>100%</span><strong>Privado</strong></div>
-              <div className="auth-panel-stat-sep" />
-              <div className="auth-panel-stat"><span>6</span><strong>Módulos</strong></div>
-            </div>
-          </div>
+          <AuthShowcase />
         </div>
 
         {/* Panel derecho — formulario */}
@@ -106,9 +76,7 @@ export const Login = () => {
           <div className="auth-form-container">
 
             <div className="auth-form-header">
-              <div className="auth-logo">
-                <img src={logo} alt="Debti" style={{ height: 52, width: 'auto' }} />
-              </div>
+              <div className="auth-logo"><AuthBrand /></div>
               <h2>{tempToken ? 'Verificación en dos pasos' : 'Iniciar sesión'}</h2>
               <p>{tempToken ? 'Ingresa el código de tu app autenticadora' : 'Bienvenido de vuelta a tu panel financiero'}</p>
             </div>

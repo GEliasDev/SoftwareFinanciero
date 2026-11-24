@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, ArrowLeft, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { UserService } from '../services/userService';
-import { BrandMark } from '../components/ui/BrandMark';
+import { AuthBrand } from '../components/ui/AuthShowcase';
 
 const StrengthBar = ({ password }) => {
   const score = [/.{8,}/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(r => r.test(password)).length;
@@ -59,7 +59,7 @@ export const ResetPassword = () => {
     <div className="auth-container">
       <div className="auth-single-panel">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BrandMark size={44} />
+          <AuthBrand />
           <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>Debti</span>
         </div>
 

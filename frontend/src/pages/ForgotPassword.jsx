@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Mail, CheckCircle2, Copy, Check } from 'lucide-react';
 import { UserService } from '../services/userService';
-import { BrandMark } from '../components/ui/BrandMark';
+import { AuthBrand } from '../components/ui/AuthShowcase';
 
 export const ForgotPassword = () => {
   const [email, setEmail]       = useState('');
@@ -44,7 +44,7 @@ export const ForgotPassword = () => {
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BrandMark size={44} />
+          <AuthBrand />
           <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>Debti</span>
         </div>
 

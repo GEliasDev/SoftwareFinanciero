@@ -1,15 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck, LineChart, Bell, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { UserService } from '../services/userService';
-import logo from '../assets/logo.png';
+import { AuthShowcase, AuthBrand } from '../components/ui/AuthShowcase';
 import icono from '../assets/icono.png';
-
-const FEATURES = [
-  { icon: ShieldCheck, text: 'Datos seguros — solo tú los ves' },
-  { icon: LineChart,   text: 'Análisis de gastos y tendencias' },
-  { icon: Bell,        text: 'Alertas automáticas de vencimientos' },
-];
 
 const StrengthBar = ({ password }) => {
   const score = [/.{8,}/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(r => r.test(password)).length;
@@ -100,27 +94,7 @@ export const Register = () => {
 
         {/* Panel izquierdo */}
         <div className="auth-panel-brand">
-          <div className="auth-panel-brand-inner">
-            <div className="auth-brand-logo">
-              <img src={logo} alt="Debti" style={{ height: 68, width: 'auto' }} />
-            </div>
-            <div>
-              <h2 className="auth-panel-headline">Crea tu cuenta y empieza a ordenar tus finanzas</h2>
-              <p className="auth-panel-sub">Gratis para siempre. Sin tarjetas de crédito requeridas.</p>
-            </div>
-            <ul className="auth-feature-list">
-              {FEATURES.map(({ icon: Icon, text }) => (
-                <li key={text} className="auth-feature-item">
-                  <span className="auth-feature-dot"><Icon size={13} /></span>
-                  {text}
-                </li>
-              ))}
-            </ul>
-            <div className="auth-panel-trust">
-              <CheckCircle2 size={14} style={{ flexShrink: 0 }} />
-              <span>Tus datos nunca se comparten con terceros</span>
-            </div>
-          </div>
+          <AuthShowcase title="Crea tu cuenta y empieza a ordenar tus finanzas" subtitle="Gratis. Sin tarjeta de crédito para registrarte." />
         </div>
 
         {/* Panel derecho — formulario */}
@@ -128,9 +102,7 @@ export const Register = () => {
           <div className="auth-form-container" style={{ maxWidth: 500 }}>
 
             <div className="auth-form-header">
-              <div className="auth-logo">
-                <img src={logo} alt="Debti" style={{ height: 52, width: 'auto' }} />
-              </div>
+              <div className="auth-logo"><AuthBrand /></div>
               <h2>Crear cuenta</h2>
               <p>Completa el formulario para comenzar</p>
             </div>

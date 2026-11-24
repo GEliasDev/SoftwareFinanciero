@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, CreditCard, Landmark, CheckCircle2, ArrowRight, ArrowLeft, Repeat } from 'lucide-react';
-import { BrandMark } from '../components/ui/BrandMark';
+import { AuthBrand } from '../components/ui/AuthShowcase';
 import { AuthService } from '../services/authService';
 
 const STEPS = [
@@ -72,8 +72,7 @@ export const Onboarding = () => {
 
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 }}>
-        <BrandMark size={44} />
-        <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>Debti</span>
+        <AuthBrand />
       </div>
 
       {/* Progress dots */}
@@ -106,10 +105,10 @@ export const Onboarding = () => {
         {step === 0 && (
           <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
             {[
-              { Icon: Wallet,    c: 'var(--pos-600)',  b: 'var(--pos-50)'   },
-              { Icon: CreditCard,c: 'var(--brand-600)',b: 'var(--brand-50)' },
-              { Icon: Landmark,  c: '#7C3AED',         b: 'rgba(124,58,237,0.08)' },
-              { Icon: CheckCircle2, c: 'var(--pos-700)',b: 'var(--pos-50)'  },
+              { Icon: Wallet,       c: 'var(--text-2)', b: 'var(--surface-2)' },
+              { Icon: CreditCard,   c: 'var(--text-2)', b: 'var(--surface-2)' },
+              { Icon: Landmark,     c: 'var(--text-2)', b: 'var(--surface-2)' },
+              { Icon: CheckCircle2, c: 'var(--pos-600)', b: 'var(--brand-50)' },
             ].map(({ Icon, c, b }, i) => (
               <div key={i} style={{ width: 44, height: 44, borderRadius: 12, background: b, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon size={20} style={{ color: c }} />
@@ -119,7 +118,7 @@ export const Onboarding = () => {
         )}
 
         <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.02em' }}>
-          {step === 0 ? `Hola, ${firstName} 👋` : current.title}
+          {step === 0 ? `Hola, ${firstName}` : current.title}
         </h2>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-600)', marginBottom: 12 }}>
           {current.subtitle}

@@ -145,3 +145,42 @@
   .onb-step .btn { width: 100%; }
 }
 @media (max-width: 767px) { .card-empty { padding: 4px 16px 16px; } }
+
+/* ── Acceso (login, registro, recuperar) ── */
+.auth-container { overflow-y: auto; }
+.auth-panel-brand {
+  order: 2; width: 50%; background: var(--surface-3); background-image: none;
+  border-left: 1px solid var(--border); align-items: center; justify-content: center; padding: 48px;
+}
+.auth-form-section { order: 1; background: var(--surface); }
+.auth-form-container { max-width: 400px; }
+.auth-form-header { text-align: left; margin-bottom: 24px; }
+.auth-logo { margin-bottom: 40px; }
+.auth-form-header h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.auth-form-header p { color: var(--text-2); font-size: 14px; }
+.auth-form-card { border: none; box-shadow: none; padding: 0; background: transparent; border-radius: 0; }
+.auth-submit-btn { height: 44px; font-size: 15px; }
+.auth-submit-btn:hover:not(:disabled) { transform: none; }
+.auth-footer-link { font-size: 14px; color: var(--text-2); }
+.auth-footer-link a { color: var(--accent-text); }
+.auth-single-panel .auth-form-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; background: var(--surface); }
+
+.auth-show { width: 100%; max-width: 480px; }
+.auth-show-title { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--text); }
+.auth-show-sub { font-size: 15px; color: var(--text-2); margin: 0 0 28px; }
+.auth-show-card { margin-bottom: 16px; }
+.auth-show-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-top: 14px; font-size: 13px; color: var(--text-2); }
+.auth-show-legend span { display: flex; align-items: center; gap: 6px; }
+.auth-show-legend i { width: 8px; height: 8px; border-radius: 2px; }
+.auth-show-legend b { margin-left: auto; color: var(--text); font-weight: 600; }
+.auth-show .pay-row { padding: 14px 20px; gap: 16px; }
+.auth-show-foot { font-size: 13px; color: var(--text-3); margin: 20px 0 0; }
+@media (max-width: 767px) {
+  .auth-logo { margin-bottom: 28px; }
+}
+
+/* 404 */
+.nf { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); padding: 24px; overflow-y: auto; }
+.nf-brand { padding: 8px; }
+.nf-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.nf-code { font-size: 72px; font-weight: 600; letter-spacing: -0.03em; color: var(--text-4); line-height: 1; margin: 0 0 16px; }
