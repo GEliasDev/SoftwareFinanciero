@@ -16,6 +16,10 @@ import { CreditCardPurchase } from '../creditCard/creditCardPurchase.model.js';
 import { BankCredit } from '../bankCredit/bankCredit.model.js';
 import { Subscription } from '../suscription/subscription.model.js';
 import { Income } from '../income/income.model.js';
+import { CardInboxItem } from '../cardInbox/cardInboxItem.model.js';
+import { GmailConnection } from '../cardInbox/gmailConnection.model.js';
+import { BalanceItem } from '../balance/balanceItem.model.js';
+import sequelize from '../../db/client.js';
 
 const SALT_ROUNDS = 10;
 const TWO_FACTOR_PENDING_TTL = '5m';
@@ -217,11 +221,27 @@ export const UserService = {
         return user;
     },
 
+    // Las FKs no tienen ON DELETE CASCADE: se borran los datos del usuario de
+    // hijo a padre, todo en una transacción (o se borra todo o nada).
     deleteUser: async (id) => {
         const user = await User.findByPk(id);
         if (!user) throw new AppError('Usuario no encontrado', 404);
-        await user.destroy();
-        logger.info(`User ${id} deleted`);
+        const userId = user.id;
+        await sequelize.transaction(async (transaction) => {
+            const opts = { where: { userId }, transaction };
+            const cards = await CreditCard.findAll({ ...opts, attributes: ['id'] });
+            const cardIds = cards.map(c => c.id);
+            await CardInboxItem.destroy(opts);
+            await GmailConnection.destroy(opts);
+            await BalanceItem.destroy(opts);
+            if (cardIds.length) await CreditCardPurchase.destroy({ where: { creditCardId: cardIds }, transaction });
+            await Subscription.destroy(opts);   // después de las compras (subscriptionId)
+            await CreditCard.destroy(opts);     // después de inbox, compras y suscripciones (creditCardId)
+            await BankCredit.destroy(opts);
+            await Income.destroy(opts);
+            await user.destroy({ transaction });
+        });
+        logger.info(`User ${userId} deleted`);
         return;
     },
 
