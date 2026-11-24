@@ -1,7 +1,10 @@
 /* Formato centralizado para toda la app (antes duplicado en ~6 archivos). */
 
-export const fmt = (n, currency = 'COP') =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency, minimumFractionDigits: 0 }).format(n ?? 0);
+// COP sin espacio tras el signo ("$1.250.000"), como en el diseño.
+export const fmt = (n, currency = 'COP') => {
+  const s = new Intl.NumberFormat('es-CO', { style: 'currency', currency, minimumFractionDigits: 0 }).format(n ?? 0);
+  return currency === 'COP' ? s.replace(/\$\s/, '$') : s;
+};
 
 // Versión compacta: $1.2M, $840k
 export const fmtK = (n) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 import { CreditCardService } from '../services/creditCardService';
 import { ArrowLeft, Check, DollarSign, ChevronRight, Lock, ShoppingBag } from 'lucide-react';
 import { getCardGradient } from '../utils/cardColors';

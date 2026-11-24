@@ -6,7 +6,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { fmt } from '../utils/format';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 
 const TIPO_OPTIONS = [
   {

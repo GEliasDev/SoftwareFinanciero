@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../../utils/alerts';
 import { ArrowLeft, Edit2, Trash2, LayoutGrid, FileText, ShoppingBag, Inbox } from 'lucide-react';
 import { CreditCardService } from '../../services/creditCardService';
 import { CardInboxService } from '../../services/cardInboxService';

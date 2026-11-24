@@ -6,7 +6,7 @@ import { StatCard } from '../components/ui/StatCard';
 import { LoadError } from '../components/ui/LoadError';
 import { Plus, Wallet, Zap, Pencil, Trash2 } from 'lucide-react';
 import { fmt } from '../utils/format';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 
 const STATUS_BADGE = {
   activo:   'badge badge-success',

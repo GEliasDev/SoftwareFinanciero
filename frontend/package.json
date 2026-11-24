@@ -23,7 +23,6 @@
     "react-router-dom": "^7.18.6",
     "recharts": "^3.8.1",
     "sonner": "^2.0.8",
-    "sweetalert2": "^11.26.24",
     "vaul": "^1.1.2",
     "workbox-cacheable-response": "^7.4.1",
     "workbox-expiration": "^7.4.1",

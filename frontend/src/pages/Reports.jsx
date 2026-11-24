@@ -17,6 +17,7 @@ import {
   CreditCard, Sliders, Wallet, Zap, TrendingDown,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 
 // ── Helpers ───────────────────────────────
 const fmt = (n) =>
@@ -223,9 +224,7 @@ export const Reports = () => {
       XLSX.writeFile(wb, `Debti_Reporte_${localISODate()}.xlsx`);
     } catch (err) {
       console.error('Error al exportar Excel:', err);
-      import('sweetalert2').then(({ default: Swal }) => {
-        Swal.fire({ icon: 'error', title: 'Error al exportar', text: 'No se pudo generar el archivo Excel.', confirmButtonColor: 'var(--brand-600)' });
-      });
+      toast.error('Error al exportar', { description: 'No se pudo generar el archivo Excel.' });
     } finally {
       setExporting(false);
     }

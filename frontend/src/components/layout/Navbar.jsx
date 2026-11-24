@@ -1,159 +1,25 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { UserCircle, LogOut, CalendarClock, Sun, Moon, Search } from 'lucide-react';
-import { AuthService } from '../../services/authService';
-import { CreditCardService } from '../../services/creditCardService';
-import { GlobalSearch } from '../ui/GlobalSearch';
-import { buildSchedule } from '../../utils/creditCard';
-import { daysUntil, effectiveDayInMonth } from '../../utils/format';
+import { Search, Plus } from 'lucide-react';
+import { useShell } from './ShellContext';
+import { AlertsBell } from './AlertsBell';
 
-const getStoredTheme = () => localStorage.getItem('debti-theme') || 'light';
-const applyTheme = (theme) => {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('debti-theme', theme);
-};
-
-export const Navbar = () => {
-  const navigate = useNavigate();
-  const user = AuthService.getCurrentUser();
-
-  const [menuOpen,    setMenuOpen]    = useState(false);
-  const [payBadge,    setPayBadge]    = useState(null);
-  const [theme,       setTheme]       = useState(getStoredTheme);
-  const [searchOpen,  setSearchOpen]  = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const down = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(o => !o);
-      }
-    };
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
-  }, []);
-
-  useEffect(() => { applyTheme(theme); }, [theme]);
-
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
-
-  useEffect(() => {
-    CreditCardService.getAll()
-      .then(cards => {
-        // Misma lógica que CreditCards.jsx: el badge de pago solo aparece si
-        // hay algo realmente pendiente en el ciclo activo (no si ya se pagó todo).
-        let best = null;
-        for (const c of cards) {
-          const schedule = buildSchedule(c.CreditCardPurchases || [], c);
-          const activeSlot = schedule.find(s => s.lines.some(l => !l.wasPaid));
-          if (!activeSlot || !activeSlot.lines.some(l => !l.wasPaid)) continue;
-
-          const payMonthOffset = Number(c.fechaPago) < Number(c.fechaCorte) ? 1 : 0;
-          const payYear  = activeSlot.date.getFullYear();
-          const payMonth = activeSlot.date.getMonth() + payMonthOffset;
-          const date = new Date(payYear, payMonth, effectiveDayInMonth(c.fechaPago, payYear, payMonth));
-          const d = daysUntil(date);
-          if (best === null || d < best.dias) best = { dias: d, date };
-        }
-        setPayBadge(best);
-      })
-      .catch(() => setPayBadge(null)); // no bloquear UI si falla; badge simplemente no aparece
-  }, []);
-
-  // Cerrar el menú al hacer click fuera.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [menuOpen]);
-
-  const userInitial = (user?.primerNombre || user?.name || 'U').charAt(0).toUpperCase();
-  const fullName = user?.primerNombre
-    ? `${user.primerNombre} ${user.primerApellido || ''}`.trim()
-    : user?.name || 'Usuario';
-
-  const dias = payBadge?.dias;
-  const urgente = dias !== null && dias !== undefined && dias <= 3;
-
-  const handleLogout = () => {
-    AuthService.logout();
-    navigate('/login');
-  };
+// Barra superior de PC: búsqueda (Ctrl K), avisos y "Registrar movimiento".
+// En teléfono no se muestra: cada vista trae su propio encabezado.
+export const Navbar = ({ registrarOpen }) => {
+  const { openSearch, openRegistrar } = useShell();
 
   return (
-    <>
-    {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
-    {/* Sin título de página: cada vista tiene su propio encabezado (evita el nombre duplicado) */}
     <header className="navbar">
+      <button className="topbar-search" onClick={openSearch} aria-label="Buscar (Ctrl+K)">
+        <Search size={16} />
+        <span className="topbar-search-text">Buscar tarjetas, compras, créditos…</span>
+        <kbd className="kbd">Ctrl K</kbd>
+      </button>
       <div className="navbar-right">
-        {/* Search button */}
-        <button
-          onClick={() => setSearchOpen(true)}
-          aria-label="Buscar (Ctrl+K)"
-          style={{
-            background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
-            height: 32, display: 'flex', alignItems: 'center', gap: 6,
-            padding: '0 10px', cursor: 'pointer', color: 'var(--text-3)',
-            fontSize: 12, transition: 'color 0.15s, border-color 0.15s', flexShrink: 0,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-strong)'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-        >
-          <Search size={13} />
-          <span className="search-shortcut-label">Ctrl+K</span>
+        <AlertsBell />
+        <button className="btn btn-primary" onClick={openRegistrar} aria-expanded={registrarOpen} aria-haspopup="dialog">
+          <Plus size={18} /> Registrar movimiento
         </button>
-
-        <button
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          style={{
-            background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
-            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--text-3)', transition: 'color 0.15s, border-color 0.15s',
-            flexShrink: 0,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-strong)'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-        >
-          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
-
-        {urgente && (
-          <button className="navbar-pill urgent" onClick={() => navigate('/credit-cards')}>
-            <CalendarClock size={13} />
-            {dias === 0 ? <strong>Pago de tarjeta hoy</strong>
-              : dias === 1 ? <strong>Pago de tarjeta mañana</strong>
-              : <span>Pago de tarjeta en <strong>{dias} días</strong></span>}
-          </button>
-        )}
-
-        <div className="user-menu" ref={menuRef}>
-          <button className="user-menu-trigger" onClick={() => setMenuOpen(o => !o)}>
-            <span className="user-name">{fullName}</span>
-            <div className="user-avatar">{userInitial}</div>
-          </button>
-
-          {menuOpen && (
-            <div className="user-menu-dropdown">
-              <div className="user-menu-head">
-                <div className="um-name">{fullName}</div>
-                {user?.email && <div className="um-mail">{user.email}</div>}
-              </div>
-              <button className="user-menu-item" onClick={() => { setMenuOpen(false); navigate('/profile'); }}>
-                <UserCircle size={15} /> Mi Perfil
-              </button>
-              <button className="user-menu-item danger" onClick={handleLogout}>
-                <LogOut size={15} /> Cerrar Sesión
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </header>
-    </>
   );
 };

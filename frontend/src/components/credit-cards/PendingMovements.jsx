@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RefreshCw, Check, X } from 'lucide-react';
-import Swal from 'sweetalert2';
+import Swal from '../../utils/alerts';
 import { CardInboxService } from '../../services/cardInboxService';
 import { fmt, parseLocalDate } from '../../utils/format';
 import { CATEGORIES } from '../../utils/creditCard';

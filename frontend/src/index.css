@@ -1,47 +1,63 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@import '@fontsource-variable/inter';
 @import './styles/components.css';
 @import './styles/layout.css';
 
 /* ════════════════════════════════════════════════════════════════
-   SOLVENTA — Design tokens
-   Fintech limpio · Índigo + Esmeralda
+   DEBTI — Design tokens
+   Neutros + un solo acento verde. Ámbar y rojo solo para estados.
    Los --color-* son alias de compatibilidad: re-apuntan a la paleta
    nueva para que toda la app se actualice sin editar cada archivo.
 ════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Marca — Verde dinero ── */
-  --brand-50:  #ECFDF5;
-  --brand-100: #D1FAE5;
-  --brand-200: #A7F3D0;
-  --brand-500: #10B981;
+  color-scheme: light;
+
+  /* ── Marca — Verde ── */
+  --brand-50:  #ECFDF3;
+  --brand-100: #D1FADF;
+  --brand-200: #ABEFC6;
+  --brand-500: #12B76A;
   --brand-600: #047857;
   --brand-700: #065F46;
   --brand-800: #064E3B;
+  --accent-text: #047857;   /* enlaces y acentos de texto */
+  --on-brand: #FFFFFF;
 
-  /* ── Positivo — Esmeralda ── */
-  --pos-50:  #ECFDF5;
-  --pos-600: #059669;
-  --pos-700: #047857;
+  /* ── Positivo ── */
+  --pos-50:  #ECFDF3;
+  --pos-500: #12B76A;       /* barras / indicadores */
+  --pos-600: #067647;       /* texto */
+  --pos-700: #065F46;
 
   /* ── Alerta — Ámbar ── */
-  --warn-50:  #FFFBEB;
-  --warn-600: #D97706;
-  --warn-700: #B45309;
+  --warn-50:  #FFFAEB;
+  --warn-200: #FEDF89;
+  --warn-600: #B54708;
+  --warn-700: #93370D;
 
   /* ── Peligro — Rojo ── */
-  --neg-50:  #FEF2F2;
-  --neg-600: #DC2626;
-  --neg-700: #B91C1C;
+  --neg-50:  #FEF3F2;
+  --neg-200: #FECDCA;
+  --neg-600: #B42318;
+  --neg-700: #912018;
 
-  /* ── Neutros — Slate ── */
-  --bg:            #F8FAFC;
+  /* ── Neutros ── */
+  --bg:            #F6F7F9;
   --surface:       #FFFFFF;
-  --surface-2:     #F1F5F9;
-  --border:        #E2E8F0;
-  --border-strong: #CBD5E1;
-  --text:          #0F172A;
-  --text-2:        #475569;
-  --text-3:        #64748B;
+  --surface-2:     #F2F4F7;
+  --surface-3:     #F9FAFB;
+  --border:        #E4E7EC;
+  --divider:       #EAECF0;
+  --border-strong: #D0D5DD;
+  --text:          #101828;
+  --text-2:        #475467;
+  --text-3:        #667085;
+  --text-4:        #98A2B3;
+
+  /* ── Categorías de gasto (grises de distinta luminosidad) ── */
+  --cat-1: #1D2939;
+  --cat-2: #667085;
+  --cat-3: #98A2B3;
+  --cat-4: #D0D5DD;
 
   /* ── Alias de compatibilidad (NO eliminar: en uso por toda la app) ── */
   --color-bg:             var(--bg);
@@ -66,41 +82,67 @@
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 48px;
 
   /* ── Radius ── */
-  --radius-sm: 5px;
+  --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
-  /* ── Shadows (sutiles, por capas) ── */
-  --shadow-xs: 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md: 0 4px 12px -2px rgba(15,23,42,0.08);
-  --shadow-lg: 0 12px 28px -6px rgba(15,23,42,0.12);
+  /* ── Sombras: solo para capas flotantes (menús, diálogos) ── */
+  --shadow-xs: 0 1px 2px rgba(16,24,40,0.05);
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
+  --shadow-md: 0 4px 8px -2px rgba(16,24,40,0.08), 0 2px 4px -2px rgba(16,24,40,0.04);
+  --shadow-lg: 0 12px 24px -4px rgba(16,24,40,0.12), 0 4px 8px -4px rgba(16,24,40,0.06);
 
   /* ── Transitions ── */
   --transition-fast: all 0.12s ease;
   --transition:      all 0.18s ease;
+
+  /* ── Shell ── */
+  --sidebar-w: 232px;
+  --topbar-h: 64px;
+  --bottomnav-h: 64px;
 }
 
 /* ══════════════════════════════════════════════
    DARK MODE — tokens sobrescritos
 ══════════════════════════════════════════════ */
 [data-theme="dark"] {
-  --bg:            #0F172A;
-  --surface:       #1E293B;
-  --surface-2:     #334155;
-  --border:        #334155;
-  --border-strong: #475569;
-  --text:          #F1F5F9;
-  --text-2:        #94A3B8;
-  --text-3:        #64748B;
+  color-scheme: dark;
 
-  --brand-50:  rgba(4,120,87,0.15);
-  --brand-100: rgba(4,120,87,0.25);
-  --brand-200: rgba(16,185,129,0.3);
-  --pos-50:    rgba(5,150,105,0.13);
-  --neg-50:    rgba(220,38,38,0.13);
-  --warn-50:   rgba(217,119,6,0.13);
+  --bg:            #0B0F17;
+  --surface:       #121826;
+  --surface-2:     #1A2232;
+  --surface-3:     #161D2B;
+  --border:        #263042;
+  --divider:       #263042;
+  --border-strong: #3A4559;
+  --text:          #E6E9EF;
+  --text-2:        #A4ADBD;
+  --text-3:        #8A94A6;
+  --text-4:        #5D6779;
+
+  --cat-1: #CDD3DD;
+  --cat-2: #8A94A6;
+  --cat-3: #5D6779;
+  --cat-4: #3A4559;
+
+  --brand-50:  rgba(52,211,153,0.12);
+  --brand-100: rgba(52,211,153,0.18);
+  --brand-200: rgba(52,211,153,0.28);
+  --brand-500: #34D399;
+  --accent-text: #34D399;
+  --pos-50:    rgba(52,211,153,0.12);
+  --pos-500:   #34D399;
+  --pos-600:   #34D399;
+  --pos-700:   #6EE7B7;
+  --neg-50:    rgba(249,112,102,0.12);
+  --neg-200:   rgba(249,112,102,0.3);
+  --neg-600:   #F97066;
+  --neg-700:   #FDA29B;
+  --warn-50:   rgba(253,176,34,0.12);
+  --warn-200:  rgba(253,176,34,0.3);
+  --warn-600:  #FDB022;
+  --warn-700:  #FEC84B;
 
   /* Alias de compatibilidad */
   --color-bg:             var(--bg);
@@ -111,18 +153,21 @@
   --color-text-primary:   var(--text);
   --color-text-secondary: var(--text-2);
   --color-text-muted:     var(--text-3);
+  --color-success:        var(--pos-600);
   --color-success-bg:     var(--pos-50);
+  --color-danger:         var(--neg-600);
   --color-danger-bg:      var(--neg-50);
+  --color-warning:        var(--warn-600);
   --color-warning-bg:     var(--warn-50);
 
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
   --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.55);
   --shadow-lg: 0 12px 28px -6px rgba(0,0,0,0.65);
 }
 
 /* Cifras monetarias / numéricas alineadas en columnas (look financiero) */
-.tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.tabular, .n { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 *, *::before, *::after {
   margin: 0;
@@ -138,7 +183,7 @@ html {
 }
 
 body {
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
@@ -164,7 +209,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 p { line-height: 1.6; }
-a { color: var(--color-primary); text-decoration: none; transition: var(--transition-fast); }
+a { color: var(--accent-text); text-decoration: none; transition: var(--transition-fast); }
 a:hover { color: var(--color-primary-hover); }
 
 /* Layout utilities */

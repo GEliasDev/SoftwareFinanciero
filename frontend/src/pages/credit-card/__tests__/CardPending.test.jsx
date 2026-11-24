@@ -8,7 +8,7 @@ vi.mock('../../../services/cardInboxService', () => ({
   CardInboxService: { list: vi.fn(), sync: vi.fn(), approve: vi.fn(), discard: vi.fn() },
 }));
 // Todos los diálogos se confirman solos.
-vi.mock('sweetalert2', () => ({ default: { fire: vi.fn().mockResolvedValue({ isConfirmed: true }) } }));
+vi.mock('../../../utils/alerts', () => ({ default: { fire: vi.fn().mockResolvedValue({ isConfirmed: true }) } }));
 
 // Monta CardPending como pestaña hija del layout, con el contexto que le pasa CreditCardLayout.
 const reload = vi.fn();

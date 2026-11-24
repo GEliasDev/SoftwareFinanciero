@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 import { CreditCardService } from '../services/creditCardService';
 import {
   ArrowLeft, Edit2, Trash2, Check, DollarSign, Table2,

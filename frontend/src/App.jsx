@@ -9,9 +9,11 @@ import { ResetPassword } from './pages/ResetPassword';
 import { AuthService } from './services/authService';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { NotFound } from './pages/NotFound';
+import { Toaster } from 'sonner';
+import { ConfirmHost } from './components/ui/ConfirmHost';
 
 // Todo lo que vive detrás del login se carga bajo demanda: antes las ~40
-// páginas (incluyendo recharts, xlsx, sweetalert2 de varias de ellas) se
+// páginas (incluyendo recharts y xlsx de varias de ellas) se
 // empaquetaban en un solo chunk de 1.4 MB que se descargaba incluso para
 // entrar al login. `lazyNamed` adapta el export nombrado (`export const X`)
 // de cada página al `default` que exige React.lazy, sin tocar los archivos.
@@ -55,6 +57,7 @@ const IncomeForm = lazyNamed(() => import('./pages/IncomeForm'), 'IncomeForm');
 // Herramientas
 const Reports = lazyNamed(() => import('./pages/Reports'), 'Reports');
 const Profile = lazyNamed(() => import('./pages/Profile'), 'Profile');
+const More = lazyNamed(() => import('./pages/More'), 'More');
 const Onboarding = lazyNamed(() => import('./pages/Onboarding'), 'Onboarding');
 const PrivacyPolicy = lazyNamed(() => import('./pages/PrivacyPolicy'), 'PrivacyPolicy');
 
@@ -133,12 +136,15 @@ function App() {
           {/* Herramientas */}
           <Route path="reports" element={<Reports />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="more" element={<More />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
     </BrowserRouter>
+    <Toaster position="top-center" toastOptions={{ className: 'debti-toast' }} />
+    <ConfirmHost />
     </ErrorBoundary>
   );
 }

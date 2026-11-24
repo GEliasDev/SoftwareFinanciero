@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 import { ArrowLeft, Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { CreditCardService } from '../services/creditCardService';
 import { PageHeader } from '../components/ui/PageHeader';

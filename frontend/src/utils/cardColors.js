@@ -1,12 +1,14 @@
+// Colores sólidos de tarjeta (el rediseño no usa degradados). `gradient` se
+// conserva como nombre de propiedad porque se usa directo como `background`.
 export const CARD_COLORS = [
-  { key: 'blue',   label: 'Azul',    gradient: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)' },
-  { key: 'purple', label: 'Morado',  gradient: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)' },
-  { key: 'green',  label: 'Verde',   gradient: 'linear-gradient(135deg, #059669 0%, #064e3b 100%)' },
-  { key: 'red',    label: 'Rojo',    gradient: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' },
-  { key: 'slate',  label: 'Grafito', gradient: 'linear-gradient(135deg, #475569 0%, #1e293b 100%)' },
-  { key: 'gold',   label: 'Dorado',  gradient: 'linear-gradient(135deg, #d97706 0%, #92400e 100%)' },
-  { key: 'rose',   label: 'Rosa',    gradient: 'linear-gradient(135deg, #e11d48 0%, #9f1239 100%)' },
-  { key: 'teal',   label: 'Teal',    gradient: 'linear-gradient(135deg, #0891b2 0%, #155e75 100%)' },
+  { key: 'blue',   label: 'Azul',    gradient: '#0D47A1' },
+  { key: 'purple', label: 'Morado',  gradient: '#5B21B6' },
+  { key: 'green',  label: 'Verde',   gradient: '#047857' },
+  { key: 'red',    label: 'Rojo',    gradient: '#B42318' },
+  { key: 'slate',  label: 'Grafito', gradient: '#344054' },
+  { key: 'gold',   label: 'Dorado',  gradient: '#B54708' },
+  { key: 'rose',   label: 'Rosa',    gradient: '#BE123C' },
+  { key: 'teal',   label: 'Teal',    gradient: '#0E7490' },
 ];
 
 // Oscurece un hex en la proporción indicada (0–1).
@@ -24,6 +26,9 @@ export const getCardGradient = (key) => {
   const preset = CARD_COLORS.find(c => c.key === key);
   if (preset) return preset.gradient;
   // Color hex personalizado
-  if (key.startsWith('#')) return `linear-gradient(135deg, ${key} 0%, ${darkenHex(key, 0.25)} 100%)`;
+  if (key.startsWith('#')) return key;
   return CARD_COLORS[0].gradient;
 };
+
+// Alias con nombre claro para el código nuevo.
+export const getCardColor = getCardGradient;

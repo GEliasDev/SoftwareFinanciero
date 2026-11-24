@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../../utils/alerts';
 import { ArrowLeft, Edit2, Trash2, LayoutGrid, CalendarClock, BarChart2, RotateCcw } from 'lucide-react';
 import { BankCreditService } from '../../services/bankCreditService';
 import { TabNav } from '../../components/ui/TabNav';

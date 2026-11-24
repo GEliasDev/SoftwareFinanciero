@@ -5,7 +5,7 @@ import {
   ArrowLeft, CreditCard, Info, AlertTriangle, Calendar,
   DollarSign, Check, Percent, ChevronRight, ChevronLeft, AlertCircle,
 } from 'lucide-react';
-import { CARD_COLORS, getCardGradient, darkenHex } from '../utils/cardColors';
+import { CARD_COLORS, getCardGradient } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
@@ -180,7 +180,7 @@ export const CreditCardNew = () => {
                 <div style={{
                   width: 30, height: 30, borderRadius: '50%',
                   background: formData.color.startsWith('#')
-                    ? `linear-gradient(135deg, ${formData.color} 0%, ${darkenHex(formData.color, 0.25)} 100%)`
+                    ? formData.color
                     : 'conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)',
                   border: formData.color.startsWith('#') ? '2px solid var(--text)' : '2px solid var(--color-border)',
                   boxShadow: formData.color.startsWith('#') ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.15)',

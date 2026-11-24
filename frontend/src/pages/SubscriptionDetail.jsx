@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 import { SubscriptionService } from '../services/subscriptionService';
 import { ArrowLeft, Edit2, Trash2, Wallet, CalendarRange, CalendarClock, Info, CreditCard } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';

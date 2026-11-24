@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGoBack } from '../hooks/useGoBack';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 import { CreditCardService } from '../services/creditCardService';
 import {
   ArrowLeft, CreditCard, Check, AlertTriangle, Percent,
   ChevronRight, ChevronLeft, AlertCircle, Calendar, DollarSign,
 } from 'lucide-react';
-import { CARD_COLORS, getCardGradient, darkenHex } from '../utils/cardColors';
+import { CARD_COLORS, getCardGradient } from '../utils/cardColors';
 import { Stepper } from '../components/ui/Stepper';
 import { DayOfMonthPicker } from '../components/ui/DayOfMonthPicker';
 import { MoneyInput } from '../components/ui/MoneyInput';
@@ -183,7 +183,7 @@ export const CreditCardEdit = () => {
                 <div style={{
                   width: 30, height: 30, borderRadius: '50%',
                   background: data.color.startsWith('#')
-                    ? `linear-gradient(135deg, ${data.color} 0%, ${darkenHex(data.color, 0.25)} 100%)`
+                    ? data.color
                     : 'conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444)',
                   border: data.color.startsWith('#') ? '2px solid var(--text)' : '2px solid var(--color-border)',
                   boxShadow: data.color.startsWith('#') ? '0 0 0 2px white, 0 0 0 4px var(--text)' : '0 2px 6px rgba(0,0,0,0.15)',

@@ -18,13 +18,13 @@
     <style>
       #splash {
         position: fixed; inset: 0; z-index: 9999;
-        background: var(--splash-bg, #f8fafc);
+        background: var(--splash-bg, #F6F7F9);
         display: flex; flex-direction: column;
         align-items: center; justify-content: center; gap: 16px;
         transition: opacity 0.35s ease, visibility 0.35s ease;
       }
       #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-      [data-theme="dark"] #splash { --splash-bg: #0f172a; }
+      [data-theme="dark"] #splash { --splash-bg: #0B0F17; }
       .splash-logo {
         width: 120px; height: 120px;
         display: flex; align-items: center; justify-content: center;
@@ -32,14 +32,14 @@
       }
       .splash-logo img { width: 120px; height: 120px; object-fit: contain; }
       .splash-wordmark {
-        font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        font-family: 'Inter', system-ui, sans-serif;
         font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
-        color: #1e293b; animation: splash-fade 0.4s 0.15s ease both;
+        color: #101828; animation: splash-fade 0.4s 0.15s ease both;
       }
       [data-theme="dark"] .splash-wordmark { color: #f1f5f9; }
       .splash-dot {
         width: 6px; height: 6px; border-radius: 50%;
-        background: #5B4DF1; opacity: 0.5;
+        background: #047857; opacity: 0.5;
         animation: splash-pulse 1s 0.3s ease-in-out infinite alternate;
       }
       @keyframes splash-pop {

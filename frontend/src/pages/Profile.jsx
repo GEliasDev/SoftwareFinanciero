@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../utils/alerts';
 import { UserService } from '../services/userService';
 import { AuthService } from '../services/authService';
 import { TwoFactorService } from '../services/twoFactorService';

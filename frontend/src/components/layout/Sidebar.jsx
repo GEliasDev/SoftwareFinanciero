@@ -1,99 +1,81 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard, Repeat, CreditCard, Landmark,
-  Menu, X, BarChart2, Wallet,
-} from 'lucide-react';
-import logo from '../../assets/logo.png';
-import icono from '../../assets/icono.png';
+import { NavLink, useNavigate } from 'react-router-dom';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Home, Wallet, CreditCard, Landmark, Repeat, BarChart3, UserCircle, Moon, Sun, LogOut, ChevronsUpDown } from 'lucide-react';
+import { AuthService } from '../../services/authService';
+import { useShell, useThemeState } from './ShellContext';
+import { userInitials, userShortName } from './userDisplay';
 
-const SECTION_ICONS = {
-  '/': LayoutDashboard,
-  '/income': Wallet,
-  '/credit-cards': CreditCard,
-  '/bank-credits': Landmark,
-  '/subscriptions': Repeat,
-  '/reports': BarChart2,
-};
-
-function useActiveIcon() {
-  const { pathname } = useLocation();
-  const base = '/' + pathname.split('/')[1];
-  return SECTION_ICONS[base] ?? SECTION_ICONS['/'];
-}
-
-const NavItem = ({ to, icon: Icon, label, end, onClick }) => (
-  <NavLink
-    to={to}
-    end={end}
-    title={label}
-    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-    onClick={onClick}
-  >
-    <span className="nav-icon"><Icon size={16} /></span>
-    <span>{label}</span>
+const NavItem = ({ to, icon: Icon, label, end, badge, badgeLabel }) => (
+  <NavLink to={to} end={end} title={label} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+    <span className="nav-icon"><Icon size={18} /></span>
+    <span className="nav-label">{label}</span>
+    {badge > 0 && (
+      <span className="nav-badge n" title={badgeLabel} aria-label={badgeLabel}>{badge}</span>
+    )}
   </NavLink>
 );
 
-export const Sidebar = ({ isOpen, setIsOpen }) => {
-  const close = () => setIsOpen(false);
-  const ActiveIcon = useActiveIcon();
+export const BrandLogo = ({ to = '/' }) => (
+  <NavLink to={to} className="brand-logo" aria-label="Debti, ir a inicio">
+    <span className="brand-mark" aria-hidden="true">D</span>
+    <span className="brand-name">Debti</span>
+  </NavLink>
+);
+
+export const Sidebar = () => {
+  const navigate = useNavigate();
+  const { pendingCount } = useShell();
+  const user = AuthService.getCurrentUser();
+  const [theme, applyTheme] = useThemeState();
 
   return (
-    <>
-      {/* Botón hamburguesa fijo (esquina superior izquierda): abre el drawer en móvil.
-          Se oculta mientras el drawer está abierto; el cierre vive dentro del header
-          del sidebar (patrón estándar, evita tapar el logo). */}
-      <button
-        className={`menu-toggle${isOpen ? ' sidebar-open' : ''}`}
-        onClick={() => setIsOpen(true)}
-        aria-label="Abrir menú"
-      >
-        <Menu size={20} />
-        <span style={{
-          position: 'absolute', bottom: 2, right: 2,
-          width: 14, height: 14, borderRadius: '50%',
-          background: 'var(--brand-600)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <ActiveIcon size={8} color="white" />
-        </span>
-      </button>
+    <aside className="sidebar" aria-label="Navegación principal">
+      <div className="sidebar-header"><BrandLogo /></div>
 
-      {isOpen && (
-        <div
-          onClick={close}
-          className="sidebar-overlay"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', zIndex: 49 }}
+      <nav className="sidebar-nav">
+        <NavItem to="/" icon={Home} label="Inicio" end />
+        <NavItem to="/income" icon={Wallet} label="Ingresos" />
+        <div className="nav-divider" />
+        <NavItem
+          to="/credit-cards" icon={CreditCard} label="Tarjetas"
+          badge={pendingCount} badgeLabel={`${pendingCount} movimientos por aprobar`}
         />
-      )}
+        <NavItem to="/bank-credits" icon={Landmark} label="Créditos" />
+        <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" />
+        <div className="nav-divider" />
+        <NavItem to="/reports" icon={BarChart3} label="Reportes" />
+      </nav>
 
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <NavLink to="/" className="sidebar-logo" onClick={close}>
-            {/* Wordmark completo; en el rail de tablet (64px) se muestra solo el isotipo */}
-            <img src={logo} alt="Debti" className="sidebar-logo-full" />
-            <img src={icono} alt="Debti" className="sidebar-logo-icon" />
-          </NavLink>
-          <button className="sidebar-close" onClick={close} aria-label="Cerrar menú">
-            <X size={18} />
-          </button>
-        </div>
-
-        <nav className="sidebar-nav">
-          <NavItem to="/" icon={LayoutDashboard} label="Dashboard" end onClick={close} />
-
-          <div className="nav-divider" />
-          <NavItem to="/income" icon={Wallet} label="Ingresos" onClick={close} />
-
-          <div className="nav-divider" />
-          <NavItem to="/credit-cards" icon={CreditCard} label="Tarjetas" onClick={close} />
-          <NavItem to="/bank-credits" icon={Landmark} label="Créditos" onClick={close} />
-          <NavItem to="/subscriptions" icon={Repeat} label="Suscripciones" onClick={close} />
-
-          <div className="nav-divider" />
-          <NavItem to="/reports" icon={BarChart2} label="Reportes" onClick={close} />
-        </nav>
-      </aside>
-    </>
+      <div className="sidebar-footer">
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button className="sidebar-user" aria-label="Menú de cuenta">
+              <span className="avatar">{userInitials(user)}</span>
+              <span className="sidebar-user-text">
+                <span className="sidebar-user-name">{userShortName(user)}</span>
+                <span className="sidebar-user-sub">Perfil y ajustes</span>
+              </span>
+              <ChevronsUpDown size={16} className="sidebar-user-caret" />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content className="menu-content" side="top" align="start" sideOffset={6}>
+              {user?.email && <DropdownMenu.Label className="menu-label">{user.email}</DropdownMenu.Label>}
+              <DropdownMenu.Item className="menu-item" onSelect={() => navigate('/profile')}>
+                <UserCircle size={16} /> Perfil y seguridad
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className="menu-item" onSelect={() => applyTheme(theme === 'dark' ? 'light' : 'dark')}>
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                {theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator className="menu-sep" />
+              <DropdownMenu.Item className="menu-item danger" onSelect={() => AuthService.logout()}>
+                <LogOut size={16} /> Cerrar sesión
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      </div>
+    </aside>
   );
 };
