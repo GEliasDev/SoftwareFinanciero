@@ -1,4 +1,4 @@
-import { buildSchedule } from './creditCard';
+import { buildSchedule, attachAdvanceCommission } from './creditCard';
 import { buildLoanSchedule } from './bankCredit';
 import { toCOP } from './currency';
 import { parseLocalDate } from './format';
@@ -20,17 +20,24 @@ const idxDe = (d) => d.getFullYear() * 12 + d.getMonth();
 const sum = (arr) => arr.reduce((s, n) => s + n, 0);
 
 /**
- * Lo que se paga de una tarjeta en el mes: el total del corte cuyo vencimiento
- * cae en ese mes (si el día de pago es menor que el de corte, se paga el mes
- * siguiente al corte). Usa `buildSchedule`, la misma fuente que el extracto.
+ * Lo que dice el extracto del mes: el total del corte de ese mes, igual que la
+ * pestaña Extracto (mismo `buildSchedule` y mismas compras normalizadas).
+ * `card.CreditCardPurchases` debe traer TODAS las compras (también las pagadas,
+ * de `getPurchases`): con solo las activas, un corte ya pagado salía en $0.
  */
 export const cardDueForMonth = (card, anio, mes) => {
   if (!card) return 0;
-  const offset = Number(card.fechaPago) < Number(card.fechaCorte) ? 1 : 0;
-  const cut = idx(anio, mes) - offset;
-  const key = `${Math.floor(cut / 12)}-${String((cut % 12) + 1).padStart(2, '0')}`;
-  const slot = buildSchedule(card.CreditCardPurchases || [], card, 36).find(s => s.key === key);
+  const key = `${anio}-${String(mes).padStart(2, '0')}`;
+  const purchases = attachAdvanceCommission(card.CreditCardPurchases || []);
+  const slot = buildSchedule(purchases, card, 36).find(s => s.key === key);
   return slot ? slot.total : 0;
+};
+
+/** Mes (1-12) y año en que se paga el extracto del mes dado: si el día de pago es menor que el de corte, al mes siguiente. */
+export const cardPayMonth = (card, anio, mes) => {
+  const offset = Number(card?.fechaPago) < Number(card?.fechaCorte) ? 1 : 0;
+  const i = idx(anio, mes) + offset;
+  return { anio: Math.floor(i / 12), mes: (i % 12) + 1 };
 };
 
 /** Cuota del crédito si el mes está entre su inicio y su última cuota pendiente. */

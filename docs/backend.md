@@ -159,7 +159,7 @@ UI parte de 1 y el usuario la ajusta.
 Tabla `balance_items` (migración `20261124120000`): filas `ingreso`/`gasto` por `anio`+`mes` con `estado`
 (`pendiente|recibido` para ingresos; `pendiente|comprometido|pagado` para gastos).
 `origen` = `manual | tarjeta | credito | suscripcion | ingreso` + `origenId`: las enlazadas guardan `monto = NULL` (automático)
-y el frontend calcula el monto del mes (`frontend/src/utils/balance.js`: corte que vence ese mes, cuota del crédito,
+y el frontend calcula el monto del mes (`frontend/src/utils/balance.js`: total del extracto (corte) de ese mes con TODAS las compras vía `getPurchases`, como la pestaña Extracto; `getAll` solo trae activas y un corte pagado salía en $0; cuota del crédito,
 suscripción sin tarjeta, ingreso fijo o extra del mes). Al marcar `pagado` una fila automática, el frontend fija el monto
 (el cálculo de tarjetas solo mira cuotas pendientes y bajaría tras pagar).
 Endpoints: `GET /api/balance?anio&mes`, `POST /api/balance {anio, mes, items[]}` (verifica dueño del enlazado y omite

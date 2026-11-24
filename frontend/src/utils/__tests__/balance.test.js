@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cardDueForMonth, creditDueForMonth, subDueForMonth, incomeDueForMonth, montoFila, resumenBalance } from '../balance';
+import { cardDueForMonth, cardPayMonth, creditDueForMonth, subDueForMonth, incomeDueForMonth, montoFila, resumenBalance } from '../balance';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -8,7 +8,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('cardDueForMonth', () => {
-  // Corte 15, pago 5: el corte de noviembre se paga en diciembre.
+  // Corte 15, pago 5: el extracto de diciembre se paga en enero.
   const card = {
     fechaCorte: 15, fechaPago: 5,
     CreditCardPurchases: [
@@ -16,18 +16,25 @@ describe('cardDueForMonth', () => {
     ],
   };
 
-  it('asigna cada corte al mes en que se paga', () => {
-    // Compra 20-nov (después del corte 15) → primer corte 15-dic → se paga en enero.
-    expect(cardDueForMonth(card, 2026, 12)).toBe(0);
-    expect(cardDueForMonth(card, 2027, 1)).toBe(100000);
-    expect(cardDueForMonth(card, 2027, 3)).toBe(100000);
-    expect(cardDueForMonth(card, 2027, 4)).toBe(0);
+  it('el balance del mes muestra el extracto de ese mes (mes del corte)', () => {
+    // Compra 20-nov (después del corte 15) → cortes de dic, ene y feb.
+    expect(cardDueForMonth(card, 2026, 11)).toBe(0);
+    expect(cardDueForMonth(card, 2026, 12)).toBe(100000);
+    expect(cardDueForMonth(card, 2027, 2)).toBe(100000);
+    expect(cardDueForMonth(card, 2027, 3)).toBe(0);
   });
 
-  it('pago después del corte: se paga el mismo mes del corte', () => {
-    const c2 = { ...card, fechaCorte: 10, fechaPago: 25 };
-    // Compra 20-nov (después del corte 10) → primer corte 10-dic → pago 25-dic.
-    expect(cardDueForMonth(c2, 2026, 12)).toBe(100000);
+  // Regresión 2026-11-24: con solo las compras activas, un extracto ya pagado salía en $0.
+  it('incluye compras ya pagadas del extracto', () => {
+    const c = { fechaCorte: 20, fechaPago: 10, CreditCardPurchases: [
+      { id: 2, descripcion: 'Pagada', fechaCompra: '2026-10-25', numeroCuotas: 1, cuotasPagadas: 1, valorCuotaMensual: '42000', status: 'pagada' },
+    ] };
+    expect(cardDueForMonth(c, 2026, 11)).toBe(42000);
+  });
+
+  it('cardPayMonth: pago antes del corte → mes siguiente', () => {
+    expect(cardPayMonth({ fechaCorte: 30, fechaPago: 10 }, 2026, 12)).toEqual({ anio: 2027, mes: 1 });
+    expect(cardPayMonth({ fechaCorte: 15, fechaPago: 30 }, 2026, 11)).toEqual({ anio: 2026, mes: 11 });
   });
 });
 

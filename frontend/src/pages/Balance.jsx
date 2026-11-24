@@ -15,7 +15,7 @@ import { useIsMobile } from '../hooks/useMediaQuery';
 import { fmt } from '../utils/format';
 import {
   MESES, CATEGORIAS_INGRESO, CATEGORIAS_GASTO, ESTADOS,
-  cardDueForMonth, creditDueForMonth, subDueForMonth, incomeDueForMonth,
+  cardDueForMonth, cardPayMonth, creditDueForMonth, subDueForMonth, incomeDueForMonth,
   montoFila, fuenteDe, resumenBalance,
 } from '../utils/balance';
 import Swal from '../utils/alerts';
@@ -24,6 +24,12 @@ const ESTADO_BADGE = { pendiente: 'neutral', comprometido: 'warning', pagado: 's
 const ORIGEN_LABEL = { tarjeta: 'Tarjeta', credito: 'Crédito', suscripcion: 'Suscripción', ingreso: 'Ingreso de Debti' };
 const errMsg = (e, fallback) => e?.response?.data?.message || fallback;
 const pct = (n) => `${Math.round(n * 100)} %`;
+
+// Tarjetas con TODAS sus compras (también las pagadas), como la pestaña
+// Extracto: `getAll` solo trae las activas y un extracto pagado salía en $0.
+const cardsConCompras = () => CreditCardService.getAll().then(cards => Promise.all(cards.map(c =>
+  CreditCardService.getPurchases(c.id).then(CreditCardPurchases => ({ ...c, CreditCardPurchases }))
+)));
 
 // ── Piezas ────────────────────────────────────────────────────────────────────
 
@@ -291,7 +297,7 @@ const ElegirDeDebti = ({ grupos, onSubmit, onCancel, saving }) => {
           ))}
         </fieldset>
       ))}
-      <p className="form-hint" style={{ marginTop: 8 }}>El monto se calcula solo para el mes. Si el extracto dice otra cosa, edítalo después.</p>
+      <p className="form-hint" style={{ marginTop: 8 }}>Cada tarjeta trae el total de su extracto de este mes, el mismo de la pestaña Extracto. Si el banco dice otra cosa, edítalo después.</p>
       <div className="dlg-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
         <button type="button" className="btn btn-primary" disabled={!elegidos.length || saving} onClick={() => onSubmit(elegidos)}>
@@ -322,7 +328,7 @@ export const Balance = () => {
   const [dialogo, setDialogo] = useState(null); // { modo: 'debti' | 'manual' | 'editar', fila? }
 
   useEffect(() => {
-    Promise.allSettled([CreditCardService.getAll(), BankCreditService.getAll(), SubscriptionService.getAll(), IncomeService.getAll()])
+    Promise.allSettled([cardsConCompras(), BankCreditService.getAll(), SubscriptionService.getAll(), IncomeService.getAll()])
       .then(([c, b, s, i]) => setFuentes({
         cards:   c.status === 'fulfilled' ? c.value : [],
         credits: b.status === 'fulfilled' ? b.value : [],
@@ -358,7 +364,10 @@ export const Balance = () => {
     const item = (origen, f, nombre, sub, monto, categoria, tipo) => ({ key: `${origen}:${f.id}`, origen, origenId: f.id, nombre, sub, monto, categoria, tipo, ya: ya.has(`${origen}:${f.id}`) });
     return [
       { titulo: 'Ingresos', items: fuentes.incomes.filter(i => i.status === 'activo').map(i => item('ingreso', i, i.nombre, i.tipo === 'extra' ? 'Extra · solo cuenta el mes en que llegó' : `Fijo · llega el día ${i.diaCobro}`, incomeDueForMonth(i, anio, mes), i.tipo === 'extra' ? 'Ingresos extra' : 'Sueldo', 'ingreso')) },
-      { titulo: 'Tarjetas', items: fuentes.cards.map(c => item('tarjeta', c, c.nombre, `${c.entidad || 'Tarjeta'} · pago del corte que vence en ${mesNombre.toLowerCase()}`, cardDueForMonth(c, anio, mes), 'Tarjetas', 'gasto')) },
+      { titulo: 'Tarjetas', items: fuentes.cards.map(c => {
+        const pago = cardPayMonth(c, anio, mes);
+        return item('tarjeta', c, c.nombre, `${c.entidad || 'Tarjeta'} · extracto de ${mesNombre.toLowerCase()}, se paga el ${c.fechaPago} de ${MESES[pago.mes - 1].toLowerCase()}`, cardDueForMonth(c, anio, mes), 'Tarjetas', 'gasto');
+      }) },
       { titulo: 'Créditos', items: fuentes.credits.filter(c => ['activo', 'en_mora'].includes(c.status)).map(c => item('credito', c, c.nombre, `${c.entidad || 'Crédito'} · cuota del mes`, creditDueForMonth(c, anio, mes), 'Créditos', 'gasto')) },
       // Las que se cobran a una tarjeta ya van dentro del pago de esa tarjeta.
       { titulo: 'Suscripciones', items: fuentes.subs.filter(s => s.status === 'activa' && !s.creditCardId).map(s => item('suscripcion', s, s.nombre, s.frecuencia === 'anual' ? 'Anual · solo el mes del cobro' : 'Mensual', subDueForMonth(s, anio, mes), 'Suscripciones', 'gasto')) },
