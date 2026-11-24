@@ -5,7 +5,7 @@ reportes y movimientos por aprobar desde Gmail. Las reglas globales (`~/.claude/
 archivo solo agrega contexto del proyecto y se mantiene corto a propósito (se carga en cada sesión).
 
 ## Stack y comandos
-- Frontend `frontend/`: React 19 + Vite 8, react-router-dom 7, recharts, sweetalert2, xlsx. CSS plano con variables.
+- Frontend `frontend/`: React 19 + Vite 8, react-router-dom 7, recharts, xlsx, Radix (dialog/dropdown/popover), vaul, sonner. CSS plano con variables.
 - Backend `backend/`: Node + Express + Sequelize + Zod. PostgreSQL en Supabase (credenciales en `backend/.env`: no leer).
 - Todo junto: `npm run dev` (raíz). Frontend: `cd frontend && npm run dev` (:5174) · `build` · `lint` · `test`.
   Backend: `cd backend && npm run dev` (nodemon :3001) · `test`.
@@ -40,7 +40,8 @@ Compromisos fijos, Metas de ahorro, Presupuesto, Patrimonio neto y Notificacione
   Actualizar sus secciones cuando un cambio significativo (módulo, endpoint, migración, variable de entorno, despliegue) las deje desfasadas.
 
 ## Diseño
-No hay reglas de diseño vigentes (retiradas 2026-10-29; se hará un rediseño). No inventar convenciones visuales: seguir el código existente.
+Rediseño aplicado el 2026-11-24 (mockups aprobados). Reglas y piezas en `docs/frontend.md` § Sistema de diseño: neutros + un acento verde,
+Inter, sin degradados ni bordes laterales de color ni emojis; reutilizar las clases y componentes existentes antes de crear nuevos.
 
 ## Mantenimiento
 Gotchas, decisiones y rutas nuevas van en el archivo de `docs/` que corresponda, no aquí. Mantener este archivo bajo ~80 líneas.
