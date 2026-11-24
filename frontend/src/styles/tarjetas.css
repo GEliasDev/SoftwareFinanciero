@@ -35,7 +35,7 @@
 .cc-table th:first-child, .cc-table td:first-child { padding-left: 20px; }
 .cc-table th:last-child, .cc-table td:last-child { padding-right: 16px; }
 .cc-table thead { border-top: 1px solid var(--divider); }
-.cc-table td { padding-top: 14px; padding-bottom: 14px; }
+.cc-table td { padding-top: 9px; padding-bottom: 9px; }
 
 .cc-mrow { display: block; width: 100%; text-align: left; padding: 14px 16px; border: none; background: none; font: inherit; color: var(--text); cursor: pointer; }
 .cc-mrow:active { background: var(--surface-3); }

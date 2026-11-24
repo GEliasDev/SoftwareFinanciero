@@ -359,9 +359,10 @@ export const Dashboard = () => {
         </Link>
       )}
 
-      {/* ═══ Fila 2: próximos pagos + tarjetas ═══ */}
-      <div className="dash-mid">
-        <section className="card card-flush" aria-labelledby="dash-upcoming">
+      {/* ═══ PC: dos columnas independientes (sin huecos entre tarjetas de distinta altura) ═══ */}
+      <div className="dash-cols">
+        <div className="dash-col">
+        <section className="card card-flush dash-o1" aria-labelledby="dash-upcoming">
           <div className="card-header">
             <h2 className="card-title" id="dash-upcoming">Próximos pagos</h2>
             <Link to="/reports" className="link-sm">Ver todo</Link>
@@ -408,70 +409,7 @@ export const Dashboard = () => {
           )}
         </section>
 
-        <section className="card dash-cards" aria-labelledby="dash-cards">
-          <div className="card-header" style={{ marginBottom: 8 }}>
-            <h2 className="card-title" id="dash-cards">Tarjetas</h2>
-            <Link to="/credit-cards" className="link-sm">Ver todas</Link>
-          </div>
-          {cards.length === 0 ? (
-            <p className="text-secondary" style={{ fontSize: 14 }}>Aún no tienes tarjetas. <Link to="/credit-cards/new">Agregar tarjeta</Link></p>
-          ) : (
-            <div className="row-list">
-              {cardStats.slice(0, 4).map(cs => {
-                const c = cardById[cs.cardId];
-                const total = parseFloat(c.cupoTotal) || 0;
-                const used = total ? Math.min(100, Math.max(0, ((total - parseFloat(c.cupoDisponible)) / total) * 100)) : 0;
-                return (
-                  <Link key={cs.cardId} to={`/credit-cards/${cs.cardId}`} className="dash-card-row">
-                    <div className="row-between">
-                      <span className="row" style={{ gap: 10, minWidth: 0 }}>
-                        <span className="card-chip" style={{ background: getCardColor(c.color) }} />
-                        <span className="truncate"><b>{c.nombre}</b> <span className="text-secondary">· {c.entidad}</span></span>
-                      </span>
-                      {cs.cardOblMes > 0 ? <b className="n">{fmt(cs.cardOblMes)}</b> : <span className="text-success text-sm" style={{ fontWeight: 600 }}>Al día</span>}
-                    </div>
-                    <div className="progress-track" style={{ margin: '10px 0 8px' }}>
-                      <div className="progress-fill" style={{ transform: `scaleX(${used / 100})`, background: 'var(--cat-1)' }} />
-                    </div>
-                    <div className="row-between text-sm text-secondary">
-                      <span className="n">Cupo usado {Math.round(used)} % · disponible {fmt(c.cupoDisponible)}</span>
-                      {cs.cardOblMes > 0 && <span>pago del corte</span>}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Teléfono: carrusel de tarjetas */}
-      {cards.length > 0 && (
-        <section className="mobile-only" aria-labelledby="dash-cards-m">
-          <div className="row-between" style={{ margin: '24px 0 12px' }}>
-            <h2 className="card-title" id="dash-cards-m">Tus tarjetas</h2>
-            <Link to="/credit-cards" className="link-sm">Ver todas</Link>
-          </div>
-          <div className="card-carousel">
-            {cardStats.map(cs => {
-              const c = cardById[cs.cardId];
-              return (
-                <Link key={cs.cardId} to={`/credit-cards/${cs.cardId}`} className="mini-cc" style={{ background: getCardColor(c.color) }}>
-                  <div className="row-between"><b>{c.nombre}</b><span>{c.entidad}</span></div>
-                  <div className="mini-cc-foot">
-                    <div><span>Disponible</span><b className="n">{fmt(c.cupoDisponible)}</b></div>
-                    {cs.cardOblMes > 0 && <div><span>Pago del corte</span><b className="n">{fmt(cs.cardOblMes)}</b></div>}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ═══ Fila 3: créditos + por aprobar ═══ */}
-      <div className="dash-bottom desktop-grid">
-        <section className="card" aria-labelledby="dash-credits">
+        <section className="card dash-o3" aria-labelledby="dash-credits">
           <div className="card-header" style={{ marginBottom: 12 }}>
             <h2 className="card-title" id="dash-credits">Créditos</h2>
             <Link to="/bank-credits" className="link-sm">Ver todos</Link>
@@ -507,8 +445,46 @@ export const Dashboard = () => {
             </>
           )}
         </section>
+        </div>
 
-        <section className="card" aria-labelledby="dash-inbox">
+        <div className="dash-col">
+        <section className="card dash-cards" aria-labelledby="dash-cards">
+          <div className="card-header" style={{ marginBottom: 8 }}>
+            <h2 className="card-title" id="dash-cards">Tarjetas</h2>
+            <Link to="/credit-cards" className="link-sm">Ver todas</Link>
+          </div>
+          {cards.length === 0 ? (
+            <p className="text-secondary" style={{ fontSize: 14 }}>Aún no tienes tarjetas. <Link to="/credit-cards/new">Agregar tarjeta</Link></p>
+          ) : (
+            <div className="row-list">
+              {cardStats.slice(0, 4).map(cs => {
+                const c = cardById[cs.cardId];
+                const total = parseFloat(c.cupoTotal) || 0;
+                const used = total ? Math.min(100, Math.max(0, ((total - parseFloat(c.cupoDisponible)) / total) * 100)) : 0;
+                return (
+                  <Link key={cs.cardId} to={`/credit-cards/${cs.cardId}`} className="dash-card-row">
+                    <div className="row-between">
+                      <span className="row" style={{ gap: 10, minWidth: 0 }}>
+                        <span className="card-chip" style={{ background: getCardColor(c.color) }} />
+                        <span className="truncate"><b>{c.nombre}</b> <span className="text-secondary">· {c.entidad}</span></span>
+                      </span>
+                      {cs.cardOblMes > 0 ? <b className="n">{fmt(cs.cardOblMes)}</b> : <span className="text-success text-sm" style={{ fontWeight: 600 }}>Al día</span>}
+                    </div>
+                    <div className="progress-track" style={{ margin: '10px 0 8px' }}>
+                      <div className="progress-fill" style={{ transform: `scaleX(${used / 100})`, background: 'var(--cat-1)' }} />
+                    </div>
+                    <div className="row-between text-sm text-secondary">
+                      <span className="n">Cupo usado {Math.round(used)} % · disponible {fmt(c.cupoDisponible)}</span>
+                      {cs.cardOblMes > 0 && <span>pago del corte</span>}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="card dash-o4" aria-labelledby="dash-inbox">
           <div className="card-header" style={{ marginBottom: 12 }}>
             <h2 className="card-title row" id="dash-inbox" style={{ gap: 8 }}>
               Por aprobar {inbox.length > 0 && <span className="badge badge-primary n">{inbox.length}</span>}
@@ -542,7 +518,33 @@ export const Dashboard = () => {
             </>
           )}
         </section>
+        </div>
       </div>
+
+      {/* Teléfono: carrusel de tarjetas */}
+      {cards.length > 0 && (
+        <section className="mobile-only dash-o2" aria-labelledby="dash-cards-m">
+          <div className="row-between" style={{ margin: '24px 0 12px' }}>
+            <h2 className="card-title" id="dash-cards-m">Tus tarjetas</h2>
+            <Link to="/credit-cards" className="link-sm">Ver todas</Link>
+          </div>
+          <div className="card-carousel">
+            {cardStats.map(cs => {
+              const c = cardById[cs.cardId];
+              return (
+                <Link key={cs.cardId} to={`/credit-cards/${cs.cardId}`} className="mini-cc" style={{ background: getCardColor(c.color) }}>
+                  <div className="row-between"><b>{c.nombre}</b><span>{c.entidad}</span></div>
+                  <div className="mini-cc-foot">
+                    <div><span>Disponible</span><b className="n">{fmt(c.cupoDisponible)}</b></div>
+                    {cs.cardOblMes > 0 && <div><span>Pago del corte</span><b className="n">{fmt(cs.cardOblMes)}</b></div>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
     </div>
   );
 };

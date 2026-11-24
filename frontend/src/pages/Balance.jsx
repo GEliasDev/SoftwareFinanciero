@@ -164,43 +164,50 @@ const Seccion = ({ id, titulo, filas, vacio, onEstado, onEdit, onDelete }) => {
   );
 };
 
-const Resumen = ({ r, mesNombre }) => (
-  <section className="card bal-resumen" aria-labelledby="bal-resumen-t">
-    <h2 className="card-title" id="bal-resumen-t">Resumen de {mesNombre}</h2>
-    <div className="bal-queda">
-      <p>Queda después de pagar todo</p>
-      <span className={`amount-xl n ${r.queda < 0 ? 'neg' : ''}`}>{fmt(r.queda)}</span>
-    </div>
-    <dl className="bal-kv">
-      <div><dt>Ingresos</dt><dd className="n">{fmt(r.ingresos)}</dd></div>
-      <div className="sub"><dt>Ya recibido</dt><dd className="n">{fmt(r.recibido)}</dd></div>
-      <div><dt>Gastos totales</dt><dd className="n">{fmt(r.gastos)}</dd></div>
-      <div className="sub"><dt>Pagado</dt><dd className="n">{fmt(r.pagado)}</dd></div>
-      <div className="sub"><dt>Comprometido</dt><dd className="n">{fmt(r.comprometido)}</dd></div>
-      <div className="sub"><dt>Pendiente</dt><dd className="n">{fmt(r.pendiente)}</dd></div>
-      <div className="strong"><dt>Disponible hoy <span>recibido menos pagado</span></dt><dd className={`n ${r.disponibleHoy < 0 ? 'text-danger' : ''}`}>{fmt(r.disponibleHoy)}</dd></div>
-    </dl>
-    <div className="bal-progress">
-      <div className="row-between text-sm"><span className="text-secondary">Gastos ya pagados</span><b className="n">{pct(r.pctPagado)}</b></div>
-      <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(r.pctPagado * 100)} aria-label="Gastos ya pagados">
-        <div className="progress-fill" style={{ width: `${Math.min(100, r.pctPagado * 100)}%` }} />
+// En teléfono el detalle se pliega: arriba solo lo que queda, ingresos y gastos.
+const Resumen = ({ r, mesNombre }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className={`card bal-resumen ${open ? 'open' : ''}`} aria-labelledby="bal-resumen-t">
+      <h2 className="card-title" id="bal-resumen-t">Resumen de {mesNombre}</h2>
+      <div className="bal-queda">
+        <p>Queda después de pagar todo</p>
+        <span className={`amount-xl n ${r.queda < 0 ? 'neg' : ''}`}>{fmt(r.queda)}</span>
       </div>
-    </div>
-    {r.categorias.length > 0 && (
-      <>
-        <h3 className="bal-sub-t">Gastos por categoría</h3>
-        <ul className="bal-cats">
-          {r.categorias.map(c => (
-            <li key={c.categoria}>
-              <span className="row-between"><span>{c.categoria}</span><b className="n">{fmt(c.valor)}</b></span>
-              <span className="bal-bar"><span style={{ width: `${r.gastos ? (c.valor / r.gastos) * 100 : 0}%` }} /></span>
-            </li>
-          ))}
-        </ul>
-      </>
-    )}
-  </section>
-);
+      <dl className="bal-kv">
+        <div><dt>Ingresos</dt><dd className="n">{fmt(r.ingresos)}</dd></div>
+        <div className="sub bal-more"><dt>Ya recibido</dt><dd className="n">{fmt(r.recibido)}</dd></div>
+        <div><dt>Gastos totales</dt><dd className="n">{fmt(r.gastos)}</dd></div>
+        <div className="sub bal-more"><dt>Pagado</dt><dd className="n">{fmt(r.pagado)}</dd></div>
+        <div className="sub bal-more"><dt>Comprometido</dt><dd className="n">{fmt(r.comprometido)}</dd></div>
+        <div className="sub bal-more"><dt>Pendiente</dt><dd className="n">{fmt(r.pendiente)}</dd></div>
+        <div className="strong bal-more"><dt>Disponible hoy <span>recibido menos pagado</span></dt><dd className={`n ${r.disponibleHoy < 0 ? 'text-danger' : ''}`}>{fmt(r.disponibleHoy)}</dd></div>
+      </dl>
+      <div className="bal-progress bal-more">
+        <div className="row-between text-sm"><span className="text-secondary">Gastos ya pagados</span><b className="n">{pct(r.pctPagado)}</b></div>
+        <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(r.pctPagado * 100)} aria-label="Gastos ya pagados">
+          <div className="progress-fill" style={{ width: `${Math.min(100, r.pctPagado * 100)}%` }} />
+        </div>
+      </div>
+      {r.categorias.length > 0 && (
+        <div className="bal-more">
+          <h3 className="bal-sub-t">Gastos por categoría</h3>
+          <ul className="bal-cats">
+            {r.categorias.map(c => (
+              <li key={c.categoria}>
+                <span className="row-between"><span>{c.categoria}</span><b className="n">{fmt(c.valor)}</b></span>
+                <span className="bal-bar"><span style={{ width: `${r.gastos ? (c.valor / r.gastos) * 100 : 0}%` }} /></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <button type="button" className="btn-text bal-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+        {open ? 'Ocultar detalle' : 'Ver detalle'} <ChevronDown size={16} style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
+      </button>
+    </section>
+  );
+};
 
 // Formulario de una fila: alta manual o edición (manual o enlazada).
 const FilaForm = ({ fila, auto, onSubmit, onCancel, saving }) => {

@@ -251,7 +251,7 @@ select.form-input {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 20px;
 }
 
 .card.clickable {
@@ -299,7 +299,7 @@ table {
 table thead { border-bottom: 1px solid var(--color-border); }
 
 table th {
-  padding: 12px 16px;
+  padding: 9px 16px;
   font-weight: 600;
   color: var(--text-3);
   font-size: 13px;
@@ -308,7 +308,7 @@ table th {
 }
 
 table td {
-  padding: 12px 16px;
+  padding: 9px 16px;
   border-bottom: 1px solid var(--divider);
   color: var(--color-text-primary);
   vertical-align: middle;
@@ -830,7 +830,7 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   gap: 16px;
 }
 
@@ -1255,17 +1255,20 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
 
 .dlg-overlay {
   position: fixed; inset: 0; z-index: 1000;
-  background: rgba(16, 24, 40, 0.45);
+  background: rgba(16, 24, 40, 0.32);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   animation: fadeIn 0.15s ease;
 }
 .dlg-content {
   position: fixed; z-index: 1001;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: calc(100% - 32px); max-width: 440px; max-height: calc(100dvh - 32px); overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-panel);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 var(--glass-edge);
   padding: 24px;
   animation: dlgIn 0.16s ease;
 }
@@ -1286,10 +1289,12 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
 .menu-content {
   z-index: 1002;
   min-width: 200px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-panel);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 var(--glass-edge);
   padding: 4px;
   animation: fadeIn 0.12s ease;
 }
@@ -1308,13 +1313,16 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
 .menu-label { padding: 6px 10px 4px; font-size: 12px; color: var(--text-3); }
 
 /* Bottom sheet (vaul) */
-.sheet-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(16, 24, 40, 0.45); }
+.sheet-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(16, 24, 40, 0.32); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 .sheet-content {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
   max-height: 92dvh; display: flex; flex-direction: column;
-  background: var(--surface);
+  background: var(--glass-panel);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   border-radius: 16px 16px 0 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-edge);
+  box-shadow: 0 -8px 24px rgba(16, 24, 40, 0.12);
   padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
 }
 .sheet-content:focus { outline: none; }
@@ -1374,3 +1382,9 @@ table tbody tr.clickable:hover td { background-color: var(--surface-2); }
 .amount-xl { font-size: 44px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--text); }
 .amount-lg { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text); }
 @media (max-width: 767px) { .amount-xl { font-size: 34px; } .amount-lg { font-size: 24px; } }
+
+/* Liquid Glass: si el sistema pide menos transparencia, capas opacas. */
+@media (prefers-reduced-transparency: reduce) {
+  .navbar, .bottom-nav { background: var(--bg) !important; backdrop-filter: none !important; }
+  .menu-content, .dlg-content, .sheet-content, .reg-panel { background: var(--surface) !important; backdrop-filter: none !important; }
+}

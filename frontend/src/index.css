@@ -46,7 +46,20 @@
   --neg-700: #912018;
 
   /* ── Neutros ── */
-  --bg:            #F6F7F9;
+  --bg:            #F3F5F4;
+  /* Menú lateral verde profundo (marca) */
+  --nav-bg:        #053B2E;
+  --nav-text:      rgba(255, 255, 255, 0.72);
+  --nav-icon:      rgba(255, 255, 255, 0.6);
+  --nav-hover:     rgba(255, 255, 255, 0.08);
+  --nav-line:      rgba(255, 255, 255, 0.12);
+  --nav-active-icon: #6EE7B7;
+  /* Liquid Glass: solo en capas que flotan sobre el contenido */
+  --glass-bar:     rgba(243, 245, 244, 0.72);
+  --glass-panel:   rgba(255, 255, 255, 0.78);
+  --glass-edge:    rgba(255, 255, 255, 0.65);
+  --glass-line:    rgba(16, 24, 40, 0.08);
+  --glass-blur:    blur(20px) saturate(180%);
   --surface:       #FFFFFF;
   --surface-2:     #F2F4F7;
   --surface-3:     #F9FAFB;
@@ -115,6 +128,12 @@
   color-scheme: dark;
 
   --bg:            #0B0F17;
+  --nav-bg:        #04261E;
+  --nav-active-icon: #34D399;
+  --glass-bar:     rgba(11, 15, 23, 0.7);
+  --glass-panel:   rgba(18, 24, 38, 0.8);
+  --glass-edge:    rgba(255, 255, 255, 0.08);
+  --glass-line:    rgba(255, 255, 255, 0.08);
   --surface:       #121826;
   --surface-2:     #1A2232;
   --surface-3:     #161D2B;

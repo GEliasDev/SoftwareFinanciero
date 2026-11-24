@@ -54,6 +54,14 @@ En la lista `CreditCards.jsx` cada tarjeta con pendientes muestra el badge "N po
   `--text`…`--text-4`), un acento (`--brand-600` #047857, `--accent-text`), estados (`--pos-*`, `--warn-*`, `--neg-*`) y categorías de
   gasto en grises (`--cat-1..4`). Fuente Inter (`@fontsource-variable/inter`); cifras con clase `.n` (números tabulares).
 - Prohibido: degradados, bordes laterales de color, emojis. Colores de tarjeta sólidos (`utils/cardColors.js`, `getCardColor`).
+- Menú lateral verde profundo (`--nav-bg` #053B2E, textos `--nav-text/--nav-icon`, ítem activo como pastilla de vidrio).
+  Fondo de contenido `--bg` #F3F5F4 (2026-11-24, reemplazó el gris plano).
+- Liquid Glass SOLO en capas que flotan sobre el contenido: barra superior (sticky; el scroll vive en `.main-wrapper` para que el
+  contenido pase por debajo), barra inferior del teléfono, menús, diálogos, hojas y panel Registrar. Tokens `--glass-bar`,
+  `--glass-panel`, `--glass-edge`, `--glass-line`, `--glass-blur`. Nunca en tarjetas de contenido (legibilidad de cifras).
+  Con `prefers-reduced-transparency: reduce` esas capas vuelven a ser opacas.
+- Inicio en PC: dos columnas independientes (`.dash-cols` / `.dash-col`) para no dejar huecos entre tarjetas de distinta altura;
+  en teléfono se disuelven (`display: contents`) y el orden lo fija `.dash-o1..o4`.
 - Estilos: `styles/components.css` (botones, inputs, cards, badges, capas flotantes), `layout.css` (shell y responsive),
   `pages.css` (utilidades e Inicio), `tarjetas.css`, `forms.css`, `creditos.css` (créditos, suscripciones, ingresos, reportes, perfil).
   Utilidades de visibilidad: `.desktop-only`, `.mobile-only`, `.desktop-flex`, `.desktop-table`, `.mobile-list` (corte en 768 px).
