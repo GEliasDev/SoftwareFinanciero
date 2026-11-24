@@ -1,15 +1,25 @@
+# Blueprint de Render: API (Node) + frontend (sitio estático).
+# Crear en Render: New → Blueprint → elegir este repo. Las variables con `sync: false`
+# se piden al crear el Blueprint (copiarlas del despliegue anterior). Gmail y SMTP son opcionales:
+# vacías, la app funciona y esas funciones quedan desactivadas. PORT lo pone Render solo.
 services:
   - type: web
-    name: debit-api
+    name: debti-api
     runtime: node
-    repo: https://github.com/YOUR_USER/YOUR_REPO
+    repo: https://github.com/GEliasDev/SoftwareFinanciero
+    branch: main
     plan: free
     region: oregon
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && npm start
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    autoDeploy: true
     envVars:
-      - key: PORT
-        value: 3001
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      # Base de datos (Supabase): mismos valores que backend/.env
       - key: DB_HOST
         sync: false
       - key: DB_PORT
@@ -20,21 +30,48 @@ services:
         sync: false
       - key: DB_PASS
         sync: false
+      # Auth: si JWT_SECRET cambia, todas las sesiones se cierran
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRES_IN
         value: 2h
+      # URL del frontend (sin / final), ej. https://debti-web.onrender.com
       - key: CORS_ORIGIN
         sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      # Gmail (movimientos por aprobar). Si GMAIL_TOKEN_KEY cambia, hay que reconectar Gmail.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GMAIL_TOKEN_KEY
+        sync: false
+      # Correo (resumen semanal y recuperar contraseña); opcional
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
 
-  - type: static
-    name: debit-web
-    runtime: node
-    repo: https://github.com/YOUR_USER/YOUR_REPO
-    plan: free
-    region: oregon
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/dist
+  - type: web
+    name: debti-web
+    runtime: static
+    repo: https://github.com/GEliasDev/SoftwareFinanciero
+    branch: main
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
     headers:
       - path: /*
         name: X-Frame-Options
@@ -74,6 +111,9 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      # Debe incluir /api al final, ej: https://debit-api.onrender.com/api
+      # Vite 8 exige Node ≥ 20.19
+      - key: NODE_VERSION
+        value: 22
+      # Debe incluir /api al final, ej: https://debti-api.onrender.com/api
       - key: VITE_API_URL
         sync: false

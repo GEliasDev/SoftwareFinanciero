@@ -25,6 +25,9 @@ import { startWeeklyDigestJob } from './jobs/weeklyDigestJob.js';
 import { startCardInboxSyncJob } from './jobs/cardInboxSyncJob.js';
 
 const app = express();
+// Render (y cualquier PaaS) pone un proxy delante: sin esto req.ip es la IP del
+// proxy y el rate limit trata a todos los usuarios como uno solo.
+app.set('trust proxy', 1);
 
 const DEFAULT_ORIGINS = [
   'http://localhost:5174',
