@@ -133,7 +133,7 @@ const Seccion = ({ id, titulo, filas, vacio, onEstado, onEdit, onDelete }) => {
             <tbody>
               {filas.map(f => (
                 <tr key={f.id}>
-                  <td><span className="cell-title">{f.descripcion}</span>{origenTexto(f) && <span className="cell-sub">{origenTexto(f)}</span>}</td>
+                  <td><span className="bal-desc"><span className="cell-title">{f.descripcion}</span>{origenTexto(f) && <span className="cell-sub">{origenTexto(f)}</span>}</span></td>
                   <td className="text-secondary">{f.categoria}</td>
                   <td><EstadoMenu fila={f} onChange={onEstado} /></td>
                   <td className="n" style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(f.valor)}</td>
@@ -149,9 +149,11 @@ const Seccion = ({ id, titulo, filas, vacio, onEstado, onEdit, onDelete }) => {
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="cell-title">{f.descripcion}</span>
                   <span className="cell-sub">{f.categoria}{f.origen !== 'manual' && f.monto == null ? ' · automático' : ''}</span>
-                  <span style={{ display: 'block', marginTop: 6 }}><EstadoMenu fila={f} onChange={onEstado} /></span>
                 </span>
-                <b className="n">{fmt(f.valor)}</b>
+                <span className="bal-row-end">
+                  <b className="n">{fmt(f.valor)}</b>
+                  <EstadoMenu fila={f} onChange={onEstado} />
+                </span>
                 <RowActions fila={f} onEdit={onEdit} onDelete={onDelete} />
               </div>
             ))}

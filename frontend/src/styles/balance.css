@@ -5,12 +5,20 @@
 
 .bal-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
 
-.bal-table td { vertical-align: middle; }
-.bal-table .cell-title, .bal-table .cell-sub { display: block; }
+/* Filas compactas: varias filas caben sin scroll; con muchas, ya hace falta. */
+.bal-layout .card-flush > .card-header { padding: 14px 20px 10px; }
+.bal-table th { padding-top: 8px; padding-bottom: 8px; }
+.bal-table td { vertical-align: middle; padding-top: 6px; padding-bottom: 6px; }
+.bal-table tfoot td { padding-top: 8px; padding-bottom: 8px; }
+.bal-desc { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.bal-desc .cell-title { flex-shrink: 0; max-width: 60%; }
+.bal-desc .cell-sub { margin: 0; min-width: 0; }
+.bal-table .icon-btn.sm { width: 30px; height: 30px; }
 .bal-estado { display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
 .bal-estado:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 2px; }
-.bal-row { align-items: flex-start; }
-.bal-row > b { margin-top: 2px; }
+.bal-row { padding-top: 8px; padding-bottom: 8px; gap: 10px; }
+.bal-row-end { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.bal-row-end > b { font-size: 15px; font-weight: 600; }
 
 .bal-resumen { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; }
 .bal-queda p { margin: 0 0 4px; font-size: 14px; color: var(--text-2); }
@@ -55,4 +63,5 @@
   .bal-month { margin-left: 0; width: 100%; justify-content: space-between; }
   .bal-header > .btn { width: 100%; }
   .bal-queda .amount-xl { font-size: 30px; }
+  .bal-layout .card-flush > .card-header { padding: 12px 16px 8px; }
 }
